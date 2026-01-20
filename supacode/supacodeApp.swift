@@ -10,14 +10,15 @@ import SwiftUI
 
 @main
 struct supacodeApp: App {
-    @StateObject private var ghostty: GhosttyRuntime
+    @State private var ghostty: GhosttyRuntime
     @State private var settings = SettingsModel()
+    @State private var repositoryStore = RepositoryStore()
     
     init() {
         if ghostty_init(UInt(CommandLine.argc), CommandLine.unsafeArgv) != GHOSTTY_SUCCESS {
                   preconditionFailure("ghostty_init failed")
               }
-        _ghostty = StateObject(wrappedValue: GhosttyRuntime())
+        _ghostty = State(initialValue: GhosttyRuntime())
     }
 
     var body: some Scene {
@@ -26,9 +27,14 @@ struct supacodeApp: App {
                 .environment(settings)
                 .preferredColorScheme(settings.preferredColorScheme)
         }
+        .environment(repositoryStore)
+        .commands {
+            OpenRepositoryCommands(repositoryStore: repositoryStore)
+        }
         Settings {
             SettingsView()
                 .environment(settings)
         }
+        .environment(repositoryStore)
     }
 }

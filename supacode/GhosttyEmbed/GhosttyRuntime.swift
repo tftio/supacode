@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import GhosttyKit
+import UniformTypeIdentifiers
 
 final class GhosttyRuntime: ObservableObject {
     private var config: ghostty_config_t?
@@ -18,7 +19,7 @@ final class GhosttyRuntime: ObservableObject {
 
         var runtimeConfig = ghostty_runtime_config_s(
             userdata: Unmanaged.passUnretained(self).toOpaque(),
-            supports_selection_clipboard: false,
+            supports_selection_clipboard: true,
             wakeup_cb: { userdata in GhosttyRuntime.wakeup(userdata) },
             action_cb: { app, target, action in
                 guard let app else { return false }
@@ -108,9 +109,8 @@ final class GhosttyRuntime: ObservableObject {
         state: UnsafeMutableRawPointer?
     ) {
         guard let surfaceView = surfaceView(from: userdata), let surface = surfaceView.surface else { return }
+        let value = NSPasteboard.ghostty(location)?.getOpinionatedStringContents() ?? ""
         DispatchQueue.main.async {
-            let pasteboard = NSPasteboard.general
-            let value = pasteboard.string(forType: .string) ?? ""
             value.withCString { ptr in
                 ghostty_surface_complete_clipboard_request(surface, ptr, state, false)
             }
@@ -125,8 +125,11 @@ final class GhosttyRuntime: ObservableObject {
     ) {
         guard let surfaceView = surfaceView(from: userdata), let surface = surfaceView.surface else { return }
         guard let string else { return }
+        let value = String(cString: string)
         DispatchQueue.main.async {
-            ghostty_surface_complete_clipboard_request(surface, string, state, true)
+            value.withCString { ptr in
+                ghostty_surface_complete_clipboard_request(surface, ptr, state, true)
+            }
         }
     }
 
@@ -138,19 +141,23 @@ final class GhosttyRuntime: ObservableObject {
         confirm: Bool
     ) {
         guard let content, len > 0 else { return }
+        var items: [(mime: String, data: String)] = []
+        items.reserveCapacity(len)
+        for i in 0..<len {
+            let item = content.advanced(by: i).pointee
+            guard let mimePtr = item.mime, let dataPtr = item.data else { continue }
+            items.append((mime: String(cString: mimePtr), data: String(cString: dataPtr)))
+        }
+        guard !items.isEmpty else { return }
         DispatchQueue.main.async {
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            var stringValue: String?
-            for i in 0..<len {
-                let item = content.advanced(by: i).pointee
-                if let mime = item.mime, let data = item.data, String(cString: mime) == "text/plain" {
-                    stringValue = String(cString: data)
-                    break
-                }
+            guard let pasteboard = NSPasteboard.ghostty(location) else { return }
+            let types = items.compactMap { NSPasteboard.PasteboardType(mimeType: $0.mime) }
+            if !types.isEmpty {
+                pasteboard.declareTypes(types, owner: nil)
             }
-            if let stringValue {
-                pasteboard.setString(stringValue, forType: .string)
+            for item in items {
+                guard let type = NSPasteboard.PasteboardType(mimeType: item.mime) else { continue }
+                pasteboard.setString(item.data, forType: type)
             }
         }
     }
@@ -158,5 +165,62 @@ final class GhosttyRuntime: ObservableObject {
     private static func closeSurface(_ userdata: UnsafeMutableRawPointer?, processAlive: Bool) {
         guard let surfaceView = surfaceView(from: userdata) else { return }
         surfaceView.closeSurface()
+    }
+}
+
+extension NSPasteboard.PasteboardType {
+    init?(mimeType: String) {
+        switch mimeType {
+        case "text/plain":
+            self = .string
+            return
+        default:
+            break
+        }
+        guard let utType = UTType(mimeType: mimeType) else {
+            self.init(mimeType)
+            return
+        }
+        self.init(utType.identifier)
+    }
+}
+
+extension NSPasteboard {
+    private static let ghosttyEscapeCharacters = "\\ ()[]{}<>\"'`!#$&;|*?\t"
+
+    private static func ghosttyEscape(_ str: String) -> String {
+        var result = str
+        for char in ghosttyEscapeCharacters {
+            result = result.replacingOccurrences(
+                of: String(char),
+                with: "\\\(char)"
+            )
+        }
+        return result
+    }
+
+    static var ghosttySelection: NSPasteboard = {
+        NSPasteboard(name: .init("com.mitchellh.ghostty.selection"))
+    }()
+
+    func getOpinionatedStringContents() -> String? {
+        if let urls = readObjects(forClasses: [NSURL.self]) as? [URL],
+           urls.count > 0 {
+            return urls
+                .map { $0.isFileURL ? Self.ghosttyEscape($0.path) : $0.absoluteString }
+                .joined(separator: " ")
+        }
+        return string(forType: .string)
+    }
+
+    static func ghostty(_ clipboard: ghostty_clipboard_e) -> NSPasteboard? {
+        switch clipboard {
+        case GHOSTTY_CLIPBOARD_STANDARD:
+            return Self.general
+        case GHOSTTY_CLIPBOARD_SELECTION:
+            return Self.ghosttySelection
+        default:
+            return nil
+        }
     }
 }

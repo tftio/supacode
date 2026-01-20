@@ -20,4 +20,7 @@ build-app: # Build the macOS app (Debug)
 	@cd $(CURRENT_MAKEFILE_DIR) && xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build
 
 run-app: build-app # Build then launch (Debug)
-	@open "$$(ls -d $$HOME/Library/Developer/Xcode/DerivedData/supacode-*/Build/Products/Debug/supacode.app | head -n 1)"
+	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings)"; \
+	build_dir="$$(echo "$$settings" | sed -n 's/^ *BUILT_PRODUCTS_DIR = //p' | head -n 1)"; \
+	product="$$(echo "$$settings" | sed -n 's/^ *FULL_PRODUCT_NAME = //p' | head -n 1)"; \
+	open "$$build_dir/$$product"

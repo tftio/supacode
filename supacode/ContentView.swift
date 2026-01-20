@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    let runtime: GhosttyRuntime
     var body: some View {
         NavigationSplitView {
             SidebarView()

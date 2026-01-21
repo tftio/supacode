@@ -66,7 +66,7 @@ jobs:
           </plist>
           EOF
           xcodebuild -exportArchive -archivePath build/supacode.xcarchive -exportPath build/export -exportOptionsPlist build/ExportOptions.plist 2>&1 | mise exec -- xcsift -qw
-      - name: Re-sign Sparkle framework
+      - name: Resign Sparkle framework
         run: |
           APP_PATH="$(find build/export -name "supacode.app" -maxdepth 3 -print -quit)"
           SPARKLE="$APP_PATH/Contents/Frameworks/Sparkle.framework/Versions/B"

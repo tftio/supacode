@@ -47,9 +47,19 @@ jobs:
           security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
           security default-keychain -s build.keychain
           security find-identity -v -p codesigning build.keychain
+          if [ -z "$DEVELOPER_ID_IDENTITY" ]; then
+            echo "::error::DEVELOPER_ID_IDENTITY is empty"
+            exit 1
+          fi
+          DEVELOPER_ID_IDENTITY_SHA=$(security find-identity -v -p codesigning build.keychain | rg -F "$DEVELOPER_ID_IDENTITY" | head -1 | awk '{print $2}')
+          if [ -z "$DEVELOPER_ID_IDENTITY_SHA" ]; then
+            echo "::error::Developer ID identity not found in keychain: $DEVELOPER_ID_IDENTITY"
+            exit 1
+          fi
+          echo "DEVELOPER_ID_IDENTITY_SHA=$DEVELOPER_ID_IDENTITY_SHA" >> "$GITHUB_ENV"
       - run: make build-ghostty-xcframework
       - run: |
-          xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Release -archivePath build/supacode.xcarchive archive CODE_SIGN_IDENTITY="$DEVELOPER_ID_IDENTITY" OTHER_CODE_SIGN_FLAGS="--timestamp" 2>&1 | mise exec -- xcsift -qw
+          xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Release -archivePath build/supacode.xcarchive archive CODE_SIGN_IDENTITY="$DEVELOPER_ID_IDENTITY_SHA" OTHER_CODE_SIGN_FLAGS="--timestamp" 2>&1 | mise exec -- xcsift -qw
       - run: |
           cat > build/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -61,7 +71,7 @@ jobs:
             <key>signingStyle</key>
             <string>manual</string>
             <key>signingCertificate</key>
-            <string>$DEVELOPER_ID_IDENTITY</string>
+          <string>$DEVELOPER_ID_IDENTITY</string>
             <key>teamID</key>
             <string>$APPLE_TEAM_ID</string>
           </dict>
@@ -77,15 +87,20 @@ jobs:
           echo "Using identity: $DEVELOPER_ID_IDENTITY"
           security find-identity -v -p codesigning
 
-          codesign -f -s "$DEVELOPER_ID_IDENTITY" -o runtime --timestamp -v "$SPARKLE/XPCServices/Installer.xpc"
-          codesign -f -s "$DEVELOPER_ID_IDENTITY" -o runtime --timestamp --preserve-metadata=entitlements -v "$SPARKLE/XPCServices/Downloader.xpc"
-          codesign -f -s "$DEVELOPER_ID_IDENTITY" -o runtime --timestamp -v "$SPARKLE/Updater.app"
-          codesign -f -s "$DEVELOPER_ID_IDENTITY" -o runtime --timestamp -v "$SPARKLE/Autoupdate"
-          codesign -f -s "$DEVELOPER_ID_IDENTITY" -o runtime --timestamp -v "$SPARKLE/Sparkle"
-          codesign -f -s "$DEVELOPER_ID_IDENTITY" -o runtime --timestamp -v "$APP_PATH/Contents/Frameworks/Sparkle.framework"
-          codesign -f -s "$DEVELOPER_ID_IDENTITY" -o runtime --timestamp -v "$APP_PATH"
+          codesign -f -s "$DEVELOPER_ID_IDENTITY_SHA" -o runtime --timestamp -v "$SPARKLE/XPCServices/Installer.xpc"
+          codesign -f -s "$DEVELOPER_ID_IDENTITY_SHA" -o runtime --timestamp --preserve-metadata=entitlements -v "$SPARKLE/XPCServices/Downloader.xpc"
+          codesign -f -s "$DEVELOPER_ID_IDENTITY_SHA" -o runtime --timestamp -v "$SPARKLE/Updater.app"
+          codesign -f -s "$DEVELOPER_ID_IDENTITY_SHA" -o runtime --timestamp -v "$SPARKLE/Autoupdate"
+          codesign -f -s "$DEVELOPER_ID_IDENTITY_SHA" -o runtime --timestamp -v "$SPARKLE/Sparkle"
+          codesign -f -s "$DEVELOPER_ID_IDENTITY_SHA" -o runtime --timestamp -v "$APP_PATH/Contents/Frameworks/Sparkle.framework"
+          codesign -f -s "$DEVELOPER_ID_IDENTITY_SHA" -o runtime --timestamp -v "$APP_PATH"
 
           codesign -vvv --deep --strict "$APP_PATH"
+          codesign -dv --verbose=4 "$APP_PATH" 2>&1 | rg "Authority=Developer ID Application|Timestamp="
+          codesign -dv --verbose=4 "$APP_PATH/Contents/MacOS/supacode" 2>&1 | rg "Authority=Developer ID Application|Timestamp="
+          codesign -dv --verbose=4 "$SPARKLE/Updater.app/Contents/MacOS/Updater" 2>&1 | rg "Authority=Developer ID Application|Timestamp="
+          codesign -dv --verbose=4 "$SPARKLE/XPCServices/Installer.xpc/Contents/MacOS/Installer" 2>&1 | rg "Authority=Developer ID Application|Timestamp="
+          codesign -dv --verbose=4 "$SPARKLE/XPCServices/Downloader.xpc/Contents/MacOS/Downloader" 2>&1 | rg "Authority=Developer ID Application|Timestamp="
           echo "Signature verified successfully"
       - name: Notarize and staple
         run: |

@@ -83,6 +83,13 @@ struct ContentView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .alert(item: $repositoryStore.removeWorktreeError) { error in
+            Alert(
+                title: Text(error.title),
+                message: Text(error.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         .focusedSceneValue(\.toggleSidebarAction, toggleSidebar)
     }
 
@@ -163,7 +170,9 @@ private struct SidebarView: View {
     let repositories: [Repository]
     @Binding var selection: Worktree.ID?
     let createWorktree: (Repository) -> Void
+    @Environment(RepositoryStore.self) private var repositoryStore
     @State private var expandedRepoIDs: Set<Repository.ID>
+    @State private var pendingRemoval: PendingWorktreeRemoval?
 
     init(
         repositories: [Repository],
@@ -181,9 +190,30 @@ private struct SidebarView: View {
             ForEach(repositories) { repository in
                 Section {
                     if expandedRepoIDs.contains(repository.id) {
-                        ForEach(repository.worktrees) { worktree in
-                            WorktreeRow(name: worktree.name, detail: worktree.detail)
+                        ForEach(repositoryStore.orderedWorktrees(in: repository)) { worktree in
+                            WorktreeRow(
+                                name: worktree.name,
+                                detail: worktree.detail,
+                                isPinned: repositoryStore.isWorktreePinned(worktree)
+                            )
                                 .tag(worktree.id)
+                                .contextMenu {
+                                    if repositoryStore.isWorktreePinned(worktree) {
+                                        Button("Unpin") {
+                                            repositoryStore.unpinWorktree(worktree)
+                                        }
+                                        .help("Unpin (no shortcut)")
+                                    } else {
+                                        Button("Pin to top") {
+                                            repositoryStore.pinWorktree(worktree)
+                                        }
+                                        .help("Pin to top (no shortcut)")
+                                    }
+                                    Button("Remove") {
+                                        requestRemoval(worktree, in: repository)
+                                    }
+                                    .help("Remove worktree (⌘⌫)")
+                                }
                         }
                     }
                 } header: {
@@ -225,6 +255,52 @@ private struct SidebarView: View {
             expandedRepoIDs.formUnion(current)
             expandedRepoIDs = expandedRepoIDs.intersection(current)
         }
+        .focusedSceneValue(\.removeWorktreeAction, removeSelectedWorktree)
+        .alert(item: $pendingRemoval) { candidate in
+            Alert(
+                title: Text("Worktree has uncommitted changes"),
+                message: Text("Remove \(candidate.worktree.name)? This deletes the worktree directory and its branch."),
+                primaryButton: .destructive(Text("Remove anyway")) {
+                    Task {
+                        await repositoryStore.removeWorktree(candidate.worktree, from: candidate.repository, force: true)
+                    }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private func requestRemoval(_ worktree: Worktree, in repository: Repository) {
+        Task {
+            let isDirty = await repositoryStore.isWorktreeDirty(worktree)
+            if isDirty {
+                pendingRemoval = PendingWorktreeRemoval(repository: repository, worktree: worktree)
+            } else {
+                await repositoryStore.removeWorktree(worktree, from: repository, force: false)
+            }
+        }
+    }
+
+    private func removeSelectedWorktree() {
+        guard let selection else { return }
+        for repository in repositories {
+            if let worktree = repository.worktrees.first(where: { $0.id == selection }) {
+                requestRemoval(worktree, in: repository)
+                return
+            }
+        }
+    }
+}
+
+private struct PendingWorktreeRemoval: Identifiable, Hashable {
+    let id: Worktree.ID
+    let repository: Repository
+    let worktree: Worktree
+
+    init(repository: Repository, worktree: Worktree) {
+        self.id = worktree.id
+        self.repository = repository
+        self.worktree = worktree
     }
 }
 
@@ -269,6 +345,7 @@ private struct RepoHeaderRow: View {
 private struct WorktreeRow: View {
     let name: String
     let detail: String
+    let isPinned: Bool
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -278,6 +355,12 @@ private struct WorktreeRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
                 Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            if isPinned {
+                Image(systemName: "pin.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

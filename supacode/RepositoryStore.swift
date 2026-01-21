@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -7,12 +8,15 @@ final class RepositoryStore {
     private let userDefaults: UserDefaults
     private let gitClient: GitClient
     private let rootsKey = "repositories.roots"
+    private let pinnedWorktreesKey = "repositories.worktrees.pinned"
 
     var repositories: [Repository] = []
     var selectedWorktreeID: String?
     var isOpenPanelPresented = false
     var openError: OpenRepositoryError?
     var createWorktreeError: CreateWorktreeError?
+    var removeWorktreeError: RemoveWorktreeError?
+    private(set) var pinnedWorktreeIDs: [Worktree.ID] = []
 
     var canCreateWorktree: Bool {
         if repositories.isEmpty {
@@ -27,6 +31,7 @@ final class RepositoryStore {
     init(userDefaults: UserDefaults = .standard, gitClient: GitClient = .init()) {
         self.userDefaults = userDefaults
         self.gitClient = gitClient
+        pinnedWorktreeIDs = loadPinnedWorktreeIDs()
         Task {
             await loadPersistedRepositories()
         }
@@ -36,12 +41,9 @@ final class RepositoryStore {
         let rootPaths = uniqueRootPaths(loadRootPaths())
         let roots = rootPaths.map { URL(fileURLWithPath: $0) }
         let loaded = await loadRepositories(for: roots)
-        repositories = loaded
+        applyRepositories(loaded)
         let persistedRoots = loaded.map { $0.rootURL.path(percentEncoded: false) }
         persistRootPaths(persistedRoots)
-        if worktree(for: selectedWorktreeID) == nil {
-            selectedWorktreeID = nil
-        }
     }
 
     func openRepositories(at urls: [URL]) async {
@@ -67,7 +69,7 @@ final class RepositoryStore {
         }
         let mergedRoots = uniqueRootPaths(mergedPaths).map { URL(fileURLWithPath: $0) }
         let loaded = await loadRepositories(for: mergedRoots)
-        repositories = loaded
+        applyRepositories(loaded)
         let persistedRoots = loaded.map { $0.rootURL.path(percentEncoded: false) }
         persistRootPaths(persistedRoots)
 
@@ -80,9 +82,6 @@ final class RepositoryStore {
             )
         }
 
-        if worktree(for: selectedWorktreeID) == nil {
-            selectedWorktreeID = nil
-        }
     }
 
     func createRandomWorktree() async {
@@ -124,7 +123,8 @@ final class RepositoryStore {
 
             let newWorktree = try await gitClient.createWorktree(named: name, in: repository.rootURL)
             let roots = repositories.map(\.rootURL)
-            repositories = await loadRepositories(for: roots)
+            let loaded = await loadRepositories(for: roots)
+            applyRepositories(loaded)
             selectedWorktreeID = newWorktree.id
         } catch {
             createWorktreeError = CreateWorktreeError(
@@ -147,6 +147,74 @@ final class RepositoryStore {
             }
         }
         return nil
+    }
+
+    func orderedWorktrees(in repository: Repository) -> [Worktree] {
+        if pinnedWorktreeIDs.isEmpty {
+            return repository.worktrees
+        }
+        let worktreeByID = Dictionary(uniqueKeysWithValues: repository.worktrees.map { ($0.id, $0) })
+        var ordered: [Worktree] = []
+        var seen: Set<Worktree.ID> = []
+        for id in pinnedWorktreeIDs {
+            if let worktree = worktreeByID[id] {
+                ordered.append(worktree)
+                seen.insert(id)
+            }
+        }
+        for worktree in repository.worktrees where !seen.contains(worktree.id) {
+            ordered.append(worktree)
+        }
+        return ordered
+    }
+
+    func isWorktreePinned(_ worktree: Worktree) -> Bool {
+        pinnedWorktreeIDs.contains(worktree.id)
+    }
+
+    func pinWorktree(_ worktree: Worktree) {
+        pinnedWorktreeIDs.removeAll { $0 == worktree.id }
+        pinnedWorktreeIDs.insert(worktree.id, at: 0)
+        persistPinnedWorktreeIDs()
+    }
+
+    func unpinWorktree(_ worktree: Worktree) {
+        pinnedWorktreeIDs.removeAll { $0 == worktree.id }
+        persistPinnedWorktreeIDs()
+    }
+
+    func isWorktreeDirty(_ worktree: Worktree) async -> Bool {
+        do {
+            return try await gitClient.isWorktreeDirty(at: worktree.workingDirectory)
+        } catch {
+            removeWorktreeError = RemoveWorktreeError(
+                id: UUID(),
+                title: "Unable to check worktree status",
+                message: error.localizedDescription
+            )
+            return true
+        }
+    }
+
+    func removeWorktree(_ worktree: Worktree, from repository: Repository, force: Bool) async {
+        removeWorktreeError = nil
+        let selectionWasRemoved = selectedWorktreeID == worktree.id
+        let nextSelection = selectionWasRemoved ? nextWorktreeID(afterRemoving: worktree) : nil
+        do {
+            _ = try await gitClient.removeWorktree(named: worktree.name, in: repository.rootURL, force: force)
+            let roots = repositories.map(\.rootURL)
+            let loaded = await loadRepositories(for: roots)
+            applyRepositories(loaded, animated: true)
+            if selectionWasRemoved {
+                selectedWorktreeID = nextSelection ?? firstAvailableWorktreeID(from: repositories)
+            }
+        } catch {
+            removeWorktreeError = RemoveWorktreeError(
+                id: UUID(),
+                title: "Unable to remove worktree",
+                message: error.localizedDescription
+            )
+        }
     }
 
     private func repositoryForWorktreeCreation() -> Repository? {
@@ -180,6 +248,63 @@ final class RepositoryStore {
     private func persistRootPaths(_ roots: [String]) {
         guard let data = try? JSONEncoder().encode(roots) else { return }
         userDefaults.set(data, forKey: rootsKey)
+    }
+
+    private func loadPinnedWorktreeIDs() -> [Worktree.ID] {
+        guard let data = userDefaults.data(forKey: pinnedWorktreesKey) else { return [] }
+        return (try? JSONDecoder().decode([Worktree.ID].self, from: data)) ?? []
+    }
+
+    private func persistPinnedWorktreeIDs() {
+        guard let data = try? JSONEncoder().encode(pinnedWorktreeIDs) else { return }
+        userDefaults.set(data, forKey: pinnedWorktreesKey)
+    }
+
+    private func applyRepositories(_ loaded: [Repository], animated: Bool = false) {
+        if animated {
+            withAnimation {
+                repositories = loaded
+            }
+        } else {
+            repositories = loaded
+        }
+        prunePinnedWorktreeIDs(using: loaded)
+        if worktree(for: selectedWorktreeID) == nil {
+            selectedWorktreeID = nil
+        }
+    }
+
+    private func prunePinnedWorktreeIDs(using repositories: [Repository]) {
+        let availableIDs = Set(repositories.flatMap { $0.worktrees.map(\.id) })
+        let pruned = pinnedWorktreeIDs.filter { availableIDs.contains($0) }
+        if pruned != pinnedWorktreeIDs {
+            pinnedWorktreeIDs = pruned
+            persistPinnedWorktreeIDs()
+        }
+    }
+
+    private func firstAvailableWorktreeID(from repositories: [Repository]) -> Worktree.ID? {
+        for repository in repositories {
+            if let first = orderedWorktrees(in: repository).first {
+                return first.id
+            }
+        }
+        return nil
+    }
+
+    private func nextWorktreeID(afterRemoving worktree: Worktree) -> Worktree.ID? {
+        let orderedIDs = repositories.flatMap { repository in
+            orderedWorktrees(in: repository).map(\.id)
+        }
+        guard let index = orderedIDs.firstIndex(of: worktree.id) else { return nil }
+        let nextIndex = index + 1
+        if nextIndex < orderedIDs.count {
+            return orderedIDs[nextIndex]
+        }
+        if index > 0 {
+            return orderedIDs[index - 1]
+        }
+        return nil
     }
 
     private func loadRepositories(for roots: [URL]) async -> [Repository] {

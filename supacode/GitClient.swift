@@ -78,6 +78,33 @@ struct GitClient {
         return Worktree(id: id, name: name, detail: detail, workingDirectory: worktreeURL)
     }
 
+    nonisolated func isWorktreeDirty(at worktreeURL: URL) async throws -> Bool {
+        let path = worktreeURL.path(percentEncoded: false)
+        let output = try await runGit(arguments: ["-C", path, "status", "--porcelain"])
+        return WorktreeDirtCheck.isDirty(statusOutput: output)
+    }
+
+    nonisolated func removeWorktree(named name: String, in repoRoot: URL, force: Bool) async throws -> URL {
+        let baseDirectory = wtBaseDirectory(for: repoRoot)
+        let wtURL = try wtScriptURL()
+        var arguments = ["rm", "--base", baseDirectory.path(percentEncoded: false)]
+        if force {
+            arguments.append("--force")
+        }
+        arguments.append(name)
+        let output = try await runProcess(
+            executableURL: wtURL,
+            arguments: arguments,
+            currentDirectoryURL: repoRoot
+        )
+        let pathLine = output.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
+        if pathLine.isEmpty {
+            let command = ([wtURL.lastPathComponent] + arguments).joined(separator: " ")
+            throw GitClientError.commandFailed(command: command, message: "Empty output")
+        }
+        return URL(fileURLWithPath: pathLine).standardizedFileURL
+    }
+
     nonisolated func githubOwner(for repoRoot: URL) async -> String? {
         guard let remote = await originRemoteURL(for: repoRoot) else { return nil }
         return Self.githubOwner(fromRemote: remote)

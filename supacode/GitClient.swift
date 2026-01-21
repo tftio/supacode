@@ -187,9 +187,8 @@ struct GitClient {
     let repoName = repoRoot.lastPathComponent
     let fallback = repoRoot.path(percentEncoded: false).replacingOccurrences(of: "/", with: "_")
     let name = repoName.isEmpty ? fallback : repoName
-    return FileManager.default.homeDirectoryForCurrentUser
-      .appendingPathComponent(".supacode/repos", isDirectory: true)
-      .appendingPathComponent(name, isDirectory: true)
+    return SupacodePaths.reposDirectory
+      .appending(path: name, directoryHint: .isDirectory)
   }
 
   nonisolated private func runProcess(

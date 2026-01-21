@@ -4,12 +4,16 @@ import SwiftUI
 @MainActor
 @Observable
 final class SettingsModel {
-  private let userDefaults: UserDefaults
-  private let appearanceKey = "settings.appearanceMode"
+  private let store: SettingsStore
+  private var settings: GlobalSettings
 
   var appearanceMode: AppearanceMode {
-    didSet {
-      userDefaults.set(appearanceMode.rawValue, forKey: appearanceKey)
+    get {
+      settings.appearanceMode
+    }
+    set {
+      settings.appearanceMode = newValue
+      store.save(settings)
     }
   }
 
@@ -17,9 +21,8 @@ final class SettingsModel {
     appearanceMode.colorScheme
   }
 
-  init(userDefaults: UserDefaults = .standard) {
-    self.userDefaults = userDefaults
-    let rawValue = userDefaults.string(forKey: appearanceKey)
-    appearanceMode = AppearanceMode(rawValue: rawValue ?? AppearanceMode.system.rawValue) ?? .system
+  init(store: SettingsStore = SettingsStore()) {
+    self.store = store
+    settings = store.load()
   }
 }

@@ -39,7 +39,7 @@ sync-ghostty-resources: # Sync ghostty resources (themes, docs) over to the main
 	rsync -a --delete "$$src/" "$$dst/"
 
 build-app: build-ghostty-xcframework # Build the macOS app (Debug)
-	xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build 2>&1 | xcsift -qw
+	xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug build 2>&1 | mise exec -- xcsift -qw
 
 run-app: build-app # Build then launch (Debug) with log streaming
 	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings -json 2>/dev/null)"; \
@@ -52,7 +52,7 @@ lint: # Run swiftlint
 	mise exec -- swiftlint --quiet
 
 test: build-ghostty-xcframework
-	xcodebuild test -project supacode.xcodeproj -scheme supacode -destination "platform=macOS" 2>&1 | xcsift -qw
+	xcodebuild test -project supacode.xcodeproj -scheme supacode -destination "platform=macOS" 2>&1 | mise exec -- xcsift -qw
 
 format: # Swift format
 	swift-format -p --in-place --recursive --configuration ./.swift-format.json supacode supacodeTests

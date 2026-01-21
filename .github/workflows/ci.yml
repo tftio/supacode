@@ -15,6 +15,6 @@ jobs:
           submodules: recursive
       - run: curl https://mise.run | sh
       - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - run: make build-app
       - run: make lint
+      - run: make build-app
       - run: make test

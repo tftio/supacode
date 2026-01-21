@@ -1,21 +1,29 @@
 import SwiftUI
 
 struct UpdatesSettingsView: View {
-  @State private var checkForUpdatesAutomatically = true
-  @State private var downloadUpdatesAutomatically = true
+  @Environment(UpdateController.self) private var updateController
 
   var body: some View {
+    @Bindable var updateController = updateController
+
     VStack(alignment: .leading, spacing: 0) {
       Form {
         Section("Automatic Updates") {
-          Toggle("Check for updates automatically", isOn: $checkForUpdatesAutomatically)
-          Toggle("Download and install updates automatically", isOn: $downloadUpdatesAutomatically)
+          Toggle("Check for updates automatically", isOn: $updateController.automaticallyChecksForUpdates)
+          Toggle(
+            "Download and install updates automatically",
+            isOn: $updateController.automaticallyDownloadsUpdates
+          )
+          .disabled(!updateController.automaticallyChecksForUpdates)
         }
       }
       .formStyle(.grouped)
 
       HStack {
-        Button("Check for Updates Now") {}
+        Button("Check for Updates Now") {
+          updateController.checkForUpdates()
+        }
+        .help("Check for Updates (\(AppShortcuts.checkForUpdates.display))")
         Spacer()
       }
       .padding(.top)

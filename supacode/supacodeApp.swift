@@ -26,6 +26,7 @@ struct SupacodeApp: App {
   @State private var ghostty: GhosttyRuntime
   @State private var settings = SettingsModel()
   @State private var repositoryStore = RepositoryStore()
+  @State private var updateController = UpdateController()
 
   init() {
     if let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("ghostty") {
@@ -45,6 +46,7 @@ struct SupacodeApp: App {
     WindowGroup {
       ContentView(runtime: ghostty)
         .environment(settings)
+        .environment(updateController)
         .preferredColorScheme(settings.preferredColorScheme)
     }
     .environment(repositoryStore)
@@ -53,10 +55,12 @@ struct SupacodeApp: App {
       WorktreeCommands(repositoryStore: repositoryStore)
       SidebarCommands()
       TerminalCommands()
+      UpdateCommands(updateController: updateController)
     }
     Settings {
       SettingsView()
         .environment(settings)
+        .environment(updateController)
     }
     .environment(repositoryStore)
   }

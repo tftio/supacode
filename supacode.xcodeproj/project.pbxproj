@@ -13,6 +13,7 @@
 		D6A1CB362F1F4ACB004FDABD /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D6A1CB342F1F4AC2004FDABD /* Carbon.framework */; };
 		D6A1CB3A2F1F4B00004FDABD /* ghostty in Resources */ = {isa = PBXBuildFile; fileRef = D6A1CB392F1F4B00004FDABD /* ghostty */; };
 		D6F820F52F1FC962004B4174 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = D6F820F42F1FC962004B4174 /* Kingfisher */; };
+		DFE570C142184CC387C1BC78 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = B5698573F7354B14B940EA60 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 				D6A1CB312F1F4ABF004FDABD /* GhosttyKit.xcframework in Frameworks */,
 				D61414532F1F9799007DF542 /* Bonsplit in Frameworks */,
 				D6A1CB362F1F4ACB004FDABD /* Carbon.framework in Frameworks */,
+				DFE570C142184CC387C1BC78 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +123,7 @@
 			packageProductDependencies = (
 				D61414522F1F9799007DF542 /* Bonsplit */,
 				D6F820F42F1FC962004B4174 /* Kingfisher */,
+				B5698573F7354B14B940EA60 /* Sparkle */,
 			);
 			productName = supacode;
 			productReference = D69CE04A2F1F378200584C57 /* supacode.app */;
@@ -180,6 +183,7 @@
 			packageReferences = (
 				D61414512F1F9799007DF542 /* XCRemoteSwiftPackageReference "bonsplit" */,
 				D6F820F32F1FC962004B4174 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+				8E10C2184F9342AC850013F5 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D69CE04B2F1F378200584C57 /* Products */;
@@ -388,7 +392,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_FILE = supacode/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -437,7 +441,7 @@
 				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_FILE = supacode/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -542,6 +546,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		8E10C2184F9342AC850013F5 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.1;
+			};
+		};
 		D61414512F1F9799007DF542 /* XCRemoteSwiftPackageReference "bonsplit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/almonk/bonsplit.git";
@@ -561,6 +573,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B5698573F7354B14B940EA60 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8E10C2184F9342AC850013F5 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		D61414522F1F9799007DF542 /* Bonsplit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D61414512F1F9799007DF542 /* XCRemoteSwiftPackageReference "bonsplit" */;

@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      DEVELOPER_ID_CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+      DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+      DEVELOPER_ID_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: curl https://mise.run | sh
+      - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: |
+          TAG="$GITHUB_REF_NAME"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+      - run: |
+          echo "$DEVELOPER_ID_CERT_P12" | base64 --decode > build-cert.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import build-cert.p12 -k build.keychain -P "$DEVELOPER_ID_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          security list-keychains -s build.keychain
+      - run: make build-ghostty-xcframework
+      - run: |
+          xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Release -archivePath build/supacode.xcarchive archive CODE_SIGN_IDENTITY="$DEVELOPER_ID_IDENTITY"
+      - run: |
+          cat > build/ExportOptions.plist <<EOF2
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>developer-id</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>$DEVELOPER_ID_IDENTITY</string>
+            <key>teamID</key>
+            <string>$APPLE_TEAM_ID</string>
+          </dict>
+          </plist>
+          EOF2
+          xcodebuild -exportArchive -archivePath build/supacode.xcarchive -exportPath build/export -exportOptionsPlist build/ExportOptions.plist
+      - run: |
+          APP_PATH="$(find build/export -name "supacode.app" -maxdepth 3 -print -quit)"
+          xcrun notarytool submit "$APP_PATH" --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+          xcrun stapler staple "$APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" build/supacode.app.zip
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - run: |
+          git clone https://github.com/sparkle-project/Sparkle.git build/Sparkle
+          xcodebuild -project build/Sparkle/Sparkle.xcodeproj -scheme generate_appcast -configuration Release -derivedDataPath build/sparkle-tools build
+          STAGING=$(mktemp -d)
+          cp build/supacode.app.zip "$STAGING/"
+          printf "%s" "$SPARKLE_PRIVATE_KEY" | build/sparkle-tools/Build/Products/Release/generate_appcast --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/" --ed-key-file - "$STAGING"
+          cp "$STAGING/appcast.xml" build/appcast.xml
+      - run: |
+          NOTES_FILE=build/release-notes.txt
+          printf "" > "$NOTES_FILE"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" build/supacode.app.zip build/appcast.xml --clobber
+          else
+            gh release create "$TAG" build/supacode.app.zip build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE"
+          fi

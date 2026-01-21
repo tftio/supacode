@@ -35,9 +35,22 @@
 		D6F821012F1FCBC1004B4174 /* supacodeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = supacodeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D4C9CFFBF3C440848B2DA2B0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D69CE0492F1F378200584C57 /* supacode */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D69CE04C2F1F378200584C57 /* supacode */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D4C9CFFBF3C440848B2DA2B0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
 			path = supacode;
 			sourceTree = "<group>";
 		};

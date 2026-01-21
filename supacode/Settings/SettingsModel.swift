@@ -17,6 +17,26 @@ final class SettingsModel {
     }
   }
 
+  var updatesAutomaticallyCheckForUpdates: Bool {
+    get {
+      settings.updatesAutomaticallyCheckForUpdates
+    }
+    set {
+      settings.updatesAutomaticallyCheckForUpdates = newValue
+      store.save(settings)
+    }
+  }
+
+  var updatesAutomaticallyDownloadUpdates: Bool {
+    get {
+      settings.updatesAutomaticallyDownloadUpdates
+    }
+    set {
+      settings.updatesAutomaticallyDownloadUpdates = newValue
+      store.save(settings)
+    }
+  }
+
   var preferredColorScheme: ColorScheme? {
     appearanceMode.colorScheme
   }

@@ -26,7 +26,7 @@ struct SupacodeApp: App {
   @State private var ghostty: GhosttyRuntime
   @State private var settings = SettingsModel()
   @State private var repositoryStore = RepositoryStore()
-  @State private var updateController = UpdateController()
+  @State private var updateController: UpdateController
 
   init() {
     if let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("ghostty") {
@@ -40,6 +40,9 @@ struct SupacodeApp: App {
       }
     }
     _ghostty = State(initialValue: GhosttyRuntime())
+    let settingsModel = SettingsModel()
+    _settings = State(initialValue: settingsModel)
+    _updateController = State(initialValue: UpdateController(settings: settingsModel))
   }
 
   var body: some Scene {

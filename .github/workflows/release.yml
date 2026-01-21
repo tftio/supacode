@@ -16,8 +16,10 @@ jobs:
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ secrets.SUPACODE_SH_RELEASE_TOKEN }}
-      RELEASE_REPO: supabit/supacode-sh
+      RELEASE_REPO_PRIMARY: supabit/supacode-sh
+      RELEASE_REPO_MAIN: supabitapp/supacode
+      RELEASE_REPO_SH: supabit/supacode-sh
+      SUPACODE_SH_RELEASE_TOKEN: ${{ secrets.SUPACODE_SH_RELEASE_TOKEN }}
       SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
       DEVELOPER_ID_CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
       DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
@@ -131,13 +133,19 @@ jobs:
       - run: |
           STAGING=$(mktemp -d)
           cp build/supacode.app.zip "$STAGING/"
-          printf "%s" "$SPARKLE_PRIVATE_KEY" | tr -d '\r\n\t ' | ./bins/generate_appcast --download-url-prefix "https://github.com/$RELEASE_REPO/releases/download/$TAG/" --ed-key-file - "$STAGING"
+          printf "%s" "$SPARKLE_PRIVATE_KEY" | tr -d '\r\n\t ' | ./bins/generate_appcast --download-url-prefix "https://github.com/$RELEASE_REPO_PRIMARY/releases/download/$TAG/" --ed-key-file - "$STAGING"
           cp "$STAGING/appcast.xml" build/appcast.xml
       - run: |
           NOTES_FILE=build/release-notes.txt
           printf "" > "$NOTES_FILE"
-          if gh release view "$TAG" -R "$RELEASE_REPO" >/dev/null 2>&1; then
-            gh release upload "$TAG" build/supacode.app.zip build/appcast.xml --clobber -R "$RELEASE_REPO"
+          if GH_TOKEN="$GITHUB_TOKEN" gh release view "$TAG" -R "$RELEASE_REPO_MAIN" >/dev/null 2>&1; then
+            GH_TOKEN="$GITHUB_TOKEN" gh release upload "$TAG" build/supacode.app.zip build/appcast.xml --clobber -R "$RELEASE_REPO_MAIN"
           else
-            gh release create "$TAG" build/supacode.app.zip build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO"
+            GH_TOKEN="$GITHUB_TOKEN" gh release create "$TAG" build/supacode.app.zip build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
+          fi
+
+          if GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release view "$TAG" -R "$RELEASE_REPO_SH" >/dev/null 2>&1; then
+            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release upload "$TAG" build/supacode.app.zip build/appcast.xml --clobber -R "$RELEASE_REPO_SH"
+          else
+            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release create "$TAG" build/supacode.app.zip build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
           fi

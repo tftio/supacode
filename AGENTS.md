@@ -43,6 +43,12 @@ GhosttyRuntime (shared singleton)
 
 All `@Observable` classes use `@MainActor` isolation (Swift 6 strict concurrency). Key stores: `RepositoryStore`, `WorktreeTerminalStore`, `GhosttyTerminalStore`, `SettingsModel`.
 
+## Ghostty Keybindings Handling
+
+- Ghostty keybindings are handled via runtime action callbacks in `GhosttySurfaceBridge`, not by app menu shortcuts.
+- App-level tab actions should be triggered by Ghostty actions (`GHOSTTY_ACTION_NEW_TAB` / `GHOSTTY_ACTION_CLOSE_TAB`) to honor user custom bindings.
+- `GhosttySurfaceView.performKeyEquivalent` routes bound keys to Ghostty first; only unbound keys fall through to the app.
+
 ## Code Guidelines
 
 Always read `./docs/swift-rules.md` before writing Swift code. Key points:

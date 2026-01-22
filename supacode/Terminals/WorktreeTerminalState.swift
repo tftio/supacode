@@ -1,6 +1,7 @@
 import Bonsplit
 import CoreGraphics
 import Foundation
+import GhosttyKit
 import Observation
 
 @MainActor
@@ -243,6 +244,10 @@ final class WorktreeTerminalState: BonsplitDelegate {
       guard let self, let view else { return false }
       return self.handleNewTabRequest(from: view)
     }
+    view.bridge.onCloseTab = { [weak self, weak view] mode in
+      guard let self, let view else { return false }
+      return self.handleCloseTabRequest(from: view, mode: mode)
+    }
     view.bridge.onCloseRequest = { [weak self, weak view] processAlive in
       guard let self, let view else { return }
       self.handleCloseRequest(for: view, processAlive: processAlive)
@@ -371,6 +376,15 @@ final class WorktreeTerminalState: BonsplitDelegate {
   private func handleNewTabRequest(from view: GhosttySurfaceView) -> Bool {
     let paneId = controller.focusedPaneId
     return createTab(in: paneId) != nil
+  }
+
+  private func handleCloseTabRequest(
+    from view: GhosttySurfaceView,
+    mode: ghostty_action_close_tab_mode_e
+  ) -> Bool {
+    _ = view
+    _ = mode
+    return closeFocusedTab()
   }
 
   private func mapDropZone(_ zone: TerminalSplitTreeView.DropZone)

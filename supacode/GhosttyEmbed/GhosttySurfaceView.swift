@@ -1,8 +1,9 @@
 import AppKit
 import GhosttyKit
 
-final class GhosttySurfaceView: NSView {
+final class GhosttySurfaceView: NSView, Identifiable {
   private let runtime: GhosttyRuntime
+  let id = UUID()
   let bridge: GhosttySurfaceBridge
   private(set) var surface: ghostty_surface_t?
   private let workingDirectoryCString: UnsafeMutablePointer<CChar>?
@@ -10,6 +11,7 @@ final class GhosttySurfaceView: NSView {
   private var trackingArea: NSTrackingArea?
   private var lastBackingSize: CGSize = .zero
   private var pendingFocus = false
+  var onFocusChange: ((Bool) -> Void)?
 
   override var acceptsFirstResponder: Bool { true }
 
@@ -94,6 +96,7 @@ final class GhosttySurfaceView: NSView {
     let result = super.becomeFirstResponder()
     if result {
       setSurfaceFocus(true)
+      onFocusChange?(true)
     }
     return result
   }
@@ -102,6 +105,7 @@ final class GhosttySurfaceView: NSView {
     let result = super.resignFirstResponder()
     if result {
       setSurfaceFocus(false)
+      onFocusChange?(false)
     }
     return result
   }

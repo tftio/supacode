@@ -11,8 +11,9 @@ struct WorktreeTerminalTabsView: View {
       BonsplitView(
         controller: state.controller,
         content: { tab, _ in
-          GhosttyTerminalView(surfaceView: state.surfaceView(for: tab.id))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+          TerminalSplitTreeView(tree: state.splitTree(for: tab.id)) { operation in
+            state.performSplitOperation(operation, in: tab.id)
+          }
         },
         emptyPane: { _ in
           EmptyTerminalPaneView(message: "No terminals open")

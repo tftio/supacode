@@ -440,7 +440,7 @@ private struct WorktreeRowsView: View {
   private func rowView(_ row: WorktreeRowModel, isRepositoryRemoving: Bool) -> some View {
     let displayDetail = row.isDeleting ? "Removing..." : row.detail
     if row.isRemovable, let worktree = repositoryStore.worktree(for: row.id),
-       !isRepositoryRemoving
+      !isRepositoryRemoving
     {
       WorktreeRow(
         name: row.name,

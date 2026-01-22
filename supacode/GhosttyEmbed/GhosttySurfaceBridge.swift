@@ -7,8 +7,10 @@ final class GhosttySurfaceBridge {
   var surface: ghostty_surface_t?
   weak var surfaceView: GhosttySurfaceView?
   var onTitleChange: ((String) -> Void)?
+  var onSplitAction: ((GhosttySplitAction) -> Bool)?
 
   func handleAction(target: ghostty_target_s, action: ghostty_action_s) -> Bool {
+    if let handled = handleSplitAction(action) { return handled }
     if handleTitleAndPath(action) { return false }
     if handleCommandStatus(action) { return false }
     if handleMouseAndLink(action) { return false }
@@ -32,6 +34,90 @@ final class GhosttySurfaceBridge {
 
   func closeSurface() {
     surfaceView?.closeSurface()
+  }
+
+  private func handleSplitAction(_ action: ghostty_action_s) -> Bool? {
+    switch action.tag {
+    case GHOSTTY_ACTION_NEW_SPLIT:
+      let direction = splitDirection(from: action.action.new_split)
+      guard let direction else { return false }
+      return onSplitAction?(.newSplit(direction: direction)) ?? false
+
+    case GHOSTTY_ACTION_GOTO_SPLIT:
+      let direction = focusDirection(from: action.action.goto_split)
+      guard let direction else { return false }
+      return onSplitAction?(.gotoSplit(direction: direction)) ?? false
+
+    case GHOSTTY_ACTION_RESIZE_SPLIT:
+      let resize = action.action.resize_split
+      let direction = resizeDirection(from: resize.direction)
+      guard let direction else { return false }
+      return onSplitAction?(.resizeSplit(direction: direction, amount: resize.amount)) ?? false
+
+    case GHOSTTY_ACTION_EQUALIZE_SPLITS:
+      return onSplitAction?(.equalizeSplits) ?? false
+
+    case GHOSTTY_ACTION_TOGGLE_SPLIT_ZOOM:
+      return onSplitAction?(.toggleSplitZoom) ?? false
+
+    default:
+      return nil
+    }
+  }
+
+  private func splitDirection(from value: ghostty_action_split_direction_e) -> GhosttySplitAction
+    .NewDirection?
+  {
+    switch value {
+    case GHOSTTY_SPLIT_DIRECTION_LEFT:
+      return .left
+    case GHOSTTY_SPLIT_DIRECTION_RIGHT:
+      return .right
+    case GHOSTTY_SPLIT_DIRECTION_UP:
+      return .top
+    case GHOSTTY_SPLIT_DIRECTION_DOWN:
+      return .down
+    default:
+      return nil
+    }
+  }
+
+  private func focusDirection(from value: ghostty_action_goto_split_e) -> GhosttySplitAction
+    .FocusDirection?
+  {
+    switch value {
+    case GHOSTTY_GOTO_SPLIT_PREVIOUS:
+      return .previous
+    case GHOSTTY_GOTO_SPLIT_NEXT:
+      return .next
+    case GHOSTTY_GOTO_SPLIT_LEFT:
+      return .left
+    case GHOSTTY_GOTO_SPLIT_RIGHT:
+      return .right
+    case GHOSTTY_GOTO_SPLIT_UP:
+      return .top
+    case GHOSTTY_GOTO_SPLIT_DOWN:
+      return .down
+    default:
+      return nil
+    }
+  }
+
+  private func resizeDirection(from value: ghostty_action_resize_split_direction_e)
+    -> GhosttySplitAction.ResizeDirection?
+  {
+    switch value {
+    case GHOSTTY_RESIZE_SPLIT_LEFT:
+      return .left
+    case GHOSTTY_RESIZE_SPLIT_RIGHT:
+      return .right
+    case GHOSTTY_RESIZE_SPLIT_UP:
+      return .top
+    case GHOSTTY_RESIZE_SPLIT_DOWN:
+      return .down
+    default:
+      return nil
+    }
   }
 
   private func handleTitleAndPath(_ action: ghostty_action_s) -> Bool {
@@ -200,7 +286,8 @@ final class GhosttySurfaceBridge {
       state.keyTableTag = table.tag
       switch table.tag {
       case GHOSTTY_KEY_TABLE_ACTIVATE:
-        state.keyTableName = string(from: table.value.activate.name, length: table.value.activate.len)
+        state.keyTableName = string(
+          from: table.value.activate.name, length: table.value.activate.len)
       default:
         state.keyTableName = nil
       }

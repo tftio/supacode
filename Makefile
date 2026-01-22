@@ -12,7 +12,7 @@ CURRENT_MAKEFILE_DIR := $(patsubst %/,%,$(dir $(CURRENT_MAKEFILE_PATH)))
 GHOSTTY_XCFRAMEWORK_PATH := $(CURRENT_MAKEFILE_DIR)/Frameworks/GhosttyKit.xcframework
 
 .DEFAULT_GOAL := help
-.PHONY: serve build-ghostty-xcframework build-app run-app sync-ghostty-resources lint test update-wt
+.PHONY: serve build-ghostty-xcframework build-app run-app install-dev-build sync-ghostty-resources lint test update-wt
 
 help:  # Display this help.
 	@-+echo "Run make with one of the following targets:"
@@ -47,6 +47,21 @@ run-app: build-app # Build then launch (Debug) with log streaming
 	product="$$(echo "$$settings" | jq -r '.[0].buildSettings.FULL_PRODUCT_NAME')"; \
 	exec_name="$$(echo "$$settings" | jq -r '.[0].buildSettings.EXECUTABLE_NAME')"; \
 	"$$build_dir/$$product/Contents/MacOS/$$exec_name"
+
+install-dev-build: build-app # install dev build to /Applications
+	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings -json 2>/dev/null)"; \
+	build_dir="$$(echo "$$settings" | jq -r '.[0].buildSettings.BUILT_PRODUCTS_DIR')"; \
+	product="$$(echo "$$settings" | jq -r '.[0].buildSettings.FULL_PRODUCT_NAME')"; \
+	src="$$build_dir/$$product"; \
+	dst="/Applications/$$product"; \
+	if [ ! -d "$$src" ]; then \
+		echo "app not found: $$src"; \
+		exit 1; \
+	fi; \
+	echo "copying $$src -> $$dst"; \
+	rm -rf "$$dst"; \
+	ditto "$$src" "$$dst"; \
+	echo "installed $$dst"
 
 lint: # Run swiftlint
 	mise exec -- swiftlint --quiet

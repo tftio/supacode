@@ -22,6 +22,7 @@ final class RepositoryStore {
   var deletingWorktreeIDs: Set<Worktree.ID> = []
   var removingRepositoryIDs: Set<Repository.ID> = []
   private(set) var pinnedWorktreeIDs: [Worktree.ID] = []
+  private var reloadToken = 0
 
   var canCreateWorktree: Bool {
     if repositories.isEmpty {
@@ -44,11 +45,11 @@ final class RepositoryStore {
     let rootPaths = uniqueRootPaths(loadRootPaths())
     print("[RepositoryStore] rootPaths from UserDefaults: \(rootPaths)")
     let roots = rootPaths.map { URL(fileURLWithPath: $0) }
-    let loaded = await loadRepositories(for: roots)
-    print("[RepositoryStore] loaded \(loaded.count) repositories")
-    applyRepositories(loaded)
-    let persistedRoots = loaded.map { $0.rootURL.path(percentEncoded: false) }
-    persistRootPaths(persistedRoots)
+    if let loaded = await reloadRepositories(for: roots) {
+      print("[RepositoryStore] loaded \(loaded.count) repositories")
+      let persistedRoots = loaded.map { $0.rootURL.path(percentEncoded: false) }
+      persistRootPaths(persistedRoots)
+    }
     print("[RepositoryStore] loadPersistedRepositories completed")
   }
 
@@ -74,10 +75,10 @@ final class RepositoryStore {
       }
     }
     let mergedRoots = uniqueRootPaths(mergedPaths).map { URL(fileURLWithPath: $0) }
-    let loaded = await loadRepositories(for: mergedRoots)
-    applyRepositories(loaded)
-    let persistedRoots = loaded.map { $0.rootURL.path(percentEncoded: false) }
-    persistRootPaths(persistedRoots)
+    if let loaded = await reloadRepositories(for: mergedRoots) {
+      let persistedRoots = loaded.map { $0.rootURL.path(percentEncoded: false) }
+      persistRootPaths(persistedRoots)
+    }
 
     if !failures.isEmpty {
       let message = failures.map { "\($0) is not a Git repository." }.joined(separator: "\n")
@@ -158,12 +159,14 @@ final class RepositoryStore {
 
       let newWorktree = try await gitClient.createWorktree(named: name, in: repository.rootURL)
       let roots = repositories.map(\.rootURL)
-      let loaded = await loadRepositories(for: roots)
+      let loaded = await reloadRepositories(for: roots)
       if selectedWorktreeID == pendingID {
         selectedWorktreeID = newWorktree.id
       }
       removePendingWorktree(id: pendingID)
-      applyRepositories(loaded)
+      if loaded == nil {
+        return
+      }
     } catch {
       removePendingWorktree(id: pendingID)
       restoreSelection(previousSelection, whenSelectionIs: pendingID)
@@ -356,9 +359,8 @@ final class RepositoryStore {
       _ = try await gitClient.removeWorktree(
         named: worktree.name, in: repository.rootURL, force: force)
       let roots = repositories.map(\.rootURL)
-      let loaded = await loadRepositories(for: roots)
-      applyRepositories(loaded, animated: true)
-      if selectionWasRemoved {
+      let loaded = await reloadRepositories(for: roots, animated: true)
+      if selectionWasRemoved, loaded != nil {
         selectedWorktreeID = nextSelection ?? firstAvailableWorktreeID(from: repositories)
       }
     } catch {
@@ -400,9 +402,8 @@ final class RepositoryStore {
       persistRootPaths(remaining)
     }
     let roots = uniqueRootPaths(loadRootPaths()).map { URL(fileURLWithPath: $0) }
-    let loaded = await loadRepositories(for: roots)
-    applyRepositories(loaded, animated: true)
-    if selectionWasRemoved {
+    let loaded = await reloadRepositories(for: roots, animated: true)
+    if selectionWasRemoved, loaded != nil {
       selectedWorktreeID = firstAvailableWorktreeID(from: repositories)
     }
     if !failures.isEmpty {
@@ -477,6 +478,17 @@ final class RepositoryStore {
     userDefaults.set(data, forKey: pinnedWorktreesKey)
   }
 
+  @discardableResult
+  private func reloadRepositories(for roots: [URL], animated: Bool = false) async -> [Repository]? {
+    reloadToken += 1
+    let token = reloadToken
+    loadError = nil
+    let loaded = await loadRepositories(for: roots, token: token)
+    guard token == reloadToken else { return nil }
+    applyRepositories(loaded, animated: animated)
+    return loaded
+  }
+
   private func applyRepositories(_ loaded: [Repository], animated: Bool = false) {
     print("[RepositoryStore] applyRepositories: \(loaded.count) repositories")
     for repo in loaded {
@@ -534,7 +546,7 @@ final class RepositoryStore {
     return nil
   }
 
-  private func loadRepositories(for roots: [URL]) async -> [Repository] {
+  private func loadRepositories(for roots: [URL], token: Int) async -> [Repository] {
     print("[RepositoryStore] loadRepositories for \(roots.count) roots")
     var loaded: [Repository] = []
     for root in roots {
@@ -556,11 +568,13 @@ final class RepositoryStore {
         print("[RepositoryStore] loaded repository: \(name) with \(worktrees.count) worktrees")
       } catch {
         print("[RepositoryStore] ERROR loading \(root.path(percentEncoded: false)): \(error)")
-        loadError = LoadRepositoryError(
-          id: UUID(),
-          title: "Failed to load repository",
-          message: error.localizedDescription
-        )
+        if token == reloadToken {
+          loadError = LoadRepositoryError(
+            id: UUID(),
+            title: "Failed to load repository",
+            message: error.localizedDescription
+          )
+        }
         continue
       }
     }

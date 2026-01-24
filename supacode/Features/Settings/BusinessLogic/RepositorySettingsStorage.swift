@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct RepositorySettingsStore {
+nonisolated struct RepositorySettingsStorage {
   func load(for rootURL: URL) -> RepositorySettings {
     let settingsURL = settingsURL(for: rootURL)
     if let data = try? Data(contentsOf: settingsURL),

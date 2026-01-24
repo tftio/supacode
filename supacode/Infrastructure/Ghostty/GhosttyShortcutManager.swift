@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 @Observable
-final class GhosttyShortcutStore {
+final class GhosttyShortcutManager {
   private let runtime: GhosttyRuntime
   private var generation: Int = 0
 

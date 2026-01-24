@@ -3,7 +3,7 @@ import Observation
 
 @MainActor
 @Observable
-final class WorktreeTerminalStore {
+final class WorktreeTerminalManager {
   private let runtime: GhosttyRuntime
   private var states: [Worktree.ID: WorktreeTerminalState] = [:]
 
@@ -55,5 +55,9 @@ final class WorktreeTerminalStore {
       state.closeAllSurfaces()
     }
     states = states.filter { worktreeIDs.contains($0.key) }
+  }
+
+  func focusedTaskStatus(for worktreeID: Worktree.ID) -> WorktreeTaskStatus? {
+    states[worktreeID]?.focusedTaskStatus
   }
 }

@@ -21,7 +21,7 @@ AppFeature (root TCA store)
  ├─ SettingsFeature (appearance, updates, repo settings)
  └─ Workspace/Terminal/Updater clients (side effects + app services)
 
-WorktreeTerminalStore (global terminal state)
+WorktreeTerminalManager (global terminal state)
  └─ WorktreeTerminalState (per worktree)
  └─ Bonsplit (tab/pane management)
  └─ GhosttySurfaceView[] (one per terminal tab)
@@ -39,7 +39,7 @@ supacode/
 ├─ Domain/ # Core business models (Repository, Worktree, etc.)
 ├─ Features/ # TCA features by domain: ├─ App/ # AppFeature (root reducer) ├─ Repositories/ # Sidebar, worktree views and reducer ├─ Settings/ # Settings views, models, reducer ├─ Terminal/ # Terminal tab views and state └─ Updates/ # App update feature
 ├─ Clients/ # TCA dependency clients: ├─ Git/ # GitClient (shell out to git/wt) ├─ Repositories/ # Persistence, watcher clients └─ ... # Terminal, Workspace, Settings, Updater
-├─ Infrastructure/ # Low-level integrations: └─ Ghostty/ # Runtime, SurfaceView, Bridge, Store
+├─ Infrastructure/ # Low-level integrations: └─ Ghostty/ # Runtime, SurfaceView, Bridge, Manager
 ├─ Commands/ # macOS menu command handlers
 └─ Support/ # Utilities (paths, etc.)
 ```

@@ -3,10 +3,12 @@ import SwiftUI
 
 struct SidebarView: View {
   @Bindable var store: StoreOf<RepositoriesFeature>
+  let terminalManager: WorktreeTerminalManager
   @State private var expandedRepoIDs: Set<Repository.ID>
 
-  init(store: StoreOf<RepositoriesFeature>) {
+  init(store: StoreOf<RepositoriesFeature>, terminalManager: WorktreeTerminalManager) {
     self.store = store
+    self.terminalManager = terminalManager
     let repositoryIDs = Set(store.repositories.map(\.id))
     let pendingRepositoryIDs = Set(store.pendingWorktrees.map(\.repositoryID))
     _expandedRepoIDs = State(initialValue: repositoryIDs.union(pendingRepositoryIDs))
@@ -21,7 +23,7 @@ struct SidebarView: View {
         store.send(.requestRemoveWorktree(selectedRow.id, selectedRow.repositoryID))
       }
     }()
-    SidebarListView(store: store, expandedRepoIDs: $expandedRepoIDs)
+    SidebarListView(store: store, expandedRepoIDs: $expandedRepoIDs, terminalManager: terminalManager)
       .focusedSceneValue(\.removeWorktreeAction, removeWorktreeAction)
   }
 }

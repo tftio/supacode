@@ -3,7 +3,7 @@ import SwiftUI
 
 struct WorktreeDetailView: View {
   @Bindable var store: StoreOf<AppFeature>
-  let terminalStore: WorktreeTerminalStore
+  let terminalManager: WorktreeTerminalManager
 
   var body: some View {
     detailBody(state: store.state)
@@ -36,7 +36,7 @@ struct WorktreeDetailView: View {
         let shouldRunSetupScript = repositories.pendingSetupScriptWorktreeIDs.contains(selectedWorktree.id)
         WorktreeTerminalTabsView(
           worktree: selectedWorktree,
-          store: terminalStore,
+          manager: terminalManager,
           shouldRunSetupScript: shouldRunSetupScript,
           createTab: { store.send(.newTerminal) }
         )

@@ -5,6 +5,7 @@ struct RepositorySectionView: View {
   let repository: Repository
   @Binding var expandedRepoIDs: Set<Repository.ID>
   @Bindable var store: StoreOf<RepositoriesFeature>
+  let terminalManager: WorktreeTerminalManager
   @Environment(\.openWindow) private var openWindow
 
   var body: some View {
@@ -18,7 +19,8 @@ struct RepositorySectionView: View {
       WorktreeRowsView(
         repository: repository,
         isExpanded: isExpanded,
-        store: store
+        store: store,
+        terminalManager: terminalManager
       )
     } header: {
       HStack {

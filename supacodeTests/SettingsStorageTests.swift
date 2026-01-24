@@ -3,14 +3,14 @@ import Testing
 
 @testable import supacode
 
-struct SettingsStoreTests {
+struct SettingsStorageTests {
   @Test func loadWritesDefaultsWhenMissing() throws {
     let root = try makeTempDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
     let settingsURL = root.appending(path: "settings.json")
-    let store = SettingsStore(settingsURL: settingsURL)
+    let storage = SettingsStorage(settingsURL: settingsURL)
 
-    let settings = store.load()
+    let settings = storage.load()
 
     #expect(settings == .default)
     #expect(FileManager.default.fileExists(atPath: settingsURL.path(percentEncoded: false)))
@@ -24,13 +24,13 @@ struct SettingsStoreTests {
     let root = try makeTempDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
     let settingsURL = root.appending(path: "settings.json")
-    let store = SettingsStore(settingsURL: settingsURL)
+    let storage = SettingsStorage(settingsURL: settingsURL)
 
-    var settings = store.load()
+    var settings = storage.load()
     settings.appearanceMode = .dark
-    store.save(settings)
+    storage.save(settings)
 
-    let reloaded = SettingsStore(settingsURL: settingsURL).load()
+    let reloaded = SettingsStorage(settingsURL: settingsURL).load()
     #expect(reloaded.appearanceMode == .dark)
   }
 
@@ -41,8 +41,8 @@ struct SettingsStoreTests {
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     try Data("{".utf8).write(to: settingsURL)
 
-    let store = SettingsStore(settingsURL: settingsURL)
-    let settings = store.load()
+    let storage = SettingsStorage(settingsURL: settingsURL)
+    let settings = storage.load()
 
     #expect(settings == .default)
 

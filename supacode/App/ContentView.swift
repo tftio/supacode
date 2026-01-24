@@ -11,21 +11,21 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
   @Bindable var store: StoreOf<AppFeature>
-  let terminalStore: WorktreeTerminalStore
+  let terminalManager: WorktreeTerminalManager
   @Environment(\.scenePhase) private var scenePhase
   @State private var sidebarVisibility: NavigationSplitViewVisibility = .all
 
-  init(store: StoreOf<AppFeature>, terminalStore: WorktreeTerminalStore) {
+  init(store: StoreOf<AppFeature>, terminalManager: WorktreeTerminalManager) {
     self.store = store
-    self.terminalStore = terminalStore
+    self.terminalManager = terminalManager
   }
 
   var body: some View {
     let repositoriesStore = store.scope(state: \.repositories, action: \.repositories)
     NavigationSplitView(columnVisibility: $sidebarVisibility) {
-      SidebarView(store: repositoriesStore)
+      SidebarView(store: repositoriesStore, terminalManager: terminalManager)
     } detail: {
-      WorktreeDetailView(store: store, terminalStore: terminalStore)
+      WorktreeDetailView(store: store, terminalManager: terminalManager)
     }
     .navigationSplitViewStyle(.balanced)
     .task {

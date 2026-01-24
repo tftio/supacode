@@ -10,10 +10,11 @@ final class WorktreeTerminalState: BonsplitDelegate {
   let controller: BonsplitController
   private let runtime: GhosttyRuntime
   private let worktree: Worktree
-  private let settingsStore = RepositorySettingsStore()
+  private let settingsStorage = RepositorySettingsStorage()
   private var trees: [TabID: SplitTree<GhosttySurfaceView>] = [:]
   private var surfaces: [UUID: GhosttySurfaceView] = [:]
   private var focusedSurfaceIdByTab: [TabID: UUID] = [:]
+  private var tabIsRunningById: [TabID: Bool] = [:]
   private var pendingSetupScript: Bool
 
   init(runtime: GhosttyRuntime, worktree: Worktree, runSetupScript: Bool = false) {
@@ -32,6 +33,14 @@ final class WorktreeTerminalState: BonsplitDelegate {
     )
     controller = BonsplitController(configuration: configuration)
     controller.delegate = self
+  }
+
+  var focusedTaskStatus: WorktreeTaskStatus {
+    guard let tabId = focusedTabId() else { return .idle }
+    if tabIsRunningById[tabId] == true {
+      return .running
+    }
+    return .idle
   }
 
   func ensureInitialTab() {
@@ -213,7 +222,7 @@ final class WorktreeTerminalState: BonsplitDelegate {
 
   private func setupScriptInput(shouldRun: Bool) -> String? {
     guard shouldRun else { return nil }
-    let settings = settingsStore.load(for: worktree.repositoryRootURL)
+    let settings = settingsStorage.load(for: worktree.repositoryRootURL)
     let script = settings.setupScript
     let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty {
@@ -232,6 +241,7 @@ final class WorktreeTerminalState: BonsplitDelegate {
     surfaces.removeAll()
     trees.removeAll()
     focusedSurfaceIdByTab.removeAll()
+    tabIsRunningById.removeAll()
   }
 
   func splitTabBar(
@@ -279,6 +289,10 @@ final class WorktreeTerminalState: BonsplitDelegate {
       guard let self else { return false }
       return self.handleGotoTabRequest(target)
     }
+    view.bridge.onProgressReport = { [weak self, weak view] _ in
+      guard let self, let view else { return }
+      self.handleProgressReport(for: view.id)
+    }
     view.bridge.onCloseRequest = { [weak self, weak view] processAlive in
       guard let self, let view else { return }
       self.handleCloseRequest(for: view, processAlive: processAlive)
@@ -315,6 +329,7 @@ final class WorktreeTerminalState: BonsplitDelegate {
       surfaces.removeValue(forKey: surface.id)
     }
     focusedSurfaceIdByTab.removeValue(forKey: tabId)
+    tabIsRunningById.removeValue(forKey: tabId)
   }
 
   private func tabId(containing surfaceId: UUID) -> TabID? {
@@ -322,6 +337,38 @@ final class WorktreeTerminalState: BonsplitDelegate {
       return tabId
     }
     return nil
+  }
+
+  private func focusedTabId() -> TabID? {
+    guard let paneId = controller.focusedPaneId,
+      let tab = controller.selectedTab(inPane: paneId)
+    else { return nil }
+    return tab.id
+  }
+
+  private func handleProgressReport(for surfaceId: UUID) {
+    guard let tabId = tabId(containing: surfaceId) else { return }
+    updateRunningState(for: tabId)
+  }
+
+  private func updateRunningState(for tabId: TabID) {
+    guard let tree = trees[tabId] else { return }
+    let isRunningNow = tree.leaves().contains { surface in
+      isRunningProgressState(surface.bridge.state.progressState)
+    }
+    tabIsRunningById[tabId] = isRunningNow
+  }
+
+  private func isRunningProgressState(_ state: ghostty_action_progress_report_state_e?) -> Bool {
+    switch state {
+    case .some(GHOSTTY_PROGRESS_STATE_SET),
+      .some(GHOSTTY_PROGRESS_STATE_INDETERMINATE),
+      .some(GHOSTTY_PROGRESS_STATE_PAUSE),
+      .some(GHOSTTY_PROGRESS_STATE_ERROR):
+      return true
+    default:
+      return false
+    }
   }
 
   private func mapSplitDirection(_ direction: GhosttySplitAction.NewDirection)
@@ -395,6 +442,7 @@ final class WorktreeTerminalState: BonsplitDelegate {
       return
     }
     trees[tabId] = newTree
+    updateRunningState(for: tabId)
     if focusedSurfaceIdByTab[tabId] == view.id {
       if let nextSurface = newTree.root?.leftmostLeaf() {
         focusSurface(nextSurface, in: tabId)

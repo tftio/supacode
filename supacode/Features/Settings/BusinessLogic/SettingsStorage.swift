@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct SettingsStore {
+nonisolated struct SettingsStorage {
   let settingsURL: URL
 
   init(settingsURL: URL = SupacodePaths.settingsURL) {

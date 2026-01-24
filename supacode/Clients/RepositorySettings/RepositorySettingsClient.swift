@@ -8,9 +8,9 @@ struct RepositorySettingsClient {
 
 extension RepositorySettingsClient: DependencyKey {
   static let liveValue = RepositorySettingsClient(
-    load: { RepositorySettingsStore().load(for: $0) },
+    load: { RepositorySettingsStorage().load(for: $0) },
     save: { settings, url in
-      RepositorySettingsStore().save(settings, for: url)
+      RepositorySettingsStorage().save(settings, for: url)
     }
   )
   static let testValue = RepositorySettingsClient(

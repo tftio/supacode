@@ -4,6 +4,7 @@ import SwiftUI
 struct SidebarListView: View {
   @Bindable var store: StoreOf<RepositoriesFeature>
   @Binding var expandedRepoIDs: Set<Repository.ID>
+  let terminalManager: WorktreeTerminalManager
 
   var body: some View {
     let selection = Binding<SidebarSelection?>(
@@ -15,7 +16,8 @@ struct SidebarListView: View {
         RepositorySectionView(
           repository: repository,
           expandedRepoIDs: $expandedRepoIDs,
-          store: store
+          store: store,
+          terminalManager: terminalManager
         )
       }
     }

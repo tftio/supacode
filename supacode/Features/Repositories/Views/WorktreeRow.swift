@@ -5,16 +5,18 @@ struct WorktreeRow: View {
   let isPinned: Bool
   let isMainWorktree: Bool
   let isLoading: Bool
+  let taskStatus: WorktreeTaskStatus?
 
   var body: some View {
+    let showsSpinner = isLoading || taskStatus == .running
     HStack(alignment: .firstTextBaseline) {
       ZStack {
         Image(systemName: "arrow.triangle.branch")
           .font(.caption)
           .foregroundStyle(.secondary)
-          .opacity(isLoading ? 0 : 1)
+          .opacity(showsSpinner ? 0 : 1)
           .accessibilityHidden(true)
-        if isLoading {
+        if showsSpinner {
           ProgressView()
             .controlSize(.small)
         }

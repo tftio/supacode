@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TerminalCommands: Commands {
-  let ghosttyShortcuts: GhosttyShortcutStore
+  let ghosttyShortcuts: GhosttyShortcutManager
   @FocusedValue(\.newTerminalAction) private var newTerminalAction
   @FocusedValue(\.closeSurfaceAction) private var closeSurfaceAction
   @FocusedValue(\.closeTabAction) private var closeTabAction

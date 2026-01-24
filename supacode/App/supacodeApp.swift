@@ -27,8 +27,8 @@ private enum GhosttyCLI {
 @MainActor
 struct SupacodeApp: App {
   @State private var ghostty: GhosttyRuntime
-  @State private var ghosttyShortcuts: GhosttyShortcutStore
-  @State private var terminalStore: WorktreeTerminalStore
+  @State private var ghosttyShortcuts: GhosttyShortcutManager
+  @State private var terminalManager: WorktreeTerminalManager
   @State private var store: StoreOf<AppFeature>
 
   @MainActor init() {
@@ -44,26 +44,26 @@ struct SupacodeApp: App {
     }
     let runtime = GhosttyRuntime()
     _ghostty = State(initialValue: runtime)
-    _ghosttyShortcuts = State(initialValue: GhosttyShortcutStore(runtime: runtime))
-    let initialSettings = SettingsStore().load()
-    let terminalStore = WorktreeTerminalStore(runtime: runtime)
-    _terminalStore = State(initialValue: terminalStore)
+    _ghosttyShortcuts = State(initialValue: GhosttyShortcutManager(runtime: runtime))
+    let initialSettings = SettingsStorage().load()
+    let terminalManager = WorktreeTerminalManager(runtime: runtime)
+    _terminalManager = State(initialValue: terminalManager)
     _store = State(
       initialValue: Store(initialState: AppFeature.State(settings: SettingsFeature.State(settings: initialSettings))) {
         AppFeature()
       } withDependencies: { values in
         values.terminalClient = TerminalClient(
           createTab: { worktree, pane in
-            terminalStore.createTab(in: worktree, pane: pane)
+            terminalManager.createTab(in: worktree, pane: pane)
           },
           closeFocusedTab: { worktree in
-            terminalStore.closeFocusedTab(in: worktree)
+            terminalManager.closeFocusedTab(in: worktree)
           },
           closeFocusedSurface: { worktree in
-            terminalStore.closeFocusedSurface(in: worktree)
+            terminalManager.closeFocusedSurface(in: worktree)
           },
           prune: { ids in
-            terminalStore.prune(keeping: ids)
+            terminalManager.prune(keeping: ids)
           }
         )
       }
@@ -72,7 +72,7 @@ struct SupacodeApp: App {
 
   var body: some Scene {
     WindowGroup {
-      ContentView(store: store, terminalStore: terminalStore)
+      ContentView(store: store, terminalManager: terminalManager)
         .environment(ghosttyShortcuts)
         .preferredColorScheme(store.settings.appearanceMode.colorScheme)
     }

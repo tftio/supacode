@@ -12,6 +12,7 @@ final class GhosttySurfaceBridge {
   var onNewTab: (() -> Bool)?
   var onCloseTab: ((ghostty_action_close_tab_mode_e) -> Bool)?
   var onGotoTab: ((ghostty_action_goto_tab_e) -> Bool)?
+  var onProgressReport: ((ghostty_action_progress_report_state_e) -> Void)?
 
   func handleAction(target: ghostty_target_s, action: ghostty_action_s) -> Bool {
     if let handled = handleAppAction(action) { return handled }
@@ -172,6 +173,7 @@ final class GhosttySurfaceBridge {
       let report = action.action.progress_report
       state.progressState = report.state
       state.progressValue = report.progress == -1 ? nil : Int(report.progress)
+      onProgressReport?(report.state)
       return true
 
     case GHOSTTY_ACTION_COMMAND_FINISHED:

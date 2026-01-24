@@ -195,20 +195,29 @@ jobs:
           xcrun stapler staple "$DMG_PATH"
           echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
       - run: |
+          NOTES_FILE=build/release-notes.txt
+          gh api -X POST "repos/$RELEASE_REPO_MAIN/releases/generate-notes" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" -q .body > "$NOTES_FILE"
+      - run: |
+          NOTES_FILE=build/release-notes.txt
           STAGING=$(mktemp -d)
-          cp build/supacode.app.zip "$STAGING/"
-          printf "%s" "$SPARKLE_PRIVATE_KEY" | tr -d '\r\n\t ' | ./bins/generate_appcast --download-url-prefix "https://supacode.sh/download/$TAG/" --ed-key-file - "$STAGING"
+          ARCHIVE=build/supacode.app.zip
+          ARCHIVE_BASE=$(basename "$ARCHIVE")
+          ARCHIVE_BASE="${ARCHIVE_BASE%.zip}"
+          cp "$ARCHIVE" "$STAGING/"
+          cp "$NOTES_FILE" "$STAGING/$ARCHIVE_BASE.txt"
+          printf "%s" "$SPARKLE_PRIVATE_KEY" | tr -d '\r\n\t ' | ./bins/generate_appcast --download-url-prefix "https://supacode.sh/download/$TAG/" --embed-release-notes --ed-key-file - "$STAGING"
           cp "$STAGING/appcast.xml" build/appcast.xml
       - run: |
           NOTES_FILE=build/release-notes.txt
-          printf "" > "$NOTES_FILE"
           if gh release view "$TAG" -R "$RELEASE_REPO_MAIN" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
             gh release upload "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --clobber -R "$RELEASE_REPO_MAIN"
           else
             gh release create "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
           fi
 
           if GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release view "$TAG" -R "$RELEASE_REPO_SH" >/dev/null 2>&1; then
+            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
             GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release upload "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --clobber -R "$RELEASE_REPO_SH"
           else
             GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release create "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"

@@ -17,6 +17,13 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     }
   }
 
+  var labelTitle: String {
+    switch self {
+    case .finder: "Finder"
+    case .cursor, .zed, .ghostty: title
+    }
+  }
+
   var appIcon: NSImage? {
     guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
     else { return nil }

@@ -98,44 +98,42 @@ struct WorktreeDetailView: View {
 
   @ViewBuilder
   private func openMenu(openActionSelection: OpenWorktreeAction) -> some View {
-    Menu {
-      ForEach(OpenWorktreeAction.allCases) { action in
-        let isDefault = action == openActionSelection
-        Button {
-          store.send(.openActionSelectionChanged(action))
-          store.send(.openWorktree(action))
-        } label: {
-          if let appIcon = action.appIcon {
-            Label {
-              Text(action.title)
-            } icon: {
-              Image(nsImage: appIcon)
-                .accessibilityHidden(true)
-            }
-          } else {
-            Label(action.title, systemImage: "app")
+    HStack(spacing: 0) {
+      Button {
+        store.send(.openWorktree(openActionSelection))
+      } label: {
+        OpenWorktreeActionMenuLabelView(action: openActionSelection)
+      }
+      .buttonStyle(.borderless)
+      .padding(8)
+      .help(openActionHelpText(for: openActionSelection, isDefault: true))
+
+      Divider()
+        .frame(height: 16)
+
+      Menu {
+        ForEach(OpenWorktreeAction.allCases) { action in
+          let isDefault = action == openActionSelection
+          Button {
+            store.send(.openActionSelectionChanged(action))
+            store.send(.openWorktree(action))
+          } label: {
+            OpenWorktreeActionMenuLabelView(action: action)
           }
+          .buttonStyle(.plain)
+          .help(openActionHelpText(for: action, isDefault: isDefault))
         }
-        .help(openActionHelpText(for: action, isDefault: isDefault))
+      } label: {
+        Image(systemName: "chevron.down")
+          .font(.system(size: 8))
       }
-    } label: {
-      Label {
-        Text("Open")
-      } icon: {
-        if let appIcon = openActionSelection.appIcon {
-          Image(nsImage: appIcon)
-            .resizable()
-            .scaledToFit()
-            .accessibilityHidden(true)
-        } else {
-          Image(systemName: "folder")
-            .resizable()
-            .scaledToFit()
-            .accessibilityHidden(true)
-        }
-      }
+      .buttonStyle(.borderless)
+      .padding(8)
+      .imageScale(.small)
+      .menuIndicator(.hidden)
+      .fixedSize()
+      .help("Open in... (no shortcut)")
     }
-    .help(openActionHelpText(for: openActionSelection, isDefault: true))
   }
 
   private func openActionHelpText(for action: OpenWorktreeAction, isDefault: Bool) -> String {

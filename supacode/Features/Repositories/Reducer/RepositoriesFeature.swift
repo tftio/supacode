@@ -55,7 +55,12 @@ struct RepositoriesFeature {
     case requestRemoveWorktree(Worktree.ID, Repository.ID)
     case presentWorktreeRemovalConfirmation(Worktree.ID, Repository.ID)
     case removeWorktreeConfirmed(Worktree.ID, Repository.ID)
-    case worktreeRemoved(Worktree.ID, selectionWasRemoved: Bool, nextSelection: Worktree.ID?)
+    case worktreeRemoved(
+      Worktree.ID,
+      repositoryID: Repository.ID,
+      selectionWasRemoved: Bool,
+      nextSelection: Worktree.ID?
+    )
     case worktreeRemovalFailed(String, worktreeID: Worktree.ID)
     case requestRemoveRepository(Repository.ID)
     case repositoryRemoved(Repository.ID, selectionWasRemoved: Bool)
@@ -382,7 +387,7 @@ struct RepositoriesFeature {
         state.deletingWorktreeIDs.insert(worktree.id)
         let selectionWasRemoved = state.selectedWorktreeID == worktree.id
         let nextSelection = selectionWasRemoved
-          ? nextWorktreeID(afterRemoving: worktree, state: state)
+          ? nextWorktreeID(afterRemoving: worktree, in: repository, state: state)
           : nil
         return .run { send in
           do {
@@ -390,6 +395,7 @@ struct RepositoriesFeature {
             await send(
               .worktreeRemoved(
                 worktree.id,
+                repositoryID: repository.id,
                 selectionWasRemoved: selectionWasRemoved,
                 nextSelection: nextSelection
               )
@@ -399,13 +405,18 @@ struct RepositoriesFeature {
           }
         }
 
-      case .worktreeRemoved(let worktreeID, let selectionWasRemoved, let nextSelection):
+      case .worktreeRemoved(
+        let worktreeID,
+        let repositoryID,
+        let selectionWasRemoved,
+        let nextSelection
+      ):
         state.deletingWorktreeIDs.remove(worktreeID)
         state.pendingSetupScriptWorktreeIDs.remove(worktreeID)
         let roots = state.repositories.map(\.rootURL)
         if selectionWasRemoved {
           state.selectedWorktreeID =
-            nextSelection ?? firstAvailableWorktreeID(from: state.repositories, state: state)
+            nextSelection ?? firstAvailableWorktreeID(in: repositoryID, state: state)
         }
         return .merge(
           roots.isEmpty ? .none : .send(.reloadRepositories(animated: true)),
@@ -908,13 +919,22 @@ private func firstAvailableWorktreeID(
   return nil
 }
 
-private func nextWorktreeID(
-  afterRemoving worktree: Worktree,
+private func firstAvailableWorktreeID(
+  in repositoryID: Repository.ID,
   state: RepositoriesFeature.State
 ) -> Worktree.ID? {
-  let orderedIDs = state.repositories.flatMap { repository in
-    state.orderedWorktrees(in: repository).map(\.id)
+  guard let repository = state.repositories.first(where: { $0.id == repositoryID }) else {
+    return nil
   }
+  return state.orderedWorktrees(in: repository).first?.id
+}
+
+private func nextWorktreeID(
+  afterRemoving worktree: Worktree,
+  in repository: Repository,
+  state: RepositoriesFeature.State
+) -> Worktree.ID? {
+  let orderedIDs = state.orderedWorktrees(in: repository).map(\.id)
   guard let index = orderedIDs.firstIndex(of: worktree.id) else { return nil }
   let nextIndex = index + 1
   if nextIndex < orderedIDs.count {

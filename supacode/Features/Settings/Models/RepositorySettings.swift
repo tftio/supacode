@@ -10,10 +10,7 @@ nonisolated struct RepositorySettings: Codable, Equatable {
   }
 
   static let `default` = RepositorySettings(
-    setupScript:
-      "claude --dangerously-skip-permissions "
-      + "|| codex --dangerously-bypass-approvals-and-sandbox --search "
-      + "|| true",
+    setupScript: "echo \"Setup your startup script in repo settings\"",
     openActionID: "finder"
   )
 

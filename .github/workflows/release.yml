@@ -15,17 +15,99 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release:
+  release_notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - run: |
+          TAG="$GITHUB_REF_NAME"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+      - name: Prepare release context
+        run: |
+          set -euo pipefail
+          PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | rg -v "^$TAG$" | head -n 1 || true)
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="$PREV_TAG..$TAG"
+          else
+            RANGE="$(git rev-list --max-parents=0 HEAD)..$TAG"
+          fi
+          COMMITS=$(git log --pretty=format:"%h %s" "$RANGE")
+          CHANGES=$(git diff --name-status "$RANGE")
+          mkdir -p build
+          cat > build/release-prompt.txt <<EOF
+          You are generating release notes for Supacode.
+          Release tag: $TAG
+          Compare range: $RANGE
+
+          Commits:
+          $COMMITS
+
+          Files changed:
+          $CHANGES
+
+          Requirements:
+          - Return JSON that matches the provided schema exactly.
+          - new_features, bug_fixes, improvements are arrays of user-facing bullet text.
+          - Keep each item short, concrete, and non-redundant.
+          - If a section has no items, use an empty array.
+          EOF
+      - name: Generate release notes data
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.REVIEW_OPENAI_API_KEY }}
+          prompt-file: build/release-prompt.txt
+          output-schema: |
+            {
+              "type": "object",
+              "properties": {
+                "new_features": { "type": "array", "items": { "type": "string" } },
+                "bug_fixes": { "type": "array", "items": { "type": "string" } },
+                "improvements": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["new_features", "bug_fixes", "improvements"],
+              "additionalProperties": false
+            }
+          output-file: build/release-notes.json
+      - name: Build release notes text
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("build/release-notes.json").read_text())
+          lines = ["📅 Release date: 20 Sep 2026"]
+
+          def add_section(title, items):
+            if items:
+              lines.append("")
+              lines.append(title)
+              lines.extend([f"- {item}" for item in items])
+
+          add_section("✨ New Features", data.get("new_features", []))
+          add_section("🐛 Bug Fixes:", data.get("bug_fixes", []))
+          add_section("🌱 Improvements:", data.get("improvements", []))
+
+          Path("build/release-notes.txt").write_text("\n".join(lines).strip() + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: build/release-notes.txt
+
+  build:
     runs-on: [self-hosted, macOS, ARM64]
     permissions:
-      contents: write
+      contents: read
     env:
       MISE_HTTP_TIMEOUT: 120
-      GH_TOKEN: ${{ github.token }}
-      RELEASE_REPO_MAIN: supabitapp/supacode
-      RELEASE_REPO_SH: supabitapp/supacode-sh
-      SUPACODE_SH_RELEASE_TOKEN: ${{ secrets.SUPACODE_SH_RELEASE_TOKEN }}
-      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
       DEVELOPER_ID_CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
       DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
       DEVELOPER_ID_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
@@ -224,73 +306,38 @@ jobs:
 
           xcrun stapler staple "$DMG_PATH"
           echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
-      - name: Prepare release context
-        run: |
-          set -euo pipefail
-          PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | rg -v "^$TAG$" | head -n 1 || true)
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="$PREV_TAG..$TAG"
-          else
-            RANGE="$(git rev-list --max-parents=0 HEAD)..$TAG"
-          fi
-          COMMITS=$(git log --pretty=format:"%h %s" "$RANGE")
-          CHANGES=$(git diff --name-status "$RANGE")
-          mkdir -p build
-          cat > build/release-prompt.txt <<EOF
-          You are generating release notes for Supacode.
-          Release tag: $TAG
-          Compare range: $RANGE
-
-          Commits:
-          $COMMITS
-
-          Files changed:
-          $CHANGES
-
-          Requirements:
-          - Return JSON that matches the provided schema exactly.
-          - new_features, bug_fixes, improvements are arrays of user-facing bullet text.
-          - Keep each item short, concrete, and non-redundant.
-          - If a section has no items, use an empty array.
-          EOF
-      - name: Generate release notes data
-        uses: openai/codex-action@v1
+      - uses: actions/upload-artifact@v4
         with:
-          openai-api-key: ${{ secrets.REVIEW_OPENAI_API_KEY }}
-          prompt-file: build/release-prompt.txt
-          output-schema: |
-            {
-              "type": "object",
-              "properties": {
-                "new_features": { "type": "array", "items": { "type": "string" } },
-                "bug_fixes": { "type": "array", "items": { "type": "string" } },
-                "improvements": { "type": "array", "items": { "type": "string" } }
-              },
-              "required": ["new_features", "bug_fixes", "improvements"],
-              "additionalProperties": false
-            }
-          output-file: build/release-notes.json
-      - name: Build release notes text
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
+          name: build-artifacts
+          path: |
+            build/supacode.app.zip
+            build/supacode.dmg
 
-          data = json.loads(Path("build/release-notes.json").read_text())
-          lines = ["📅 Release date: 20 Sep 2026"]
-
-          def add_section(title, items):
-            if items:
-              lines.append("")
-              lines.append(title)
-              lines.extend([f"- {item}" for item in items])
-
-          add_section("✨ New Features", data.get("new_features", []))
-          add_section("🐛 Bug Fixes:", data.get("bug_fixes", []))
-          add_section("🌱 Improvements:", data.get("improvements", []))
-
-          Path("build/release-notes.txt").write_text("\n".join(lines).strip() + "\n")
-          PY
+  publish:
+    runs-on: [self-hosted, macOS, ARM64]
+    needs: [release_notes, build]
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_REPO_MAIN: supabitapp/supacode
+      RELEASE_REPO_SH: supabitapp/supacode-sh
+      SUPACODE_SH_RELEASE_TOKEN: ${{ secrets.SUPACODE_SH_RELEASE_TOKEN }}
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          TAG="$GITHUB_REF_NAME"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
       - run: |
           NOTES_FILE=build/release-notes.txt
           STAGING=$(mktemp -d)
@@ -305,14 +352,14 @@ jobs:
           NOTES_FILE=build/release-notes.txt
           if gh release view "$TAG" -R "$RELEASE_REPO_MAIN" >/dev/null 2>&1; then
             gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
-            gh release upload "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --clobber -R "$RELEASE_REPO_MAIN"
+            gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml --clobber -R "$RELEASE_REPO_MAIN"
           else
-            gh release create "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
+            gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
           fi
 
           if GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release view "$TAG" -R "$RELEASE_REPO_SH" >/dev/null 2>&1; then
             GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
-            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release upload "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --clobber -R "$RELEASE_REPO_SH"
+            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml --clobber -R "$RELEASE_REPO_SH"
           else
-            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release create "$TAG" build/supacode.app.zip "$DMG_PATH" build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
+            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
           fi

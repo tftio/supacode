@@ -68,7 +68,6 @@ struct RepositoriesFeature {
     case worktreeRemovalFailed(String, worktreeID: Worktree.ID)
     case requestRemoveRepository(Repository.ID)
     case repositoryRemoved(Repository.ID, selectionWasRemoved: Bool)
-    case repositoryRemovalFailed(String, repositoryID: Repository.ID)
     case pinWorktree(Worktree.ID)
     case unpinWorktree(Worktree.ID)
     case repositoryChangeDetected(Repository.ID)
@@ -460,21 +459,7 @@ struct RepositoriesFeature {
         let selectionWasRemoved = state.selectedWorktreeID.map { id in
           repository.worktrees.contains(where: { $0.id == id })
         } ?? false
-        return .run { send in
-          var failures: [String] = []
-          for worktree in repository.worktrees {
-            do {
-              _ = try await gitClient.removeWorktree(worktree, true)
-            } catch {
-              failures.append(error.localizedDescription)
-            }
-          }
-          if failures.isEmpty {
-            await send(.repositoryRemoved(repository.id, selectionWasRemoved: selectionWasRemoved))
-          } else {
-            await send(.repositoryRemovalFailed(failures.joined(separator: "\n"), repositoryID: repository.id))
-          }
-        }
+        return .send(.repositoryRemoved(repository.id, selectionWasRemoved: selectionWasRemoved))
 
       case .repositoryRemoved(let repositoryID, let selectionWasRemoved):
         state.removingRepositoryIDs.remove(repositoryID)
@@ -490,11 +475,6 @@ struct RepositoriesFeature {
           roots.isEmpty ? .none : .send(.reloadRepositories(animated: true)),
           .send(.delegate(.selectedWorktreeChanged(state.worktree(for: state.selectedWorktreeID))))
         )
-
-      case .repositoryRemovalFailed(let message, let repositoryID):
-        state.removingRepositoryIDs.remove(repositoryID)
-        state.alert = errorAlert(title: "Unable to remove repository", message: message)
-        return .none
 
       case .pinWorktree(let worktreeID):
         if let worktree = state.worktree(for: worktreeID), state.isMainWorktree(worktree) {
@@ -674,9 +654,8 @@ struct RepositoriesFeature {
       }
     } message: {
       TextState(
-        "This removes the repository from Supacode and deletes all of its worktrees "
-          + "and their branches created by Supacode. "
-          + "The main repository folder is not deleted."
+        "This removes the repository from Supacode. "
+          + "Worktrees and the main repository folder stay on disk."
       )
     }
   }

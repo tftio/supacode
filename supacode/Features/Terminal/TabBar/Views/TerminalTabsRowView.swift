@@ -26,6 +26,7 @@ struct TerminalTabsRowView: View {
               tab: item,
               isActive: manager.selectedTabId == id,
               isDragging: draggingTabId == id,
+              tabIndex: index,
               fixedWidth: fixedTabWidth,
               onSelect: {
                 manager.selectTab(id)

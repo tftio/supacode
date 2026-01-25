@@ -13,6 +13,13 @@ struct WorktreeCommands: Commands {
   }
 
   var body: some Commands {
+    let selectedRepositoryID = viewStore.state.repositoryID(for: viewStore.state.selectedWorktreeID)
+    let orderedIDs = viewStore.state.orderedWorktreeIDs(in: selectedRepositoryID)
+    CommandMenu("Worktrees") {
+      ForEach(worktreeShortcuts.enumerated(), id: \.offset) { index, shortcut in
+        worktreeShortcutButton(index: index, shortcut: shortcut, orderedIDs: orderedIDs)
+      }
+    }
     CommandGroup(replacing: .newItem) {
       Button("Open Repository...", systemImage: "folder") {
         store.send(.setOpenPanelPresented(true))
@@ -54,6 +61,26 @@ struct WorktreeCommands: Commands {
       )
       .help("Refresh Worktrees (\(AppShortcuts.refreshWorktrees.display))")
     }
+  }
+
+  private var worktreeShortcuts: [AppShortcut] {
+    AppShortcuts.worktreeSelection
+  }
+
+  private func worktreeShortcutButton(
+    index: Int,
+    shortcut: AppShortcut,
+    orderedIDs: [Worktree.ID]
+  ) -> some View {
+    let worktreeNumber = index + 1
+    let title = "Worktree \(worktreeNumber)"
+    return Button(title) {
+      guard orderedIDs.indices.contains(index) else { return }
+      store.send(.selectWorktree(orderedIDs[index]))
+    }
+    .keyboardShortcut(shortcut.keyEquivalent, modifiers: shortcut.modifiers)
+    .help("Switch to \(title) (\(shortcut.display))")
+    .disabled(!orderedIDs.indices.contains(index))
   }
 }
 

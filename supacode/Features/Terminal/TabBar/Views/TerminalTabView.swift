@@ -4,6 +4,7 @@ struct TerminalTabView: View {
   let tab: TerminalTabItem
   let isActive: Bool
   let isDragging: Bool
+  let tabIndex: Int
   let fixedWidth: CGFloat?
   let onSelect: () -> Void
   let onClose: () -> Void
@@ -20,6 +21,7 @@ struct TerminalTabView: View {
         isActive: isActive,
         isHoveringTab: isHovering,
         isDragging: isDragging,
+        tabIndex: tabIndex,
         closeAction: onClose,
         closeButtonGestureActive: $closeButtonGestureActive,
         isHoveringClose: $isHoveringClose

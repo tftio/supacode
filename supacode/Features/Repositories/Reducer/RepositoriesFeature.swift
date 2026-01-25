@@ -715,6 +715,10 @@ extension RepositoriesFeature.State {
     repositories.first(where: { $0.id == id })?.name
   }
 
+  func repositoryID(for worktreeID: Worktree.ID?) -> Repository.ID? {
+    selectedRow(for: worktreeID)?.repositoryID
+  }
+
   func isMainWorktree(_ worktree: Worktree) -> Bool {
     worktree.workingDirectory.standardizedFileURL == worktree.repositoryRootURL.standardizedFileURL
   }
@@ -827,6 +831,13 @@ extension RepositoriesFeature.State {
       )
     }
     return rows
+  }
+
+  func orderedWorktreeIDs(in repositoryID: Repository.ID?) -> [Worktree.ID] {
+    guard let repositoryID,
+          let repository = repositories.first(where: { $0.id == repositoryID })
+    else { return [] }
+    return worktreeRows(in: repository).map(\.id)
   }
 }
 

@@ -29,6 +29,7 @@ struct SupacodeApp: App {
   @State private var ghostty: GhosttyRuntime
   @State private var ghosttyShortcuts: GhosttyShortcutManager
   @State private var terminalManager: WorktreeTerminalManager
+  @State private var commandKeyObserver: CommandKeyObserver
   @State private var store: StoreOf<AppFeature>
 
   @MainActor init() {
@@ -48,6 +49,7 @@ struct SupacodeApp: App {
     let initialSettings = SettingsStorage().load()
     let terminalManager = WorktreeTerminalManager(runtime: runtime)
     _terminalManager = State(initialValue: terminalManager)
+    _commandKeyObserver = State(initialValue: CommandKeyObserver())
     _store = State(
       initialValue: Store(initialState: AppFeature.State(settings: SettingsFeature.State(settings: initialSettings))) {
         AppFeature()
@@ -74,9 +76,11 @@ struct SupacodeApp: App {
     WindowGroup {
       ContentView(store: store, terminalManager: terminalManager)
         .environment(ghosttyShortcuts)
+        .environment(commandKeyObserver)
         .preferredColorScheme(store.settings.appearanceMode.colorScheme)
     }
     .environment(ghosttyShortcuts)
+    .environment(commandKeyObserver)
     .commands {
       WorktreeCommands(store: store.scope(state: \.repositories, action: \.repositories))
       SidebarCommands()
@@ -98,10 +102,13 @@ struct SupacodeApp: App {
       }
     }
     .environment(ghosttyShortcuts)
+    .environment(commandKeyObserver)
     Settings {
       SettingsView(store: store)
         .environment(ghosttyShortcuts)
+        .environment(commandKeyObserver)
     }
     .environment(ghosttyShortcuts)
+    .environment(commandKeyObserver)
   }
 }

@@ -6,6 +6,7 @@ struct WorktreeRow: View {
   let isMainWorktree: Bool
   let isLoading: Bool
   let taskStatus: WorktreeTaskStatus?
+  let shortcutHint: String?
 
   var body: some View {
     let showsSpinner = isLoading || taskStatus == .running
@@ -23,6 +24,9 @@ struct WorktreeRow: View {
       }
       Text(name)
       Spacer(minLength: 8)
+      if let shortcutHint {
+        ShortcutHintView(text: shortcutHint, color: .secondary)
+      }
       if isMainWorktree {
         Image(systemName: "star.fill")
           .font(.caption)

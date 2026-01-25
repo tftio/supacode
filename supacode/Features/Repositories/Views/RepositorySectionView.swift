@@ -61,6 +61,11 @@ struct RepositorySectionView: View {
             openRepoSettings()
           }
           .help("Repo Settings (no shortcut)")
+          Button("Remove Repository") {
+            store.send(.requestRemoveRepository(repository.id))
+          }
+          .help("Remove repository (no shortcut)")
+          .disabled(isRemovingRepository)
         } label: {
           Label("Repository options", systemImage: "ellipsis")
         }

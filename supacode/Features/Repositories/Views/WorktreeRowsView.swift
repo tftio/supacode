@@ -62,14 +62,8 @@ struct WorktreeRowsView: View {
             .help("Pin to top (no shortcut)")
           }
         }
-        Button {
+        Button("Remove worktree (⌘⌫)") {
           store.send(.requestRemoveWorktree(worktree.id, repository.id))
-        } label: {
-          HStack(spacing: 2) {
-            Text("Remove worktree")
-            Text("(⌘⌫)")
-              .foregroundStyle(.secondary)
-          }
         }
         .help(row.isMainWorktree ? "Main worktree can't be removed" : "Remove worktree (⌘⌫)")
         .disabled(row.isMainWorktree)

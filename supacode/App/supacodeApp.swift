@@ -9,6 +9,7 @@ import Foundation
 import GhosttyKit
 import SwiftUI
 import ComposableArchitecture
+import Sentry
 
 private enum GhosttyCLI {
   static let argv: [UnsafeMutablePointer<CChar>?] = {
@@ -33,6 +34,12 @@ struct SupacodeApp: App {
   @State private var store: StoreOf<AppFeature>
 
   @MainActor init() {
+    #if !DEBUG
+    SentrySDK.start { options in
+      options.dsn = "https://fb4d394e0bd3e72871b01c7ef3cac129@o1224589.ingest.us.sentry.io/4510770231050240"
+      options.tracesSampleRate = 1.0
+    }
+    #endif
     if let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("ghostty") {
       setenv("GHOSTTY_RESOURCES_DIR", resourceURL.path, 1)
     }

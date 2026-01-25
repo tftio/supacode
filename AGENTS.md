@@ -1,12 +1,14 @@
 ## Build Commands
 
 ```bash
-make build-ghostty-xcframework # Rebuild GhosttyKit from Zig source (requires mise)
-make build-app # Build macOS app (Debug) via xcodebuild
-make run-app # Build and launch Debug app
-make lint # Run swiftlint
-make test # Run all tests
-make format # Run swift-format
+make build-ghostty-xcframework  # Rebuild GhosttyKit from Zig source (requires mise)
+make build-app                   # Build macOS app (Debug) via xcodebuild
+make run-app                     # Build and launch Debug app
+make lint                        # Run swiftlint
+make test                        # Run all tests
+make format                      # Run swift-format
+make bump-version                # Bump patch version and create git tag
+make bump-and-release            # Bump version and push to trigger release
 ```
 
 ## Architecture
@@ -17,37 +19,49 @@ Supacode is a macOS orchestrator for running multiple coding agents in parallel,
 
 ```
 AppFeature (root TCA store)
- ├─ RepositoriesFeature (repos + worktrees)
- ├─ SettingsFeature (appearance, updates, repo settings)
- └─ Workspace/Terminal/Updater clients (side effects + app services)
+├─ RepositoriesFeature (repos + worktrees)
+├─ WorktreeInfoFeature (PR/CI status display)
+├─ SettingsFeature (appearance, updates, repo settings)
+└─ UpdatesFeature (Sparkle auto-updates)
 
-WorktreeTerminalManager (global terminal state)
- └─ WorktreeTerminalState (per worktree)
- └─ Bonsplit (tab/pane management)
- └─ GhosttySurfaceView[] (one per terminal tab)
+WorktreeTerminalManager (global @Observable terminal state)
+└─ WorktreeTerminalState (per worktree)
+    └─ TerminalTabManager (tab/split management)
+        └─ GhosttySurfaceState[] (one per terminal surface)
 
 GhosttyRuntime (shared singleton)
- └─ ghostty_app_t (single C instance)
- └─ ghostty_surface_t[] (independent terminal sessions)
+└─ ghostty_app_t (single C instance)
+    └─ ghostty_surface_t[] (independent terminal sessions)
 ```
 
 ### Source Layout
 
 ```
 supacode/
-├─ App/ # App entry point, shortcuts, window identifiers
-├─ Domain/ # Core business models (Repository, Worktree, etc.)
-├─ Features/ # TCA features by domain: ├─ App/ # AppFeature (root reducer) ├─ Repositories/ # Sidebar, worktree views and reducer ├─ Settings/ # Settings views, models, reducer ├─ Terminal/ # Terminal tab views and state └─ Updates/ # App update feature
-├─ Clients/ # TCA dependency clients: ├─ Git/ # GitClient (shell out to git/wt) ├─ Repositories/ # Persistence, watcher clients └─ ... # Terminal, Workspace, Settings, Updater
-├─ Infrastructure/ # Low-level integrations: └─ Ghostty/ # Runtime, SurfaceView, Bridge, Manager
-├─ Commands/ # macOS menu command handlers
-└─ Support/ # Utilities (paths, etc.)
+├─ App/                 # Entry point, shortcuts, ContentView
+├─ Domain/              # Core models: Repository, Worktree, OpenWorktreeAction
+├─ Features/
+│  ├─ App/              # AppFeature (root TCA reducer)
+│  ├─ Repositories/     # Sidebar views and RepositoriesFeature reducer
+│  ├─ RepositorySettings/ # Per-repo settings feature
+│  ├─ Settings/         # Global settings views, models, reducer
+│  ├─ Terminal/         # Tab bar, split views, WorktreeTerminalManager
+│  ├─ Updates/          # Sparkle update feature
+│  └─ WorktreeInfo/     # PR/CI status panel
+├─ Clients/             # TCA dependency clients
+│  ├─ Git/              # GitClient (shells out to bundled wt script)
+│  ├─ Github/           # GithubCLIClient (gh CLI wrapper)
+│  ├─ Shell/            # ShellClient for process execution
+│  └─ ...               # Terminal, Workspace, Settings clients
+├─ Infrastructure/
+│  └─ Ghostty/          # Runtime, SurfaceView, SurfaceBridge, ShortcutManager
+├─ Commands/            # macOS menu command handlers
+└─ Support/             # Utilities: SupacodePaths, GlobalConstants
 ```
 
 ### Key Dependencies
 
-- **TCA (swift-composable-architecture)**: App state, reducers, and side effects
-- **Bonsplit**: Tab/pane splitting UI for terminal management
+- **TCA (swift-composable-architecture)**: App state, reducers, side effects
 - **GhosttyKit**: Terminal emulator (built from Zig source in ThirdParty/ghostty)
 - **Sparkle**: Auto-update framework
 - **swift-dependencies**: Dependency injection for TCA clients
@@ -63,8 +77,10 @@ supacode/
 Always read `./docs/swift-rules.md` before writing Swift code. Key points:
 - Target macOS 26.0+, Swift 6.2+
 - Use `@ObservableState` for TCA feature state; use `@Observable` for non-TCA shared stores; never `ObservableObject`
+- Always mark `@Observable` classes with `@MainActor`
 - Modern SwiftUI only: `foregroundStyle()`, `NavigationStack`, `Button` over `onTapGesture()`
-- Prefer Swift-native APIs over Foundation where they exist
+- Prefer Swift-native APIs over Foundation where they exist (e.g., `replacing()` not `replacingOccurrences()`)
+- Avoid `GeometryReader` when `containerRelativeFrame()` or `visualEffect()` would work
 
 ## UX Standards
 
@@ -75,13 +91,12 @@ Always read `./docs/swift-rules.md` before writing Swift code. Key points:
 ## Rules
 
 - After a task, ensure the app builds: `make build-app`
-- Use Peekabo skill to verify UI behavior if necessary
+- Use Peekaboo skill to verify UI behavior if necessary
 - To inspect a Swift PM package, clone it with `gj get {git_url}`
 - Automatically commit your changes and your changes only. Do not use `git add .`
-- Never mention our competitors or other apps in our commit, PR
+- Never mention competitors or other apps in commits or PRs
 
 ## References
 
 - `git@github.com:ghostty-org/ghostty.git` - Dive into this codebase when implementing Ghostty features
-- `git@github.com:khoi/git-wt.git` - Our git worktree wrapper, can be modified as needed
-- `git@github.com:vivy-company/aizen.git` - A competitor, also use ghostty
+- `git@github.com:khoi/git-wt.git` - Bundled git worktree wrapper (in Resources/git-wt/wt), can be modified as needed

@@ -1,14 +1,14 @@
 import ComposableArchitecture
 import Foundation
 
-struct GithubCLIClient {
+nonisolated struct GithubCLIClient: Sendable {
   var defaultBranch: @Sendable (URL) async throws -> String
   var latestRun: @Sendable (URL, String) async throws -> GithubWorkflowRun?
   var currentPullRequest: @Sendable (URL) async throws -> GithubPullRequest?
   var isAvailable: @Sendable () async -> Bool
 }
 
-extension GithubCLIClient: DependencyKey {
+nonisolated extension GithubCLIClient: DependencyKey {
   static let liveValue = {
     let shell = ShellClient.liveValue
     return GithubCLIClient(
@@ -87,7 +87,7 @@ extension GithubCLIClient: DependencyKey {
 }
 
 extension DependencyValues {
-  var githubCLI: GithubCLIClient {
+  nonisolated var githubCLI: GithubCLIClient {
     get { self[GithubCLIClient.self] }
     set { self[GithubCLIClient.self] = newValue }
   }

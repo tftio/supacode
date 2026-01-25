@@ -1,3 +1,3 @@
-nonisolated struct GithubDefaultBranchRef: Decodable, Equatable {
+nonisolated struct GithubDefaultBranchRef: Decodable, Equatable, Sendable {
   let name: String
 }

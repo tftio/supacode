@@ -1,13 +1,13 @@
 import ComposableArchitecture
 
-struct TerminalClient {
+nonisolated struct TerminalClient: Sendable {
   var createTab: @MainActor @Sendable (Worktree) -> Void
   var closeFocusedTab: @MainActor @Sendable (Worktree) -> Bool
   var closeFocusedSurface: @MainActor @Sendable (Worktree) -> Bool
   var prune: @MainActor @Sendable (Set<Worktree.ID>) -> Void
 }
 
-extension TerminalClient: DependencyKey {
+nonisolated extension TerminalClient: DependencyKey {
   static let liveValue = TerminalClient(
     createTab: { _ in fatalError("TerminalClient.createTab not configured") },
     closeFocusedTab: { _ in
@@ -30,7 +30,7 @@ extension TerminalClient: DependencyKey {
 }
 
 extension DependencyValues {
-  var terminalClient: TerminalClient {
+  nonisolated var terminalClient: TerminalClient {
     get { self[TerminalClient.self] }
     set { self[TerminalClient.self] = newValue }
   }

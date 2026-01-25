@@ -59,7 +59,9 @@ final class GhosttyRuntime {
         object: nil,
         queue: .main
       ) { [weak self] _ in
-        self?.setAppFocus(true)
+        Task { @MainActor in
+          self?.setAppFocus(true)
+        }
       })
     observers.append(
       center.addObserver(
@@ -67,7 +69,9 @@ final class GhosttyRuntime {
         object: nil,
         queue: .main
       ) { [weak self] _ in
-        self?.setAppFocus(false)
+        Task { @MainActor in
+          self?.setAppFocus(false)
+        }
       })
     observers.append(
       center.addObserver(
@@ -75,12 +79,14 @@ final class GhosttyRuntime {
         object: nil,
         queue: .main
       ) { [weak self] _ in
-        guard let app = self?.app else { return }
-        ghostty_app_keyboard_changed(app)
+        Task { @MainActor in
+          guard let app = self?.app else { return }
+          ghostty_app_keyboard_changed(app)
+        }
       })
   }
 
-  deinit {
+  @MainActor deinit {
     let center = NotificationCenter.default
     for observer in observers {
       center.removeObserver(observer)

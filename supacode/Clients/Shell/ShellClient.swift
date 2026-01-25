@@ -2,12 +2,12 @@ import ComposableArchitecture
 import Darwin
 import Foundation
 
-nonisolated struct ShellClient {
+nonisolated struct ShellClient: Sendable {
   var run: @Sendable (URL, [String], URL?) async throws -> ShellOutput
   var runLogin: @Sendable (URL, [String], URL?) async throws -> ShellOutput
 }
 
-extension ShellClient: DependencyKey {
+nonisolated extension ShellClient: DependencyKey {
   static let liveValue = ShellClient(
     run: { executableURL, arguments, currentDirectoryURL in
       try await runProcess(
@@ -36,7 +36,7 @@ extension ShellClient: DependencyKey {
 }
 
 extension DependencyValues {
-  var shellClient: ShellClient {
+  nonisolated var shellClient: ShellClient {
     get { self[ShellClient.self] }
     set { self[ShellClient.self] = newValue }
   }

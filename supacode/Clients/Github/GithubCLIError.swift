@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated enum GithubCLIError: LocalizedError, Equatable {
+nonisolated enum GithubCLIError: LocalizedError, Equatable, Sendable {
   case unavailable
   case commandFailed(String)
 

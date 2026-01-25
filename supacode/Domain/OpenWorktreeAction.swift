@@ -1,6 +1,6 @@
 import AppKit
 
-enum OpenWorktreeAction: CaseIterable, Identifiable {
+enum OpenWorktreeAction: CaseIterable, Identifiable, Sendable {
   case finder
   case cursor
   case ghostty
@@ -73,7 +73,10 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     }
   }
 
-  func perform(with worktree: Worktree, onError: @escaping (OpenActionError) -> Void) {
+  func perform(
+    with worktree: Worktree,
+    onError: @escaping @MainActor @Sendable (OpenActionError) -> Void
+  ) {
     switch self {
     case .finder:
       NSWorkspace.shared.activateFileViewerSelecting([worktree.workingDirectory])

@@ -1,6 +1,6 @@
 import Foundation
 
-struct PendingWorktree: Identifiable, Hashable {
+struct PendingWorktree: Identifiable, Hashable, Sendable {
   let id: String
   let repositoryID: Repository.ID
   let name: String

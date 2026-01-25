@@ -57,11 +57,16 @@ struct AppFeature {
         )
 
       case .scenePhaseChanged(let phase):
-        guard phase == .active else { return .none }
-        return .merge(
-          .send(.repositories(.loadPersistedRepositories)),
-          .send(.worktreeInfo(.appBecameActive))
-        )
+        switch phase {
+        case .active:
+          return .merge(
+            .send(.repositories(.loadPersistedRepositories)),
+            .send(.repositories(.startPeriodicRefresh)),
+            .send(.worktreeInfo(.appBecameActive))
+          )
+        default:
+          return .send(.repositories(.stopPeriodicRefresh))
+        }
 
       case .repositories(.delegate(.selectedWorktreeChanged(let worktree))):
         guard let worktree else {

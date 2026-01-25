@@ -5,6 +5,7 @@ import SwiftUI
 private enum CancelID {
   static let load = "repositories.load"
   static let debounce = "repositories.debounce"
+  static let periodic = "repositories.periodic"
 
   static func watcher(_ id: Repository.ID) -> String {
     "repositories.watcher.\(id)"
@@ -35,6 +36,9 @@ struct RepositoriesFeature {
     case refreshWorktrees
     case reloadRepositories(animated: Bool)
     case repositoriesLoaded([Repository], errors: [String], animated: Bool)
+    case startPeriodicRefresh
+    case stopPeriodicRefresh
+    case periodicRefreshTick
     case openRepositories([URL])
     case openRepositoriesFinished([Repository], errors: [String], failures: [String])
     case selectWorktree(Worktree.ID?)
@@ -108,6 +112,18 @@ struct RepositoriesFeature {
         return loadRepositories(roots, animated: false)
 
       case .refreshWorktrees:
+        return .send(.reloadRepositories(animated: false))
+
+      case .startPeriodicRefresh:
+        return .merge(
+          .cancel(id: CancelID.periodic),
+          periodicRefreshEffect()
+        )
+
+      case .stopPeriodicRefresh:
+        return .cancel(id: CancelID.periodic)
+
+      case .periodicRefreshTick:
         return .send(.reloadRepositories(animated: false))
 
       case .reloadRepositories(let animated):
@@ -522,6 +538,16 @@ struct RepositoriesFeature {
         return .none
       }
     }
+  }
+
+  private func periodicRefreshEffect() -> Effect<Action> {
+    .run { send in
+      while !Task.isCancelled {
+        try await clock.sleep(for: GlobalConstants.worktreePeriodicRefreshInterval)
+        await send(.periodicRefreshTick)
+      }
+    }
+    .cancellable(id: CancelID.periodic, cancelInFlight: true)
   }
 
   private func loadRepositories(_ roots: [URL], animated: Bool) -> Effect<Action> {

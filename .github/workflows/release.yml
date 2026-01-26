@@ -60,6 +60,8 @@ jobs:
           - new_features, bug_fixes, improvements are arrays of user-facing bullet text.
           - Keep each item short, concrete, and non-redundant.
           - If a section has no items, use an empty array.
+          - ONLY include user-facing changes that affect the end user experience.
+          - EXCLUDE internal changes, refactoring, CI/CD configs, build configs, gatekeeping, linting, and developer tooling.
           EOF
       - name: Generate release notes data
         uses: openai/codex-action@v1

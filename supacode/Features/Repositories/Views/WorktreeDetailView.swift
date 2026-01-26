@@ -4,6 +4,7 @@ import SwiftUI
 struct WorktreeDetailView: View {
   @Bindable var store: StoreOf<AppFeature>
   let terminalManager: WorktreeTerminalManager
+  @Environment(CommandKeyObserver.self) private var commandKeyObserver
 
   var body: some View {
     detailBody(state: store.state)
@@ -53,7 +54,11 @@ struct WorktreeDetailView: View {
     }
     .navigationTitle(selectedWorktree?.name ?? loadingInfo?.name ?? "Supacode")
     .toolbar {
-      openToolbar(isOpenDisabled: isOpenDisabled, openActionSelection: openActionSelection)
+      openToolbar(
+        isOpenDisabled: isOpenDisabled,
+        openActionSelection: openActionSelection,
+        showExtras: commandKeyObserver.isPressed
+      )
     }
     .focusedSceneValue(\.newTerminalAction, newTerminalAction)
     .focusedSceneValue(\.closeTabAction, closeTabAction)
@@ -87,24 +92,25 @@ struct WorktreeDetailView: View {
   @ToolbarContentBuilder
   private func openToolbar(
     isOpenDisabled: Bool,
-    openActionSelection: OpenWorktreeAction
+    openActionSelection: OpenWorktreeAction,
+    showExtras: Bool
   ) -> some ToolbarContent {
     if !isOpenDisabled {
       ToolbarItemGroup(placement: .primaryAction) {
-        openMenu(openActionSelection: openActionSelection)
+        openMenu(openActionSelection: openActionSelection, showExtras: showExtras)
       }
     }
   }
 
   @ViewBuilder
-  private func openMenu(openActionSelection: OpenWorktreeAction) -> some View {
+  private func openMenu(openActionSelection: OpenWorktreeAction, showExtras: Bool) -> some View {
     HStack(spacing: 0) {
       Button {
         store.send(.openWorktree(openActionSelection))
       } label: {
         OpenWorktreeActionMenuLabelView(
           action: openActionSelection,
-          shortcutHint: AppShortcuts.openFinder.display
+          shortcutHint: showExtras ? AppShortcuts.openFinder.display : nil
         )
       }
       .buttonStyle(.borderless)

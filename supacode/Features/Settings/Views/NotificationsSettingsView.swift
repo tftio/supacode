@@ -9,13 +9,13 @@ struct NotificationsSettingsView: View {
       Form {
         Section("Notifications") {
           Toggle(
-            "In-app notifications",
+            "Show bell icon next to worktree",
             isOn: Binding(
               get: { store.inAppNotificationsEnabled },
               set: { store.send(.setInAppNotificationsEnabled($0)) }
             )
           )
-          .help("In-app notifications (no shortcut)")
+          .help("Show bell icon next to worktree (no shortcut)")
         }
       }
       .formStyle(.grouped)

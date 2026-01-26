@@ -394,9 +394,8 @@ struct RepositoriesFeature {
           state.selectedWorktreeID =
             nextSelection ?? firstAvailableWorktreeID(in: repositoryID, state: state)
         }
-        let reload = roots.isEmpty ? Effect<Action>.none : loadRepositories(roots, animated: true)
         return .merge(
-          reload,
+          roots.isEmpty ? .none : .send(.reloadRepositories(animated: true)),
           .send(.delegate(.selectedWorktreeChanged(state.worktree(for: state.selectedWorktreeID))))
         )
 

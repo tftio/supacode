@@ -324,6 +324,7 @@ jobs:
             if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$TAG" ]; then
               echo "Downloading $PREV_TAG for delta generation..."
               gh release download "$PREV_TAG" -p "supacode.app.zip" -O "$STAGING/supacode-$PREV_TAG.app.zip" -R supabitapp/supacode 2>/dev/null || true
+              gh release view "$PREV_TAG" -R supabitapp/supacode --json body --jq '.body' > "$STAGING/supacode-$PREV_TAG.app.md" 2>/dev/null || true
             fi
           done
 

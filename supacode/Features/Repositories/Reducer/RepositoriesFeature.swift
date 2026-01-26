@@ -473,8 +473,8 @@ struct RepositoriesFeature {
     }
   }
 
-  private func loadRepositories(_ roots: [URL], animated: Bool) -> Effect<Action> {
-    .run { send in
+  private func loadRepositories(_ roots: [URL], animated: Bool = false) -> Effect<Action> {
+    .run { [animated] send in
       let (repositories, errors) = await loadRepositoriesData(roots)
       await send(.repositoriesLoaded(repositories, errors: errors, animated: animated))
     }
@@ -508,16 +508,6 @@ struct RepositoriesFeature {
     let previousCounts = Dictionary(
       uniqueKeysWithValues: state.repositories.map { ($0.id, $0.worktrees.count) }
     )
-    if animated {
-      withAnimation {
-        state.repositories = repositories
-      }
-    } else {
-      state.repositories = repositories
-    }
-    if prunePinnedWorktreeIDs(state: &state) {
-      repositoryPersistence.savePinnedWorktreeIDs(state.pinnedWorktreeIDs)
-    }
     let repositoryIDs = Set(repositories.map(\.id))
     let newCounts = Dictionary(
       uniqueKeysWithValues: repositories.map { ($0.id, $0.worktrees.count) }
@@ -530,16 +520,32 @@ struct RepositoriesFeature {
         addedCounts[id] = added
       }
     }
-    state.pendingWorktrees = state.pendingWorktrees.filter { pending in
+    let filteredPendingWorktrees = state.pendingWorktrees.filter { pending in
       guard repositoryIDs.contains(pending.repositoryID) else { return false }
       guard let remaining = addedCounts[pending.repositoryID], remaining > 0 else { return true }
       addedCounts[pending.repositoryID] = remaining - 1
       return false
     }
     let availableWorktreeIDs = Set(repositories.flatMap { $0.worktrees.map(\.id) })
-    state.deletingWorktreeIDs = state.deletingWorktreeIDs.intersection(availableWorktreeIDs)
-    state.pendingSetupScriptWorktreeIDs = state.pendingSetupScriptWorktreeIDs.filter {
+    let filteredDeletingIDs = state.deletingWorktreeIDs.intersection(availableWorktreeIDs)
+    let filteredSetupScriptIDs = state.pendingSetupScriptWorktreeIDs.filter {
       availableWorktreeIDs.contains($0)
+    }
+    if animated {
+      withAnimation {
+        state.repositories = repositories
+        state.pendingWorktrees = filteredPendingWorktrees
+        state.deletingWorktreeIDs = filteredDeletingIDs
+        state.pendingSetupScriptWorktreeIDs = filteredSetupScriptIDs
+      }
+    } else {
+      state.repositories = repositories
+      state.pendingWorktrees = filteredPendingWorktrees
+      state.deletingWorktreeIDs = filteredDeletingIDs
+      state.pendingSetupScriptWorktreeIDs = filteredSetupScriptIDs
+    }
+    if prunePinnedWorktreeIDs(state: &state) {
+      repositoryPersistence.savePinnedWorktreeIDs(state.pinnedWorktreeIDs)
     }
     if !isSelectionValid(state.selectedWorktreeID, state: state) {
       state.selectedWorktreeID = nil

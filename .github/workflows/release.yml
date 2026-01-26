@@ -341,10 +341,8 @@ jobs:
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
-      RELEASE_REPO_MAIN: supabitapp/supacode
+      GH_TOKEN: ${{ secrets.SUPACODE_SH_RELEASE_TOKEN }}
       RELEASE_REPO_SH: supabitapp/supacode-sh
-      SUPACODE_SH_RELEASE_TOKEN: ${{ secrets.SUPACODE_SH_RELEASE_TOKEN }}
     steps:
       - run: |
           TAG="$GITHUB_REF_NAME"
@@ -364,18 +362,11 @@ jobs:
           NOTES_FILE=build/release-notes.md
           DELTA_FILES=$(find build -name "*.delta" -type f 2>/dev/null | tr '\n' ' ' || true)
 
-          if gh release view "$TAG" -R "$RELEASE_REPO_MAIN" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
-            gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --clobber -R "$RELEASE_REPO_MAIN"
+          if gh release view "$TAG" -R "$RELEASE_REPO_SH" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
+            gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --clobber -R "$RELEASE_REPO_SH"
           else
-            gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_MAIN"
-          fi
-
-          if GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release view "$TAG" -R "$RELEASE_REPO_SH" >/dev/null 2>&1; then
-            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release edit "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
-            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release upload "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --clobber -R "$RELEASE_REPO_SH"
-          else
-            GH_TOKEN="$SUPACODE_SH_RELEASE_TOKEN" gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
+            gh release create "$TAG" build/supacode.app.zip build/supacode.dmg build/appcast.xml $DELTA_FILES --title "$TAG" --notes-file "$NOTES_FILE" -R "$RELEASE_REPO_SH"
           fi
       - run: |
           set -euo pipefail

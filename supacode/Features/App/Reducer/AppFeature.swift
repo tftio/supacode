@@ -1,5 +1,13 @@
+import AppKit
 import ComposableArchitecture
 import SwiftUI
+
+private let notificationSound: NSSound? = {
+  guard let url = Bundle.main.url(forResource: "notification", withExtension: "wav") else {
+    return nil
+  }
+  return NSSound(contentsOf: url, byReference: true)
+}()
 
 @Reducer
 struct AppFeature {
@@ -191,6 +199,12 @@ struct AppFeature {
 
       case .updates:
         return .none
+
+      case .terminalEvent(.notificationReceived):
+        guard state.settings.notificationSoundEnabled else { return .none }
+        return .run { _ in
+          await MainActor.run { _ = notificationSound?.play() }
+        }
 
       case .terminalEvent:
         return .none

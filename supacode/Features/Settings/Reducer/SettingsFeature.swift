@@ -9,12 +9,14 @@ struct SettingsFeature {
     var updatesAutomaticallyCheckForUpdates: Bool
     var updatesAutomaticallyDownloadUpdates: Bool
     var inAppNotificationsEnabled: Bool
+    var notificationSoundEnabled: Bool
 
     init(settings: GlobalSettings = .default) {
       appearanceMode = settings.appearanceMode
       updatesAutomaticallyCheckForUpdates = settings.updatesAutomaticallyCheckForUpdates
       updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
       inAppNotificationsEnabled = settings.inAppNotificationsEnabled
+      notificationSoundEnabled = settings.notificationSoundEnabled
     }
 
     var globalSettings: GlobalSettings {
@@ -22,7 +24,8 @@ struct SettingsFeature {
         appearanceMode: appearanceMode,
         updatesAutomaticallyCheckForUpdates: updatesAutomaticallyCheckForUpdates,
         updatesAutomaticallyDownloadUpdates: updatesAutomaticallyDownloadUpdates,
-        inAppNotificationsEnabled: inAppNotificationsEnabled
+        inAppNotificationsEnabled: inAppNotificationsEnabled,
+        notificationSoundEnabled: notificationSoundEnabled
       )
     }
   }
@@ -33,6 +36,7 @@ struct SettingsFeature {
     case setUpdatesAutomaticallyCheckForUpdates(Bool)
     case setUpdatesAutomaticallyDownloadUpdates(Bool)
     case setInAppNotificationsEnabled(Bool)
+    case setNotificationSoundEnabled(Bool)
     case delegate(Delegate)
   }
 
@@ -70,6 +74,12 @@ struct SettingsFeature {
 
       case .setInAppNotificationsEnabled(let value):
         state.inAppNotificationsEnabled = value
+        let settings = state.globalSettings
+        settingsClient.save(settings)
+        return .send(.delegate(.settingsChanged(settings)))
+
+      case .setNotificationSoundEnabled(let value):
+        state.notificationSoundEnabled = value
         let settings = state.globalSettings
         settingsClient.save(settings)
         return .send(.delegate(.settingsChanged(settings)))

@@ -176,14 +176,6 @@ struct WorktreeDetailView: View {
     ToolbarItem(placement: .primaryAction) {
       Button("PR Button") { }.padding(.horizontal)
     }
-
-    ToolbarItem(placement: .secondaryAction) {
-      Button("secpond") { }.padding(.horizontal)
-    }
-
-    ToolbarItem(placement: .status) {
-      Button("status") { }.padding(.horizontal)
-    }
     #endif
   }
 

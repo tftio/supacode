@@ -36,6 +36,15 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     return NSWorkspace.shared.icon(forFile: appURL.path)
   }
 
+  var isInstalled: Bool {
+    switch self {
+    case .finder:
+      return true
+    case .cursor, .ghostty, .terminal, .wezterm, .xcode, .zed:
+      return NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
+    }
+  }
+
   var settingsID: String {
     switch self {
     case .finder: "finder"
@@ -71,6 +80,14 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     case OpenWorktreeAction.zed.settingsID: .zed
     default: .finder
     }
+  }
+
+  static var availableCases: [OpenWorktreeAction] {
+    allCases.filter(\.isInstalled)
+  }
+
+  static func availableSelection(_ selection: OpenWorktreeAction) -> OpenWorktreeAction {
+    selection.isInstalled ? selection : (availableCases.first ?? .finder)
   }
 
   func perform(with worktree: Worktree, onError: @escaping (OpenActionError) -> Void) {

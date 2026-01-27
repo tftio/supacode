@@ -1,4 +1,15 @@
 import Foundation
+import Sentry
+
+enum GitOperation: String {
+  case repoRoot = "repo_root"
+  case worktreeList = "worktree_list"
+  case worktreeCreate = "worktree_create"
+  case worktreeRemove = "worktree_remove"
+  case branchNames = "branch_names"
+  case branchRename = "branch_rename"
+  case dirtyCheck = "dirty_check"
+}
 
 enum GitClientError: LocalizedError {
   case commandFailed(command: String, message: String)
@@ -31,6 +42,7 @@ struct GitClient {
     let normalizedPath = Self.directoryURL(for: path)
     let wtURL = try wtScriptURL()
     let output = try await runLoginShellProcess(
+      operation: .repoRoot,
       executableURL: wtURL,
       arguments: ["root"],
       currentDirectoryURL: normalizedPath
@@ -85,13 +97,16 @@ struct GitClient {
 
   nonisolated func localBranchNames(for repoRoot: URL) async throws -> Set<String> {
     let path = repoRoot.path(percentEncoded: false)
-    let output = try await runGit(arguments: [
-      "-C",
-      path,
-      "for-each-ref",
-      "--format=%(refname:short)",
-      "refs/heads",
-    ])
+    let output = try await runGit(
+      operation: .branchNames,
+      arguments: [
+        "-C",
+        path,
+        "for-each-ref",
+        "--format=%(refname:short)",
+        "refs/heads",
+      ]
+    )
     let names =
       output
       .split(whereSeparator: \.isNewline)
@@ -105,6 +120,7 @@ struct GitClient {
     let wtURL = try wtScriptURL()
     let baseDir = SupacodePaths.repositoryDirectory(for: repositoryRootURL)
     let output = try await runLoginShellProcess(
+      operation: .worktreeCreate,
       executableURL: wtURL,
       arguments: ["--base-dir", baseDir.path(percentEncoded: false), "sw", name],
       currentDirectoryURL: repoRoot
@@ -126,10 +142,21 @@ struct GitClient {
     )
   }
 
+  nonisolated func renameBranch(in worktreeURL: URL, to branchName: String) async throws {
+    let path = worktreeURL.path(percentEncoded: false)
+    _ = try await runGit(
+      operation: .branchRename,
+      arguments: ["-C", path, "branch", "-m", branchName]
+    )
+  }
+
   nonisolated func isWorktreeDirty(at worktreeURL: URL) async -> Bool {
     let path = worktreeURL.path(percentEncoded: false)
     do {
-      let output = try await runGit(arguments: ["-C", path, "status", "--porcelain"])
+      let output = try await runGit(
+        operation: .dirtyCheck,
+        arguments: ["-C", path, "status", "--porcelain"]
+      )
       return WorktreeDirtCheck.isDirty(statusOutput: output)
     } catch {
       return true
@@ -140,6 +167,7 @@ struct GitClient {
     if !worktree.name.isEmpty {
       let wtURL = try wtScriptURL()
       _ = try await runLoginShellProcess(
+        operation: .worktreeRemove,
         executableURL: wtURL,
         arguments: ["rm", "-f", worktree.name],
         currentDirectoryURL: worktree.repositoryRootURL
@@ -148,24 +176,30 @@ struct GitClient {
     }
     let rootPath = worktree.repositoryRootURL.path(percentEncoded: false)
     let worktreePath = worktree.workingDirectory.path(percentEncoded: false)
-    _ = try await runGit(arguments: [
-      "-C",
-      rootPath,
-      "worktree",
-      "remove",
-      "--force",
-      worktreePath,
-    ])
+    _ = try await runGit(
+      operation: .worktreeRemove,
+      arguments: [
+        "-C",
+        rootPath,
+        "worktree",
+        "remove",
+        "--force",
+        worktreePath,
+      ]
+    )
     return worktree.workingDirectory
   }
 
-  nonisolated private func runGit(arguments: [String]) async throws -> String {
+  nonisolated private func runGit(
+    operation: GitOperation,
+    arguments: [String]
+  ) async throws -> String {
     let env = URL(fileURLWithPath: "/usr/bin/env")
     let command = ([env.path(percentEncoded: false)] + ["git"] + arguments).joined(separator: " ")
     do {
       return try await shell.run(env, ["git"] + arguments, nil).stdout
     } catch {
-      throw wrapShellError(error, command: command)
+      throw wrapShellError(error, operation: operation, command: command)
     }
   }
 
@@ -176,6 +210,7 @@ struct GitClient {
       "\(wtURL.lastPathComponent) \(arguments.joined(separator: " "))"
     )
     let output = try await runLoginShellProcess(
+      operation: .worktreeList,
       executableURL: wtURL,
       arguments: arguments,
       currentDirectoryURL: repoRoot
@@ -193,6 +228,7 @@ struct GitClient {
   }
 
   nonisolated private func runLoginShellProcess(
+    operation: GitOperation,
     executableURL: URL,
     arguments: [String],
     currentDirectoryURL: URL?
@@ -201,7 +237,7 @@ struct GitClient {
     do {
       return try await shell.runLogin(executableURL, arguments, currentDirectoryURL).stdout
     } catch {
-      throw wrapShellError(error, command: command)
+      throw wrapShellError(error, operation: operation, command: command)
     }
   }
 
@@ -236,8 +272,15 @@ struct GitClient {
 
 }
 
-nonisolated private func wrapShellError(_ error: Error, command: String) -> GitClientError {
+nonisolated private func wrapShellError(
+  _ error: Error,
+  operation: GitOperation,
+  command: String
+) -> GitClientError {
+  let gitError: GitClientError
+  var exitCode: Int32 = -1
   if let shellError = error as? ShellClientError {
+    exitCode = shellError.exitCode
     var messageParts: [String] = []
     if !shellError.stdout.isEmpty {
       messageParts.append("stdout:\n\(shellError.stdout)")
@@ -246,9 +289,18 @@ nonisolated private func wrapShellError(_ error: Error, command: String) -> GitC
       messageParts.append("stderr:\n\(shellError.stderr)")
     }
     let message = messageParts.joined(separator: "\n")
-    return .commandFailed(command: command, message: message)
+    gitError = .commandFailed(command: command, message: message)
+  } else {
+    gitError = .commandFailed(command: command, message: error.localizedDescription)
   }
-  return .commandFailed(command: command, message: error.localizedDescription)
+  SentrySDK.logger.error(
+    "git command failed",
+    attributes: [
+      "operation": operation.rawValue,
+      "exit_code": Int(exitCode),
+    ]
+  )
+  return gitError
 }
 
 struct GitWtWorktreeEntry: Decodable {

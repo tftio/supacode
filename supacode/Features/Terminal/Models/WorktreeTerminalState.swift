@@ -42,14 +42,14 @@ final class WorktreeTerminalState {
     return .idle
   }
 
-  func ensureInitialTab() {
+  func ensureInitialTab(focusing: Bool) {
     if tabManager.tabs.isEmpty {
-      _ = createTab()
+      _ = createTab(focusing: focusing)
     }
   }
 
   @discardableResult
-  func createTab() -> TerminalTabID? {
+  func createTab(focusing: Bool = true) -> TerminalTabID? {
     let title = "\(worktree.name) \(nextTabIndex())"
     let tabId = tabManager.createTab(title: title, icon: "terminal")
     let resolvedInput = setupScriptInput(shouldRun: pendingSetupScript)
@@ -58,7 +58,7 @@ final class WorktreeTerminalState {
     }
     let tree = splitTree(for: tabId, initialInput: resolvedInput)
     tabIsRunningById[tabId] = false
-    if let surface = tree.root?.leftmostLeaf() {
+    if focusing, let surface = tree.root?.leftmostLeaf() {
       focusSurface(surface, in: tabId)
     }
     onTabCreated?()

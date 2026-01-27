@@ -1,5 +1,6 @@
 import AppKit
 import ComposableArchitecture
+import Sentry
 import SwiftUI
 
 private let notificationSound: NSSound? = {
@@ -138,7 +139,7 @@ struct AppFeature {
         return .none
 
       case .openSelectedWorktree:
-        return .send(.openWorktree(state.openActionSelection))
+        return .send(.openWorktree(OpenWorktreeAction.availableSelection(state.openActionSelection)))
 
       case .openWorktree(let action):
         guard let worktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID) else {
@@ -255,11 +256,7 @@ struct AppFeature {
         return .none
       }
     }
-    #if DEBUG
-    core._printChanges(.customDump)
-    #else
     core.printActionLabels()
-    #endif
     Scope(state: \.repositories, action: \.repositories) {
       RepositoriesFeature()
     }
@@ -279,7 +276,9 @@ private struct ActionLabelReducer<Base: Reducer>: Reducer {
   let base: Base
 
   func reduce(into state: inout Base.State, action: Base.Action) -> Effect<Base.Action> {
-    print("received action: \(debugCaseOutput(action))")
+    let actionLabel = debugCaseOutput(action)
+    print("received action: \(actionLabel)")
+    SentrySDK.logger.info("received action: \(actionLabel)")
     return base.reduce(into: &state, action: action)
   }
 }

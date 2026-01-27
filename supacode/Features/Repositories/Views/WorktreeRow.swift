@@ -11,14 +11,23 @@ struct WorktreeRow: View {
 
   var body: some View {
     let showsSpinner = isLoading || taskStatus == .running
-    let iconName = isMainWorktree ? "star.fill" : (isPinned ? "pin.fill" : "arrow.triangle.branch")
+    let branchIconName = isMainWorktree ? "star.fill" : (isPinned ? "pin.fill" : "arrow.triangle.branch")
     HStack(alignment: .center) {
       ZStack {
-        Image(systemName: iconName)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .opacity(showsSpinner ? 0 : 1)
-          .accessibilityHidden(true)
+        if showsNotificationIndicator {
+          Image(systemName: "bell.fill")
+            .font(.caption)
+            .foregroundStyle(.orange)
+            .opacity(showsSpinner ? 0 : 1)
+            .help("Unread notifications")
+            .accessibilityLabel("Unread notifications")
+        } else {
+          Image(systemName: branchIconName)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .opacity(showsSpinner ? 0 : 1)
+            .accessibilityHidden(true)
+        }
         if showsSpinner {
           ProgressView()
             .controlSize(.small)
@@ -26,13 +35,6 @@ struct WorktreeRow: View {
       }
       Text(name)
       Spacer(minLength: 8)
-      if showsNotificationIndicator {
-        Image(systemName: "bell.fill")
-          .font(.caption)
-          .foregroundStyle(.orange)
-          .help("Unread notifications")
-          .accessibilityLabel("Unread notifications")
-      }
       if let shortcutHint {
         ShortcutHintView(text: shortcutHint, color: .secondary)
       }

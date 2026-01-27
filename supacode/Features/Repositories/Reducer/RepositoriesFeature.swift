@@ -15,6 +15,7 @@ struct RepositoriesFeature {
     var isOpenPanelPresented = false
     var pendingWorktrees: [PendingWorktree] = []
     var pendingSetupScriptWorktreeIDs: Set<Worktree.ID> = []
+    var pendingTerminalFocusWorktreeIDs: Set<Worktree.ID> = []
     var deletingWorktreeIDs: Set<Worktree.ID> = []
     var removingRepositoryIDs: Set<Repository.ID> = []
     var pinnedWorktreeIDs: [Worktree.ID] = []
@@ -32,6 +33,7 @@ struct RepositoriesFeature {
     case openRepositories([URL])
     case openRepositoriesFinished([Repository], errors: [String], failures: [String])
     case selectWorktree(Worktree.ID?)
+    case requestRenameBranch(Worktree.ID, String)
     case createRandomWorktree
     case createRandomWorktreeInRepository(Repository.ID)
     case createRandomWorktreeSucceeded(
@@ -46,6 +48,7 @@ struct RepositoriesFeature {
       previousSelection: Worktree.ID?
     )
     case consumeSetupScript(Worktree.ID)
+    case consumeTerminalFocus(Worktree.ID)
     case requestRemoveWorktree(Worktree.ID, Repository.ID)
     case presentWorktreeRemovalConfirmation(Worktree.ID, Repository.ID)
     case removeWorktreeConfirmed(Worktree.ID, Repository.ID)
@@ -183,6 +186,40 @@ struct RepositoriesFeature {
         let selectedWorktree = state.worktree(for: worktreeID)
         return .send(.delegate(.selectedWorktreeChanged(selectedWorktree)))
 
+      case .requestRenameBranch(let worktreeID, let branchName):
+        guard let worktree = state.worktree(for: worktreeID) else { return .none }
+        let trimmed = branchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+          state.alert = errorAlert(
+            title: "Branch name required",
+            message: "Enter a branch name to rename."
+          )
+          return .none
+        }
+        guard !trimmed.contains(where: \.isWhitespace) else {
+          state.alert = errorAlert(
+            title: "Branch name invalid",
+            message: "Branch names can't contain spaces."
+          )
+          return .none
+        }
+        if trimmed == worktree.name {
+          return .none
+        }
+        return .run { send in
+          do {
+            try await gitClient.renameBranch(worktree.workingDirectory, trimmed)
+            await send(.reloadRepositories(animated: true))
+          } catch {
+            await send(
+              .presentAlert(
+                title: "Unable to rename branch",
+                message: error.localizedDescription
+              )
+            )
+          }
+        }
+
       case .createRandomWorktree:
         guard let repository = repositoryForWorktreeCreation(state) else {
           let message: String
@@ -272,6 +309,7 @@ struct RepositoriesFeature {
         let pendingID
       ):
         state.pendingSetupScriptWorktreeIDs.insert(worktree.id)
+        state.pendingTerminalFocusWorktreeIDs.insert(worktree.id)
         removePendingWorktree(pendingID, state: &state)
         if state.selectedWorktreeID == pendingID {
           state.selectedWorktreeID = worktree.id
@@ -295,6 +333,10 @@ struct RepositoriesFeature {
 
       case .consumeSetupScript(let id):
         state.pendingSetupScriptWorktreeIDs.remove(id)
+        return .none
+
+      case .consumeTerminalFocus(let id):
+        state.pendingTerminalFocusWorktreeIDs.remove(id)
         return .none
 
       case .requestRemoveWorktree(let worktreeID, let repositoryID):
@@ -385,6 +427,7 @@ struct RepositoriesFeature {
         let nextSelection
       ):
         state.pendingSetupScriptWorktreeIDs.remove(worktreeID)
+        state.pendingTerminalFocusWorktreeIDs.remove(worktreeID)
         let roots = state.repositories.map(\.rootURL)
         if selectionWasRemoved {
           state.selectedWorktreeID =
@@ -527,18 +570,23 @@ struct RepositoriesFeature {
     let filteredSetupScriptIDs = state.pendingSetupScriptWorktreeIDs.filter {
       availableWorktreeIDs.contains($0)
     }
+    let filteredFocusIDs = state.pendingTerminalFocusWorktreeIDs.filter {
+      availableWorktreeIDs.contains($0)
+    }
     if animated {
       withAnimation {
         state.repositories = repositories
         state.pendingWorktrees = filteredPendingWorktrees
         state.deletingWorktreeIDs = filteredDeletingIDs
         state.pendingSetupScriptWorktreeIDs = filteredSetupScriptIDs
+        state.pendingTerminalFocusWorktreeIDs = filteredFocusIDs
       }
     } else {
       state.repositories = repositories
       state.pendingWorktrees = filteredPendingWorktrees
       state.deletingWorktreeIDs = filteredDeletingIDs
       state.pendingSetupScriptWorktreeIDs = filteredSetupScriptIDs
+      state.pendingTerminalFocusWorktreeIDs = filteredFocusIDs
     }
     if prunePinnedWorktreeIDs(state: &state) {
       repositoryPersistence.savePinnedWorktreeIDs(state.pinnedWorktreeIDs)
@@ -613,6 +661,10 @@ extension RepositoriesFeature.State {
   func pendingWorktree(for id: Worktree.ID?) -> PendingWorktree? {
     guard let id else { return nil }
     return pendingWorktrees.first(where: { $0.id == id })
+  }
+
+  func shouldFocusTerminal(for worktreeID: Worktree.ID) -> Bool {
+    pendingTerminalFocusWorktreeIDs.contains(worktreeID)
   }
 
   func selectedRow(for id: Worktree.ID?) -> WorktreeRowModel? {

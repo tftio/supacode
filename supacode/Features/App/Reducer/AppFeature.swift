@@ -113,7 +113,7 @@ struct AppFeature {
           state.openActionSelection = .finder
           state.selectedRunScript = ""
           return .merge(
-            .send(.worktreeInfo(.worktreeChanged(nil))),
+            .send(.worktreeInfo(.worktreeChanged(nil, cachedPullRequest: nil))),
             .run { _ in
               await terminalClient.send(.setSelectedWorktreeID(nil))
             },
@@ -125,8 +125,9 @@ struct AppFeature {
         let settings = repositorySettingsClient.load(worktree.repositoryRootURL)
         state.openActionSelection = OpenWorktreeAction.fromSettingsID(settings.openActionID)
         state.selectedRunScript = settings.runScript
+        let cachedPullRequest = state.repositories.worktreeInfoByID[worktree.id]?.pullRequest
         return .merge(
-          .send(.worktreeInfo(.worktreeChanged(worktree))),
+          .send(.worktreeInfo(.worktreeChanged(worktree, cachedPullRequest: cachedPullRequest))),
           .run { _ in
             await terminalClient.send(.setSelectedWorktreeID(worktree.id))
             await terminalClient.send(.clearNotificationIndicator(worktree))
@@ -148,6 +149,9 @@ struct AppFeature {
             await worktreeInfoWatcher.send(.setWorktrees(worktrees))
           }
         )
+
+      case .repositories(.worktreePullRequestLoaded(let worktreeID, let pullRequest)):
+        return .send(.worktreeInfo(.cachedPullRequestUpdated(worktreeID, pullRequest)))
 
       case .settings(.delegate(.settingsChanged(let settings))):
         return .merge(

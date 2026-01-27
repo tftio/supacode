@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct GithubPullRequest: Decodable, Equatable {
+nonisolated struct GithubPullRequest: Decodable, Equatable, Hashable {
   let number: Int
   let title: String
   let state: String

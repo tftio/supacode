@@ -41,7 +41,7 @@ nonisolated struct PullRequestCheckSummary: Equatable {
   }
 }
 
-nonisolated struct GithubPullRequestStatusCheck: Decodable, Equatable {
+nonisolated struct GithubPullRequestStatusCheck: Decodable, Equatable, Hashable {
   let status: String?
   let conclusion: String?
   let state: String?
@@ -78,7 +78,7 @@ nonisolated struct GithubPullRequestStatusCheck: Decodable, Equatable {
   }
 }
 
-nonisolated struct GithubPullRequestStatusCheckRollup: Decodable, Equatable {
+nonisolated struct GithubPullRequestStatusCheckRollup: Decodable, Equatable, Hashable {
   let checks: [GithubPullRequestStatusCheck]
 
   init(from decoder: Decoder) throws {

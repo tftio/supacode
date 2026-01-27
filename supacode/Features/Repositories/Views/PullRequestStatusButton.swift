@@ -27,13 +27,14 @@ struct PullRequestStatusModel: Equatable {
   }
 
   init?(snapshot: WorktreeInfoSnapshot?) {
-    guard let snapshot, let number = snapshot.pullRequestNumber else {
+    guard
+      let snapshot,
+      let number = snapshot.pullRequestNumber,
+      Self.shouldDisplay(state: snapshot.pullRequestState, number: number)
+    else {
       return nil
     }
     let state = snapshot.pullRequestState?.uppercased()
-    if state == "CLOSED" {
-      return nil
-    }
     let url = snapshot.pullRequestURL.flatMap(URL.init(string:))
     if state == "MERGED" {
       self.label = "PR #\(number) - Merged"
@@ -66,5 +67,12 @@ struct PullRequestStatusModel: Equatable {
     }
     self.label = prefix + "All checks passed"
     self.url = url
+  }
+
+  static func shouldDisplay(state: String?, number: Int?) -> Bool {
+    guard number != nil else {
+      return false
+    }
+    return state?.uppercased() != "CLOSED"
   }
 }

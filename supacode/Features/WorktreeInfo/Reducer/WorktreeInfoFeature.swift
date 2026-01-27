@@ -11,11 +11,13 @@ struct WorktreeInfoFeature {
     var nextRefresh: Date?
     var cachedSnapshots: [Worktree.ID: WorktreeInfoSnapshot] = [:]
     var cachedNextRefreshDates: [Worktree.ID: Date] = [:]
+    var cachedPullRequest: GithubPullRequest?
   }
 
   enum Action: Equatable {
     case task
-    case worktreeChanged(Worktree?)
+    case worktreeChanged(Worktree?, cachedPullRequest: GithubPullRequest?)
+    case cachedPullRequestUpdated(Worktree.ID, GithubPullRequest?)
     case refresh
     case refreshFinished(Result<WorktreeInfoSnapshot, WorktreeInfoError>)
     case timerTick
@@ -31,10 +33,30 @@ struct WorktreeInfoFeature {
       case .task:
         return .none
 
-      case .worktreeChanged(let worktree):
+      case .worktreeChanged(let worktree, let cachedPullRequest):
         state.worktree = worktree
+        state.cachedPullRequest = cachedPullRequest
         if let worktree {
-          state.snapshot = state.cachedSnapshots[worktree.id]
+          if let cachedSnapshot = state.cachedSnapshots[worktree.id] {
+            if let cachedPullRequest {
+              state.snapshot = snapshotByReplacingPullRequest(
+                snapshot: cachedSnapshot,
+                pullRequest: cachedPullRequest
+              )
+            } else {
+              state.snapshot = snapshotByReplacingPullRequest(
+                snapshot: cachedSnapshot,
+                pullRequest: nil
+              )
+            }
+          } else if let cachedPullRequest {
+            state.snapshot = snapshotFromCachedPullRequest(
+              worktree: worktree,
+              pullRequest: cachedPullRequest
+            )
+          } else {
+            state.snapshot = nil
+          }
           state.nextRefresh = state.cachedNextRefreshDates[worktree.id]
           state.status = state.snapshot == nil ? .loading : .idle
         } else {
@@ -54,14 +76,42 @@ struct WorktreeInfoFeature {
           .send(.refresh)
         )
 
+      case .cachedPullRequestUpdated(let worktreeID, let pullRequest):
+        if let cachedSnapshot = state.cachedSnapshots[worktreeID] {
+          state.cachedSnapshots[worktreeID] = snapshotByReplacingPullRequest(
+            snapshot: cachedSnapshot,
+            pullRequest: pullRequest
+          )
+        }
+        guard state.worktree?.id == worktreeID else { return .none }
+        state.cachedPullRequest = pullRequest
+        if let snapshot = state.snapshot {
+          let updatedSnapshot = snapshotByReplacingPullRequest(
+            snapshot: snapshot,
+            pullRequest: pullRequest
+          )
+          state.snapshot = updatedSnapshot
+          state.cachedSnapshots[worktreeID] = updatedSnapshot
+        } else if let worktree = state.worktree, let pullRequest {
+          let updatedSnapshot = snapshotFromCachedPullRequest(
+            worktree: worktree,
+            pullRequest: pullRequest
+          )
+          state.snapshot = updatedSnapshot
+          state.cachedSnapshots[worktreeID] = updatedSnapshot
+        }
+        return .none
+
       case .refresh:
         guard let worktree = state.worktree else { return .none }
         state.status = .loading
         let githubCLI = githubCLI
+        let cachedPullRequest = state.cachedPullRequest
         return .run { send in
           let result: Result<WorktreeInfoSnapshot, WorktreeInfoError> = await Result {
             try await loadWorktreeInfoSnapshot(
               worktree: worktree,
+              cachedPullRequest: cachedPullRequest,
               githubCLI: githubCLI
             )
           }.mapError { error in
@@ -113,6 +163,7 @@ struct WorktreeInfoFeature {
 
 nonisolated private func loadWorktreeInfoSnapshot(
   worktree: Worktree,
+  cachedPullRequest: GithubPullRequest?,
   githubCLI: GithubCLIClient
 ) async throws -> WorktreeInfoSnapshot {
   let repoRoot = worktree.repositoryRootURL
@@ -141,26 +192,28 @@ nonisolated private func loadWorktreeInfoSnapshot(
   var workflowConclusion: String?
   var workflowUpdatedAt: Date?
 
-  var pullRequestNumber: Int?
-  var pullRequestTitle: String?
-  var pullRequestURL: String?
-  var pullRequestState: String?
-  var pullRequestIsDraft = false
-  var pullRequestReviewDecision: String?
-  var pullRequestUpdatedAt: Date?
-  var pullRequestStatusChecks: [GithubPullRequestStatusCheck] = []
+  let cachedPullRequestInfo = pullRequestDetails(cachedPullRequest)
+  var pullRequestNumber = cachedPullRequestInfo.number
+  var pullRequestTitle = cachedPullRequestInfo.title
+  var pullRequestURL = cachedPullRequestInfo.url
+  var pullRequestState = cachedPullRequestInfo.state
+  var pullRequestIsDraft = cachedPullRequestInfo.isDraft
+  var pullRequestReviewDecision = cachedPullRequestInfo.reviewDecision
+  var pullRequestUpdatedAt = cachedPullRequestInfo.updatedAt
+  var pullRequestStatusChecks = cachedPullRequestInfo.statusChecks
 
-  if githubAvailable {
+  if cachedPullRequest == nil, githubAvailable {
     do {
       if let pullRequest = try await githubCLI.currentPullRequest(worktreeRoot) {
-        pullRequestNumber = pullRequest.number
-        pullRequestTitle = pullRequest.title
-        pullRequestURL = pullRequest.url
-        pullRequestState = pullRequest.state
-        pullRequestIsDraft = pullRequest.isDraft
-        pullRequestReviewDecision = pullRequest.reviewDecision
-        pullRequestUpdatedAt = pullRequest.updatedAt
-        pullRequestStatusChecks = pullRequest.statusCheckRollup?.checks ?? []
+        let pullRequestInfo = pullRequestDetails(pullRequest)
+        pullRequestNumber = pullRequestInfo.number
+        pullRequestTitle = pullRequestInfo.title
+        pullRequestURL = pullRequestInfo.url
+        pullRequestState = pullRequestInfo.state
+        pullRequestIsDraft = pullRequestInfo.isDraft
+        pullRequestReviewDecision = pullRequestInfo.reviewDecision
+        pullRequestUpdatedAt = pullRequestInfo.updatedAt
+        pullRequestStatusChecks = pullRequestInfo.statusChecks
       }
     } catch {
       githubError = githubError ?? error.localizedDescription
@@ -199,5 +252,104 @@ nonisolated private func loadWorktreeInfoSnapshot(
     workflowUpdatedAt: workflowUpdatedAt,
     githubError: githubError,
     ciError: ciError
+  )
+}
+
+nonisolated private func snapshotFromCachedPullRequest(
+  worktree: Worktree,
+  pullRequest: GithubPullRequest
+) -> WorktreeInfoSnapshot {
+  let repoRoot = worktree.repositoryRootURL
+  let repositoryName = repoRoot.lastPathComponent
+  let repositoryPath = repoRoot.path(percentEncoded: false)
+  let worktreePath = worktree.workingDirectory.path(percentEncoded: false)
+  let pullRequestInfo = pullRequestDetails(pullRequest)
+
+  return WorktreeInfoSnapshot(
+    repositoryName: repositoryName,
+    repositoryPath: repositoryPath,
+    worktreePath: worktreePath,
+    defaultBranchName: nil,
+    pullRequestNumber: pullRequestInfo.number,
+    pullRequestTitle: pullRequestInfo.title,
+    pullRequestURL: pullRequestInfo.url,
+    pullRequestState: pullRequestInfo.state,
+    pullRequestIsDraft: pullRequestInfo.isDraft,
+    pullRequestReviewDecision: pullRequestInfo.reviewDecision,
+    pullRequestUpdatedAt: pullRequestInfo.updatedAt,
+    pullRequestStatusChecks: pullRequestInfo.statusChecks,
+    workflowName: nil,
+    workflowStatus: nil,
+    workflowConclusion: nil,
+    workflowUpdatedAt: nil,
+    githubError: nil,
+    ciError: nil
+  )
+}
+
+nonisolated private func snapshotByReplacingPullRequest(
+  snapshot: WorktreeInfoSnapshot,
+  pullRequest: GithubPullRequest?
+) -> WorktreeInfoSnapshot {
+  let pullRequestInfo = pullRequestDetails(pullRequest)
+
+  return WorktreeInfoSnapshot(
+    repositoryName: snapshot.repositoryName,
+    repositoryPath: snapshot.repositoryPath,
+    worktreePath: snapshot.worktreePath,
+    defaultBranchName: snapshot.defaultBranchName,
+    pullRequestNumber: pullRequestInfo.number,
+    pullRequestTitle: pullRequestInfo.title,
+    pullRequestURL: pullRequestInfo.url,
+    pullRequestState: pullRequestInfo.state,
+    pullRequestIsDraft: pullRequestInfo.isDraft,
+    pullRequestReviewDecision: pullRequestInfo.reviewDecision,
+    pullRequestUpdatedAt: pullRequestInfo.updatedAt,
+    pullRequestStatusChecks: pullRequestInfo.statusChecks,
+    workflowName: snapshot.workflowName,
+    workflowStatus: snapshot.workflowStatus,
+    workflowConclusion: snapshot.workflowConclusion,
+    workflowUpdatedAt: snapshot.workflowUpdatedAt,
+    githubError: snapshot.githubError,
+    ciError: snapshot.ciError
+  )
+}
+
+private struct PullRequestDetails: Equatable {
+  let number: Int?
+  let title: String?
+  let url: String?
+  let state: String?
+  let isDraft: Bool
+  let reviewDecision: String?
+  let updatedAt: Date?
+  let statusChecks: [GithubPullRequestStatusCheck]
+}
+
+nonisolated private func pullRequestDetails(
+  _ pullRequest: GithubPullRequest?
+) -> PullRequestDetails {
+  guard let pullRequest else {
+    return PullRequestDetails(
+      number: nil,
+      title: nil,
+      url: nil,
+      state: nil,
+      isDraft: false,
+      reviewDecision: nil,
+      updatedAt: nil,
+      statusChecks: []
+    )
+  }
+
+  return PullRequestDetails(
+    number: pullRequest.number,
+    title: pullRequest.title,
+    url: pullRequest.url,
+    state: pullRequest.state,
+    isDraft: pullRequest.isDraft,
+    reviewDecision: pullRequest.reviewDecision,
+    updatedAt: pullRequest.updatedAt,
+    statusChecks: pullRequest.statusCheckRollup?.checks ?? []
   )
 }

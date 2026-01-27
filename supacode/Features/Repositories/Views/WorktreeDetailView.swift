@@ -219,6 +219,8 @@ struct WorktreeDetailView: View {
         isEnabled: toolbarState.runScriptEnabled,
         runHelpText: toolbarState.runScriptHelpText,
         stopHelpText: toolbarState.stopRunScriptHelpText,
+        runShortcut: AppShortcuts.runScript.display,
+        stopShortcut: AppShortcuts.stopRunScript.display,
         runAction: { store.send(.runScript) },
         stopAction: { store.send(.stopRunScript) }
       )
@@ -292,48 +294,65 @@ private struct RunScriptToolbarButton: View {
   let isEnabled: Bool
   let runHelpText: String
   let stopHelpText: String
+  let runShortcut: String
+  let stopShortcut: String
   let runAction: () -> Void
   let stopAction: () -> Void
+  @Environment(CommandKeyObserver.self) private var commandKeyObserver
 
   var body: some View {
     if isRunning {
-      button(
+      button(config: RunScriptButtonConfig(
         title: "Stop",
         systemImage: "stop.fill",
         helpText: stopHelpText,
+        shortcut: stopShortcut,
         isEnabled: true,
         action: stopAction
-      )
+      ))
     } else {
-      button(
+      button(config: RunScriptButtonConfig(
         title: "Run",
         systemImage: "play.fill",
         helpText: runHelpText,
+        shortcut: runShortcut,
         isEnabled: isEnabled,
         action: runAction
-      )
+      ))
     }
   }
 
   @ViewBuilder
-  private func button(
-    title: String,
-    systemImage: String,
-    helpText: String,
-    isEnabled: Bool,
-    action: @escaping () -> Void
-  ) -> some View {
-    Button(title, systemImage: systemImage) {
-      action()
+  private func button(config: RunScriptButtonConfig) -> some View {
+    Button {
+      config.action()
+    } label: {
+      HStack(spacing: 6) {
+        Image(systemName: config.systemImage)
+          .accessibilityHidden(true)
+        if commandKeyObserver.isPressed {
+          ShortcutHintView(text: config.shortcut, color: .secondary)
+        } else {
+          Text(config.title)
+        }
+      }
     }
     .font(.caption)
     .monospaced()
-    .labelStyle(.titleAndIcon)
     .padding(.horizontal, 10)
     .padding(.vertical, 6)
     .background(.quaternary.opacity(0.2), in: Capsule())
     .buttonStyle(.plain)
-    .help(helpText)
-    .disabled(!isEnabled)
+    .help(config.helpText)
+    .disabled(!config.isEnabled)
+  }
+
+  private struct RunScriptButtonConfig {
+    let title: String
+    let systemImage: String
+    let helpText: String
+    let shortcut: String
+    let isEnabled: Bool
+    let action: () -> Void
   }
 }

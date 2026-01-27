@@ -175,6 +175,7 @@ struct WorktreeDetailView: View {
     if let model = PullRequestStatusModel(snapshot: worktreeInfoSnapshot) {
       ToolbarItem(placement: .status) {
         PullRequestStatusButton(model: model)
+          .padding(.leading)
       }
     }
     #if DEBUG

@@ -196,6 +196,13 @@ struct RepositoriesFeature {
           )
           return .none
         }
+        guard !trimmed.contains(where: \.isWhitespace) else {
+          state.alert = errorAlert(
+            title: "Branch name invalid",
+            message: "Branch names can't contain spaces."
+          )
+          return .none
+        }
         if trimmed == worktree.name {
           return .none
         }

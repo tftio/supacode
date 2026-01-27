@@ -22,6 +22,8 @@ struct SidebarFooterView: View {
       .help("Settings (\(AppShortcuts.openSettings.display))")
     }
     .buttonStyle(.plain)
+    .font(.callout)
+    .monospaced()
     .padding()
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(.regularMaterial)

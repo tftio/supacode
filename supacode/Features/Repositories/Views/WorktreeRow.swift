@@ -2,7 +2,7 @@ import SwiftUI
 
 struct WorktreeRow: View {
   let name: String
-  let description: String?
+  let info: WorktreeInfoEntry?
   let isPinned: Bool
   let isMainWorktree: Bool
   let isLoading: Bool
@@ -39,11 +39,8 @@ struct WorktreeRow: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(name)
           .monospaced()
-        if let description {
-          Text(description)
-            .font(.caption)
-            .monospaced()
-            .foregroundStyle(.secondary)
+        if let info {
+          WorktreeRowInfoView(info: info)
         }
       }
       Spacer(minLength: 8)
@@ -51,5 +48,28 @@ struct WorktreeRow: View {
         ShortcutHintView(text: shortcutHint, color: .secondary)
       }
     }
+  }
+}
+
+private struct WorktreeRowInfoView: View {
+  let info: WorktreeInfoEntry
+
+  var body: some View {
+    HStack {
+      if let addedLines = info.addedLines, let removedLines = info.removedLines {
+        HStack {
+          Text("+\(addedLines)")
+            .foregroundStyle(.green)
+          Text("-\(removedLines)")
+            .foregroundStyle(.red)
+        }
+      }
+      if let pullRequestNumber = info.pullRequestNumber {
+        Text("PR: \(pullRequestNumber)")
+          .foregroundStyle(.secondary)
+      }
+    }
+    .font(.caption)
+    .monospaced()
   }
 }

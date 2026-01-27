@@ -5,6 +5,7 @@ struct WorktreeRowModel: Identifiable, Hashable {
   let repositoryID: Repository.ID
   let name: String
   let detail: String
+  let description: String?
   let isPinned: Bool
   let isMainWorktree: Bool
   let isPending: Bool

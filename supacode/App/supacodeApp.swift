@@ -30,6 +30,7 @@ struct SupacodeApp: App {
   @State private var ghostty: GhosttyRuntime
   @State private var ghosttyShortcuts: GhosttyShortcutManager
   @State private var terminalManager: WorktreeTerminalManager
+  @State private var worktreeInfoWatcher: WorktreeInfoWatcherManager
   @State private var commandKeyObserver: CommandKeyObserver
   @State private var store: StoreOf<AppFeature>
 
@@ -58,6 +59,8 @@ struct SupacodeApp: App {
     let initialSettings = SettingsStorage().load().global
     let terminalManager = WorktreeTerminalManager(runtime: runtime)
     _terminalManager = State(initialValue: terminalManager)
+    let worktreeInfoWatcher = WorktreeInfoWatcherManager()
+    _worktreeInfoWatcher = State(initialValue: worktreeInfoWatcher)
     let keyObserver = CommandKeyObserver()
     _commandKeyObserver = State(initialValue: keyObserver)
     let appStore = Store(
@@ -71,6 +74,14 @@ struct SupacodeApp: App {
           },
           events: {
             terminalManager.eventStream()
+          }
+        )
+        values.worktreeInfoWatcher = WorktreeInfoWatcherClient(
+          send: { command in
+            worktreeInfoWatcher.handleCommand(command)
+          },
+          events: {
+            worktreeInfoWatcher.eventStream()
           }
         )
       }

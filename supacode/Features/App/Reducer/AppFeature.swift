@@ -55,6 +55,7 @@ struct AppFeature {
   @Dependency(\.repositorySettingsClient) private var repositorySettingsClient
   @Dependency(\.workspaceClient) private var workspaceClient
   @Dependency(\.terminalClient) private var terminalClient
+  @Dependency(\.worktreeInfoWatcher) private var worktreeInfoWatcher
 
   var body: some Reducer<State, Action> {
     let core = Reduce<State, Action> { state, action in
@@ -67,6 +68,11 @@ struct AppFeature {
           .run { send in
             for await event in await terminalClient.events() {
               await send(.terminalEvent(event))
+            }
+          },
+          .run { send in
+            for await event in await worktreeInfoWatcher.events() {
+              await send(.repositories(.worktreeInfoEvent(event)))
             }
           }
         )
@@ -89,6 +95,9 @@ struct AppFeature {
             .send(.worktreeInfo(.worktreeChanged(nil))),
             .run { _ in
               await terminalClient.send(.setSelectedWorktreeID(nil))
+            },
+            .run { _ in
+              await worktreeInfoWatcher.send(.setSelectedWorktreeID(nil))
             }
           )
         }
@@ -99,14 +108,23 @@ struct AppFeature {
           .run { _ in
             await terminalClient.send(.setSelectedWorktreeID(worktree.id))
             await terminalClient.send(.clearNotificationIndicator(worktree))
+          },
+          .run { _ in
+            await worktreeInfoWatcher.send(.setSelectedWorktreeID(worktree.id))
           }
         )
 
       case .repositories(.delegate(.repositoriesChanged(let repositories))):
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
-        return .run { _ in
-          await terminalClient.send(.prune(ids))
-        }
+        let worktrees = repositories.flatMap(\.worktrees)
+        return .merge(
+          .run { _ in
+            await terminalClient.send(.prune(ids))
+          },
+          .run { _ in
+            await worktreeInfoWatcher.send(.setWorktrees(worktrees))
+          }
+        )
 
       case .settings(.delegate(.settingsChanged(let settings))):
         return .merge(

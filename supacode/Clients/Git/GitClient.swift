@@ -9,6 +9,7 @@ enum GitOperation: String {
   case branchNames = "branch_names"
   case branchRename = "branch_rename"
   case dirtyCheck = "dirty_check"
+  case lineChanges = "line_changes"
 }
 
 enum GitClientError: LocalizedError {
@@ -163,6 +164,49 @@ struct GitClient {
     }
   }
 
+  nonisolated func branchName(for worktreeURL: URL) async -> String? {
+    let headURL = await MainActor.run {
+      GitWorktreeHeadResolver.headURL(
+        for: worktreeURL,
+        fileManager: .default
+      )
+    }
+    guard let headURL else {
+      return nil
+    }
+    guard let line = try? String(contentsOf: headURL, encoding: .utf8)
+      .split(whereSeparator: \.isNewline)
+      .first
+    else {
+      return nil
+    }
+    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+    let refPrefix = "ref:"
+    if trimmed.hasPrefix(refPrefix) {
+      let ref = trimmed.dropFirst(refPrefix.count).trimmingCharacters(in: .whitespaces)
+      let headsPrefix = "refs/heads/"
+      if ref.hasPrefix(headsPrefix) {
+        return String(ref.dropFirst(headsPrefix.count))
+      }
+      return String(ref)
+    }
+    return "HEAD"
+  }
+
+  nonisolated func lineChanges(at worktreeURL: URL) async -> (added: Int, removed: Int)? {
+    let path = worktreeURL.path(percentEncoded: false)
+    do {
+      let diff = try await runGit(
+        operation: .lineChanges,
+        arguments: ["-C", path, "diff", "HEAD", "--numstat"]
+      )
+      let changes = parseNumstat(diff)
+      return (added: changes.added, removed: changes.removed)
+    } catch {
+      return nil
+    }
+  }
+
   nonisolated func removeWorktree(_ worktree: Worktree) async throws -> URL {
     if !worktree.name.isEmpty {
       let wtURL = try wtScriptURL()
@@ -188,6 +232,19 @@ struct GitClient {
       ]
     )
     return worktree.workingDirectory
+  }
+
+  nonisolated private func parseNumstat(_ output: String) -> (added: Int, removed: Int) {
+    output
+      .split(whereSeparator: \.isNewline)
+      .reduce(into: (added: 0, removed: 0)) { result, line in
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
+        guard parts.count >= 2 else { return }
+        let added = Int(parts[0]) ?? 0
+        let removed = Int(parts[1]) ?? 0
+        result.added += added
+        result.removed += removed
+      }
   }
 
   nonisolated private func runGit(

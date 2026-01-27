@@ -12,6 +12,7 @@ struct RepositoriesFeature {
   struct State: Equatable {
     var repositories: [Repository] = []
     var selectedWorktreeID: Worktree.ID?
+    var worktreeInfoByID: [Worktree.ID: WorktreeInfoEntry] = [:]
     var isOpenPanelPresented = false
     var pendingWorktrees: [PendingWorktree] = []
     var pendingSetupScriptWorktreeIDs: Set<Worktree.ID> = []
@@ -64,6 +65,10 @@ struct RepositoriesFeature {
     case pinWorktree(Worktree.ID)
     case unpinWorktree(Worktree.ID)
     case presentAlert(title: String, message: String)
+    case worktreeInfoEvent(WorktreeInfoWatcherClient.Event)
+    case worktreeBranchNameLoaded(worktreeID: Worktree.ID, name: String)
+    case worktreeLineChangesLoaded(worktreeID: Worktree.ID, added: Int, removed: Int)
+    case worktreePullRequestLoaded(worktreeID: Worktree.ID, number: Int?)
     case alert(PresentationAction<Alert>)
     case delegate(Delegate)
   }
@@ -79,6 +84,7 @@ struct RepositoriesFeature {
   }
 
   @Dependency(\.gitClient) private var gitClient
+  @Dependency(\.githubCLI) private var githubCLI
   @Dependency(\.repositoryPersistence) private var repositoryPersistence
 
   var body: some Reducer<State, Action> {
@@ -499,6 +505,79 @@ struct RepositoriesFeature {
         state.alert = errorAlert(title: title, message: message)
         return .none
 
+      case .worktreeInfoEvent(let event):
+        switch event {
+        case .branchChanged(let worktreeID):
+          guard let worktree = state.worktree(for: worktreeID) else {
+            return .none
+          }
+          let worktreeURL = worktree.workingDirectory
+          let gitClient = gitClient
+          return .run { send in
+            if let name = await gitClient.branchName(worktreeURL) {
+              await send(.worktreeBranchNameLoaded(worktreeID: worktreeID, name: name))
+            }
+          }
+        case .filesChanged(let worktreeID):
+          guard let worktree = state.worktree(for: worktreeID) else {
+            return .none
+          }
+          let worktreeURL = worktree.workingDirectory
+          let gitClient = gitClient
+          return .run { send in
+            if let changes = await gitClient.lineChanges(worktreeURL) {
+              await send(
+                .worktreeLineChangesLoaded(
+                  worktreeID: worktreeID,
+                  added: changes.added,
+                  removed: changes.removed
+                )
+              )
+            }
+          }
+        case .pullRequestRefresh(let worktreeID):
+          guard let worktree = state.worktree(for: worktreeID) else {
+            return .none
+          }
+          let githubCLI = githubCLI
+          let worktreeURL = worktree.workingDirectory
+          return .run { send in
+            guard await githubCLI.isAvailable() else {
+              return
+            }
+            let result = await Result { try await githubCLI.currentPullRequest(worktreeURL) }
+            switch result {
+            case .success(let pullRequest):
+              await send(
+                .worktreePullRequestLoaded(worktreeID: worktreeID, number: pullRequest?.number)
+              )
+            case .failure:
+              return
+            }
+          }
+        }
+
+      case .worktreeBranchNameLoaded(let worktreeID, let name):
+        updateWorktreeName(worktreeID, name: name, state: &state)
+        return .none
+
+      case .worktreeLineChangesLoaded(let worktreeID, let added, let removed):
+        updateWorktreeLineChanges(
+          worktreeID: worktreeID,
+          added: added,
+          removed: removed,
+          state: &state
+        )
+        return .none
+
+      case .worktreePullRequestLoaded(let worktreeID, let number):
+        updateWorktreePullRequest(
+          worktreeID: worktreeID,
+          number: number,
+          state: &state
+        )
+        return .none
+
       case .alert(.dismiss):
         state.alert = nil
         return .none
@@ -573,6 +652,9 @@ struct RepositoriesFeature {
     let filteredFocusIDs = state.pendingTerminalFocusWorktreeIDs.filter {
       availableWorktreeIDs.contains($0)
     }
+    let filteredWorktreeInfo = state.worktreeInfoByID.filter {
+      availableWorktreeIDs.contains($0.key)
+    }
     if animated {
       withAnimation {
         state.repositories = repositories
@@ -580,6 +662,7 @@ struct RepositoriesFeature {
         state.deletingWorktreeIDs = filteredDeletingIDs
         state.pendingSetupScriptWorktreeIDs = filteredSetupScriptIDs
         state.pendingTerminalFocusWorktreeIDs = filteredFocusIDs
+        state.worktreeInfoByID = filteredWorktreeInfo
       }
     } else {
       state.repositories = repositories
@@ -587,6 +670,7 @@ struct RepositoriesFeature {
       state.deletingWorktreeIDs = filteredDeletingIDs
       state.pendingSetupScriptWorktreeIDs = filteredSetupScriptIDs
       state.pendingTerminalFocusWorktreeIDs = filteredFocusIDs
+      state.worktreeInfoByID = filteredWorktreeInfo
     }
     if prunePinnedWorktreeIDs(state: &state) {
       repositoryPersistence.savePinnedWorktreeIDs(state.pinnedWorktreeIDs)
@@ -638,6 +722,10 @@ struct RepositoriesFeature {
 }
 
 extension RepositoriesFeature.State {
+  func worktreeDescription(for worktreeID: Worktree.ID) -> String? {
+    worktreeInfoByID[worktreeID]?.descriptionText
+  }
+
   var canCreateWorktree: Bool {
     if repositories.isEmpty {
       return false
@@ -676,6 +764,7 @@ extension RepositoriesFeature.State {
         repositoryID: pending.repositoryID,
         name: pending.name,
         detail: pending.detail,
+        description: worktreeDescription(for: pending.id),
         isPinned: false,
         isMainWorktree: false,
         isPending: true,
@@ -693,6 +782,7 @@ extension RepositoriesFeature.State {
           repositoryID: repository.id,
           name: worktree.name,
           detail: worktree.detail,
+          description: worktreeDescription(for: worktree.id),
           isPinned: pinnedWorktreeIDs.contains(worktree.id),
           isMainWorktree: isMainWorktree(worktree),
           isPending: false,
@@ -762,6 +852,7 @@ extension RepositoriesFeature.State {
           repositoryID: repository.id,
           name: mainWorktree.name,
           detail: mainWorktree.detail,
+          description: worktreeDescription(for: mainWorktree.id),
           isPinned: false,
           isMainWorktree: true,
           isPending: false,
@@ -781,6 +872,7 @@ extension RepositoriesFeature.State {
           repositoryID: repository.id,
           name: worktree.name,
           detail: worktree.detail,
+          description: worktreeDescription(for: worktree.id),
           isPinned: true,
           isMainWorktree: false,
           isPending: false,
@@ -796,6 +888,7 @@ extension RepositoriesFeature.State {
           repositoryID: pending.repositoryID,
           name: pending.name,
           detail: pending.detail,
+          description: worktreeDescription(for: pending.id),
           isPinned: false,
           isMainWorktree: false,
           isPending: true,
@@ -815,6 +908,7 @@ extension RepositoriesFeature.State {
           repositoryID: repository.id,
           name: worktree.name,
           detail: worktree.detail,
+          description: worktreeDescription(for: worktree.id),
           isPinned: false,
           isMainWorktree: false,
           isPending: false,
@@ -853,6 +947,74 @@ private func insertWorktree(
     name: repository.name,
     worktrees: worktrees
   )
+}
+
+private func updateWorktreeName(
+  _ worktreeID: Worktree.ID,
+  name: String,
+  state: inout RepositoriesFeature.State
+) {
+  for index in state.repositories.indices {
+    var repository = state.repositories[index]
+    guard let worktreeIndex = repository.worktrees.firstIndex(where: { $0.id == worktreeID }) else {
+      continue
+    }
+    let worktree = repository.worktrees[worktreeIndex]
+    guard worktree.name != name else {
+      return
+    }
+    var worktrees = repository.worktrees
+    worktrees[worktreeIndex] = Worktree(
+      id: worktree.id,
+      name: name,
+      detail: worktree.detail,
+      workingDirectory: worktree.workingDirectory,
+      repositoryRootURL: worktree.repositoryRootURL
+    )
+    repository = Repository(
+      id: repository.id,
+      rootURL: repository.rootURL,
+      name: repository.name,
+      worktrees: worktrees
+    )
+    state.repositories[index] = repository
+    return
+  }
+}
+
+private func updateWorktreeLineChanges(
+  worktreeID: Worktree.ID,
+  added: Int,
+  removed: Int,
+  state: inout RepositoriesFeature.State
+) {
+  var entry = state.worktreeInfoByID[worktreeID] ?? WorktreeInfoEntry()
+  if added == 0 && removed == 0 {
+    entry.addedLines = nil
+    entry.removedLines = nil
+  } else {
+    entry.addedLines = added
+    entry.removedLines = removed
+  }
+  if entry.descriptionText == nil {
+    state.worktreeInfoByID.removeValue(forKey: worktreeID)
+  } else {
+    state.worktreeInfoByID[worktreeID] = entry
+  }
+}
+
+private func updateWorktreePullRequest(
+  worktreeID: Worktree.ID,
+  number: Int?,
+  state: inout RepositoriesFeature.State
+) {
+  var entry = state.worktreeInfoByID[worktreeID] ?? WorktreeInfoEntry()
+  entry.pullRequestNumber = number
+  if entry.descriptionText == nil {
+    state.worktreeInfoByID.removeValue(forKey: worktreeID)
+  } else {
+    state.worktreeInfoByID[worktreeID] = entry
+  }
 }
 
 private func restoreSelection(

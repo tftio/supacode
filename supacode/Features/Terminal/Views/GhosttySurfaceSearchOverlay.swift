@@ -34,6 +34,7 @@ struct GhosttySurfaceSearchOverlay: View {
               navigateSearch(isShifted ? .previous : .next)
             },
             onEscape: {
+              isSearchFieldFocused = false
               surfaceView.requestFocus()
             }
           )
@@ -165,6 +166,7 @@ struct GhosttySurfaceSearchOverlay: View {
   }
 
   private func navigateSearch(_ direction: GhosttySearchDirection) {
+    flushPendingSearch()
     switch direction {
     case .next:
       surfaceView.performBindingAction("navigate_search:next")
@@ -175,6 +177,13 @@ struct GhosttySurfaceSearchOverlay: View {
 
   private func closeSearch() {
     surfaceView.performBindingAction("end_search")
+  }
+
+  private func flushPendingSearch() {
+    guard let searchTask else { return }
+    searchTask.cancel()
+    self.searchTask = nil
+    emitSearch(searchText)
   }
 
   private func focusSearchField() {

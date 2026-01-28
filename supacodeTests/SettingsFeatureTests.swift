@@ -39,23 +39,18 @@ struct SettingsFeatureTests {
       }
     }
 
-    await store.send(.setAppearanceMode(.dark)) {
-      $0.appearanceMode = .dark
+    await store.send(.setAppearanceMode(.light)) {
+      $0.appearanceMode = .light
     }
-    await store.receive(.delegate(.settingsChanged(GlobalSettings(
-      appearanceMode: .dark,
+    let expectedSettings = GlobalSettings(
+      appearanceMode: .light,
       updatesAutomaticallyCheckForUpdates: true,
       updatesAutomaticallyDownloadUpdates: false,
       inAppNotificationsEnabled: true,
       notificationSoundEnabled: true
-    ))))
+    )
+    await store.receive(.delegate(.settingsChanged(expectedSettings)))
 
-    #expect(saved.value == GlobalSettings(
-      appearanceMode: .dark,
-      updatesAutomaticallyCheckForUpdates: true,
-      updatesAutomaticallyDownloadUpdates: false,
-      inAppNotificationsEnabled: true,
-      notificationSoundEnabled: true
-    ))
+    #expect(saved.value == expectedSettings)
   }
 }

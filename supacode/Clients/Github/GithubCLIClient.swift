@@ -215,10 +215,6 @@ nonisolated private func runGhAllowingNoPR(
   }
 }
 
-nonisolated private func isUnsupportedStatusCheckRollupError(_ error: Error) -> Bool {
-  isUnsupportedFieldError(error, fieldName: "statusCheckRollup")
-}
-
 nonisolated private func isUnsupportedFieldError(_ error: Error, fieldName: String) -> Bool {
   let message = error.localizedDescription.lowercased()
   let normalizedFieldName = fieldName.lowercased()

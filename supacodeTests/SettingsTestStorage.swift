@@ -13,12 +13,6 @@ nonisolated final class SettingsTestStorage: @unchecked Sendable {
     )
   }
 
-  func data(for url: URL) -> Data? {
-    lock.lock()
-    defer { lock.unlock() }
-    return dataByURL[url]
-  }
-
   private func load(_ url: URL) throws -> Data {
     lock.lock()
     defer { lock.unlock() }
@@ -33,15 +27,8 @@ nonisolated final class SettingsTestStorage: @unchecked Sendable {
     defer { lock.unlock() }
     dataByURL[url] = data
   }
-
 }
 
 enum SettingsTestStorageError: Error {
   case missing
-  case missingData
-}
-
-func requireData(_ data: Data?) throws -> Data {
-  guard let data else { throw SettingsTestStorageError.missingData }
-  return data
 }

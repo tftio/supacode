@@ -9,32 +9,31 @@ import Testing
 struct SettingsFilePersistenceTests {
   @Test(.dependencies) func loadWritesDefaultsWhenMissing() throws {
     let storage = SettingsTestStorage()
-    let suiteName = "supacode.tests.\(UUID().uuidString)"
-    let userDefaults = UserDefaults(suiteName: suiteName) ?? .standard
-    defer { userDefaults.removePersistentDomain(forName: suiteName) }
 
-    withDependencies {
+    let settings: SettingsFile = withDependencies {
       $0.settingsFileStorage = storage.storage
-      $0.settingsUserDefaults = SettingsUserDefaults(userDefaults: userDefaults)
     } operation: {
       @Shared(.settingsFile) var settings: SettingsFile
-      _ = settings
+      return settings
     }
 
-    let data = try requireData(storage.data(for: SupacodePaths.settingsURL))
-    let decoded = try JSONDecoder().decode(SettingsFile.self, from: data)
-    #expect(decoded == .default)
+    #expect(settings == .default)
+
+    let reloaded: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      return settings
+    }
+
+    #expect(reloaded == .default)
   }
 
   @Test(.dependencies) func saveAndReload() throws {
     let storage = SettingsTestStorage()
-    let suiteName = "supacode.tests.\(UUID().uuidString)"
-    let userDefaults = UserDefaults(suiteName: suiteName) ?? .standard
-    defer { userDefaults.removePersistentDomain(forName: suiteName) }
 
     withDependencies {
       $0.settingsFileStorage = storage.storage
-      $0.settingsUserDefaults = SettingsUserDefaults(userDefaults: userDefaults)
     } operation: {
       @Shared(.settingsFile) var settings: SettingsFile
       $settings.withLock {
@@ -44,55 +43,54 @@ struct SettingsFilePersistenceTests {
       }
     }
 
-    let data = try requireData(storage.data(for: SupacodePaths.settingsURL))
-    let decoded = try JSONDecoder().decode(SettingsFile.self, from: data)
-    #expect(decoded.global.appearanceMode == .dark)
-    #expect(decoded.repositoryRoots == ["/tmp/repo-a", "/tmp/repo-b"])
-    #expect(decoded.pinnedWorktreeIDs == ["/tmp/repo-a/wt-1"])
+    let reloaded: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      return settings
+    }
+
+    #expect(reloaded.global.appearanceMode == .dark)
+    #expect(reloaded.repositoryRoots == ["/tmp/repo-a", "/tmp/repo-b"])
+    #expect(reloaded.pinnedWorktreeIDs == ["/tmp/repo-a/wt-1"])
   }
 
   @Test(.dependencies) func invalidJSONResetsToDefaults() throws {
-    let storage = SettingsTestStorage()
-    let suiteName = "supacode.tests.\(UUID().uuidString)"
-    let userDefaults = UserDefaults(suiteName: suiteName) ?? .standard
-    defer { userDefaults.removePersistentDomain(forName: suiteName) }
-
-    try storage.storage.save(Data("{".utf8), SupacodePaths.settingsURL)
-
-    withDependencies {
-      $0.settingsFileStorage = storage.storage
-      $0.settingsUserDefaults = SettingsUserDefaults(userDefaults: userDefaults)
-    } operation: {
-      @Shared(.settingsFile) var settings: SettingsFile
-      _ = settings
-    }
-
-    let data = try requireData(storage.data(for: SupacodePaths.settingsURL))
-    let decoded = try JSONDecoder().decode(SettingsFile.self, from: data)
-    #expect(decoded == .default)
-  }
-
-  @Test(.dependencies) func migratesOldSettingsWithoutInAppNotificationsEnabled() throws {
-    let storage = SettingsTestStorage()
-    let suiteName = "supacode.tests.\(UUID().uuidString)"
-    let userDefaults = UserDefaults(suiteName: suiteName) ?? .standard
-    defer { userDefaults.removePersistentDomain(forName: suiteName) }
-
-    let oldSettings = """
-      {
-        "global": {
-          "appearanceMode": "dark",
-          "updatesAutomaticallyCheckForUpdates": false,
-          "updatesAutomaticallyDownloadUpdates": true
-        },
-        "repositories": {}
-      }
-      """
-    try storage.storage.save(Data(oldSettings.utf8), SupacodePaths.settingsURL)
+    let storage = MutableTestStorage(initialData: Data("{".utf8))
 
     let settings: SettingsFile = withDependencies {
       $0.settingsFileStorage = storage.storage
-      $0.settingsUserDefaults = SettingsUserDefaults(userDefaults: userDefaults)
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      return settings
+    }
+
+    #expect(settings == .default)
+
+    let reloaded: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      return settings
+    }
+
+    #expect(reloaded == .default)
+  }
+
+  @Test(.dependencies) func decodesMissingInAppNotificationsEnabled() throws {
+    let legacy = LegacySettingsFile(
+      global: LegacyGlobalSettings(
+        appearanceMode: .dark,
+        updatesAutomaticallyCheckForUpdates: false,
+        updatesAutomaticallyDownloadUpdates: true
+      ),
+      repositories: [:]
+    )
+    let data = try JSONEncoder().encode(legacy)
+    let storage = MutableTestStorage(initialData: data)
+
+    let settings: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
     } operation: {
       @Shared(.settingsFile) var settings: SettingsFile
       return settings
@@ -102,38 +100,51 @@ struct SettingsFilePersistenceTests {
     #expect(settings.global.updatesAutomaticallyCheckForUpdates == false)
     #expect(settings.global.updatesAutomaticallyDownloadUpdates == true)
     #expect(settings.global.inAppNotificationsEnabled == true)
+    #expect(settings.global.notificationSoundEnabled == true)
     #expect(settings.repositoryRoots.isEmpty)
     #expect(settings.pinnedWorktreeIDs.isEmpty)
   }
+}
 
-  @Test(.dependencies) func migratesRepositoryDataFromUserDefaults() throws {
-    let storage = SettingsTestStorage()
-    let suiteName = "supacode.tests.\(UUID().uuidString)"
-    let userDefaults = UserDefaults(suiteName: suiteName) ?? .standard
-    defer { userDefaults.removePersistentDomain(forName: suiteName) }
-    let rootsKey = "repositories.roots"
-    let pinnedKey = "repositories.worktrees.pinned"
-    let roots = ["/tmp/repo-a", "/tmp/repo-b"]
-    let pinned = ["/tmp/repo-a/wt-1"]
-    userDefaults.set(try JSONEncoder().encode(roots), forKey: rootsKey)
-    userDefaults.set(try JSONEncoder().encode(pinned), forKey: pinnedKey)
+private final class MutableTestStorage: @unchecked Sendable {
+  private let lock = NSLock()
+  private var data: Data?
+  private let initialData: Data
 
-    let settings: SettingsFile = withDependencies {
-      $0.settingsFileStorage = storage.storage
-      $0.settingsUserDefaults = SettingsUserDefaults(userDefaults: userDefaults)
-    } operation: {
-      @Shared(.settingsFile) var settings: SettingsFile
-      return settings
-    }
-
-    #expect(settings.repositoryRoots == roots)
-    #expect(settings.pinnedWorktreeIDs == pinned)
-    #expect(userDefaults.object(forKey: rootsKey) == nil)
-    #expect(userDefaults.object(forKey: pinnedKey) == nil)
-
-    let data = try requireData(storage.data(for: SupacodePaths.settingsURL))
-    let decoded = try JSONDecoder().decode(SettingsFile.self, from: data)
-    #expect(decoded.repositoryRoots == roots)
-    #expect(decoded.pinnedWorktreeIDs == pinned)
+  init(initialData: Data) {
+    self.initialData = initialData
   }
+
+  var storage: SettingsFileStorage {
+    SettingsFileStorage(
+      load: { try self.load($0) },
+      save: { try self.save($0, $1) }
+    )
+  }
+
+  private func load(_ url: URL) throws -> Data {
+    lock.lock()
+    defer { lock.unlock() }
+    if let data {
+      return data
+    }
+    return initialData
+  }
+
+  private func save(_ data: Data, _ url: URL) throws {
+    lock.lock()
+    defer { lock.unlock() }
+    self.data = data
+  }
+}
+
+private struct LegacySettingsFile: Codable {
+  var global: LegacyGlobalSettings
+  var repositories: [String: RepositorySettings]
+}
+
+private struct LegacyGlobalSettings: Codable {
+  var appearanceMode: AppearanceMode
+  var updatesAutomaticallyCheckForUpdates: Bool
+  var updatesAutomaticallyDownloadUpdates: Bool
 }

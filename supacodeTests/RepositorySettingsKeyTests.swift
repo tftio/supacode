@@ -20,8 +20,13 @@ struct RepositorySettingsKeyTests {
 
     #expect(settings == RepositorySettings.default)
 
-    let data = try requireData(storage.data(for: SupacodePaths.settingsURL))
-    let saved = try JSONDecoder().decode(SettingsFile.self, from: data)
+    let saved: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      return settings
+    }
+
     #expect(
       saved.repositories[rootURL.path(percentEncoded: false)] == RepositorySettings.default
     )
@@ -42,8 +47,13 @@ struct RepositorySettingsKeyTests {
       }
     }
 
-    let data = try requireData(storage.data(for: SupacodePaths.settingsURL))
-    let reloaded = try JSONDecoder().decode(SettingsFile.self, from: data)
+    let reloaded: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      return settings
+    }
+
     #expect(reloaded.repositories[rootURL.path(percentEncoded: false)] == settings)
   }
 }

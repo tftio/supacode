@@ -1,6 +1,7 @@
 import Dependencies
 import DependenciesTestSupport
 import Foundation
+import Sharing
 import Testing
 
 @testable import supacode
@@ -9,10 +10,14 @@ struct RepositoryPersistenceClientTests {
   @Test(.dependencies) func savesAndLoadsRootsAndPins() async throws {
     let storage = SettingsTestStorage()
 
-    var initial = SettingsFile.default
-    initial.global.appearanceMode = .dark
-    let initialData = try JSONEncoder().encode(initial)
-    try storage.storage.save(initialData, SupacodePaths.settingsURL)
+    withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      $settings.withLock {
+        $0.global.appearanceMode = .dark
+      }
+    }
 
     let client = RepositoryPersistenceClient.liveValue
     let result = await withDependencies {
@@ -35,8 +40,13 @@ struct RepositoryPersistenceClientTests {
     #expect(result.roots == ["/tmp/repo-a", "/tmp/repo-b"])
     #expect(result.pinned == ["/tmp/repo-a/wt-1"])
 
-    let data = try requireData(storage.data(for: SupacodePaths.settingsURL))
-    let finalSettings = try JSONDecoder().decode(SettingsFile.self, from: data)
+    let finalSettings: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      return settings
+    }
+
     #expect(finalSettings.global.appearanceMode == .dark)
   }
 }

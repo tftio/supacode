@@ -394,6 +394,7 @@ struct RepositoriesFeature {
         insertWorktree(worktree, repositoryID: repositoryID, state: &state)
         return .merge(
           .send(.reloadRepositories(animated: false)),
+          .send(.delegate(.repositoriesChanged(state.repositories))),
           .send(.delegate(.selectedWorktreeChanged(state.worktree(for: state.selectedWorktreeID))))
         )
 

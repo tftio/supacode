@@ -145,6 +145,57 @@ struct RepositoriesFeatureTests {
     await store.receive(.delegate(.repositoriesChanged([repository])))
   }
 
+  @Test func createRandomWorktreeSucceededSendsRepositoriesChanged() async {
+    let repoRoot = "/tmp/repo"
+    let existingWorktree = makeWorktree(id: "/tmp/repo/wt-main", name: "main", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [existingWorktree])
+    let newWorktree = makeWorktree(id: "/tmp/repo/wt-new", name: "new", repoRoot: repoRoot)
+    let updatedRepository = makeRepository(id: repoRoot, worktrees: [newWorktree, existingWorktree])
+    let pendingID = "pending:\(UUID().uuidString)"
+    var initialState = RepositoriesFeature.State(repositories: [repository])
+    initialState.pendingWorktrees = [
+      PendingWorktree(
+        id: pendingID,
+        repositoryID: repository.id,
+        name: "Creating worktree...",
+        detail: ""
+      ),
+    ]
+    initialState.selectedWorktreeID = pendingID
+    let store = TestStore(initialState: initialState) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.gitClient.worktrees = { _ in [newWorktree, existingWorktree] }
+    }
+
+    await store.send(
+      .createRandomWorktreeSucceeded(
+        newWorktree,
+        repositoryID: repository.id,
+        pendingID: pendingID
+      )
+    ) {
+      $0.pendingSetupScriptWorktreeIDs.insert(newWorktree.id)
+      $0.pendingTerminalFocusWorktreeIDs.insert(newWorktree.id)
+      $0.pendingWorktrees = []
+      $0.selectedWorktreeID = newWorktree.id
+      $0.repositories = [updatedRepository]
+    }
+
+    await store.receive(.reloadRepositories(animated: false))
+    await store.receive(.delegate(.repositoriesChanged([updatedRepository])))
+    await store.receive(.delegate(.selectedWorktreeChanged(newWorktree)))
+    await store.receive(
+      .repositoriesLoaded(
+        [updatedRepository],
+        failures: [],
+        roots: [repository.rootURL],
+        animated: false
+      )
+    )
+    await store.receive(.delegate(.repositoriesChanged([updatedRepository])))
+  }
+
   private func makeWorktree(id: String, name: String, repoRoot: String = "/tmp/repo") -> Worktree {
     Worktree(
       id: id,

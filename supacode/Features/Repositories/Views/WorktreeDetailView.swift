@@ -18,48 +18,10 @@ struct WorktreeDetailView: View {
     let hasActiveWorktree = selectedWorktree != nil && loadingInfo == nil
     let worktreeInfoSnapshot = state.worktreeInfo.snapshot
     let openActionSelection = state.openActionSelection
-    let openSelectedWorktreeAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.openSelectedWorktree) }
-      : nil
-    let newTerminalAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.newTerminal) }
-      : nil
-    let closeTabAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.closeTab) }
-      : nil
-    let closeSurfaceAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.closeSurface) }
-      : nil
-    let startSearchAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.startSearch) }
-      : nil
-    let searchSelectionAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.searchSelection) }
-      : nil
-    let navigateSearchNextAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.navigateSearchNext) }
-      : nil
-    let navigateSearchPreviousAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.navigateSearchPrevious) }
-      : nil
-    let endSearchAction: (() -> Void)? =
-      hasActiveWorktree
-      ? { store.send(.endSearch) }
-      : nil
     let runScriptEnabled =
       hasActiveWorktree
       && !state.selectedRunScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     let runScriptIsRunning = selectedWorktree.flatMap { state.runScriptStatusByWorktreeID[$0.id] } == true
-    let runScriptAction: (() -> Void)? = runScriptEnabled ? { store.send(.runScript) } : nil
-    let stopRunScriptAction: (() -> Void)? = runScriptIsRunning ? { store.send(.stopRunScript) } : nil
     let navigationTitle =
       hasActiveWorktree
       ? ""
@@ -105,18 +67,10 @@ struct WorktreeDetailView: View {
         worktreeToolbar(worktreeID: selectedWorktree.id, toolbarState: toolbarState)
       }
     }
-    let actions = FocusedActions(
-      openSelectedWorktree: openSelectedWorktreeAction,
-      newTerminal: newTerminalAction,
-      closeTab: closeTabAction,
-      closeSurface: closeSurfaceAction,
-      startSearch: startSearchAction,
-      searchSelection: searchSelectionAction,
-      navigateSearchNext: navigateSearchNextAction,
-      navigateSearchPrevious: navigateSearchPreviousAction,
-      endSearch: endSearchAction,
-      runScript: runScriptAction,
-      stopRunScript: stopRunScriptAction
+    let actions = makeFocusedActions(
+      hasActiveWorktree: hasActiveWorktree,
+      runScriptEnabled: runScriptEnabled,
+      runScriptIsRunning: runScriptIsRunning
     )
     return applyFocusedActions(content: content, actions: actions)
   }
@@ -137,6 +91,29 @@ struct WorktreeDetailView: View {
       .focusedSceneValue(\.endSearchAction, actions.endSearch)
       .focusedSceneValue(\.runScriptAction, actions.runScript)
       .focusedSceneValue(\.stopRunScriptAction, actions.stopRunScript)
+  }
+
+  private func makeFocusedActions(
+    hasActiveWorktree: Bool,
+    runScriptEnabled: Bool,
+    runScriptIsRunning: Bool
+  ) -> FocusedActions {
+    func action(_ appAction: AppFeature.Action) -> (() -> Void)? {
+      hasActiveWorktree ? { store.send(appAction) } : nil
+    }
+    return FocusedActions(
+      openSelectedWorktree: action(.openSelectedWorktree),
+      newTerminal: action(.newTerminal),
+      closeTab: action(.closeTab),
+      closeSurface: action(.closeSurface),
+      startSearch: action(.startSearch),
+      searchSelection: action(.searchSelection),
+      navigateSearchNext: action(.navigateSearchNext),
+      navigateSearchPrevious: action(.navigateSearchPrevious),
+      endSearch: action(.endSearch),
+      runScript: runScriptEnabled ? { store.send(.runScript) } : nil,
+      stopRunScript: runScriptIsRunning ? { store.send(.stopRunScript) } : nil
+    )
   }
 
   private struct FocusedActions {

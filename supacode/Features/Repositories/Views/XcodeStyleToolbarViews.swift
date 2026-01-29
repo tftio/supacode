@@ -213,16 +213,22 @@ struct XcodeStyleStatusView: View {
     "Night excellence",
   ]
 
-  private static func style(for hour: Int) -> (icon: String, color: Color, messages: [String]) {
+  private struct TimeStyle {
+    let icon: String
+    let color: Color
+    let messages: [String]
+  }
+
+  private static func style(for hour: Int) -> TimeStyle {
     switch hour {
     case 6..<12:
-      return ("sunrise.fill", .orange, morningMessages)
+      return TimeStyle(icon: "sunrise.fill", color: .orange, messages: morningMessages)
     case 12..<17:
-      return ("sun.max.fill", .yellow, afternoonMessages)
+      return TimeStyle(icon: "sun.max.fill", color: .yellow, messages: afternoonMessages)
     case 17..<21:
-      return ("sunset.fill", .pink, eveningMessages)
+      return TimeStyle(icon: "sunset.fill", color: .pink, messages: eveningMessages)
     default:
-      return ("moon.stars.fill", .indigo, nightMessages)
+      return TimeStyle(icon: "moon.stars.fill", color: .indigo, messages: nightMessages)
     }
   }
 

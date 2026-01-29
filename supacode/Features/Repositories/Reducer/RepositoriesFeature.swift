@@ -366,21 +366,12 @@ struct RepositoriesFeature {
               )
               return
             }
-            let newWorktree = try await gitClient.createWorktree(name, repository.rootURL)
-            do {
-              try await gitClient.syncWorktree(
-                newWorktree.workingDirectory,
-                repositorySettings.copyIgnoredOnWorktreeCreate,
-                repositorySettings.copyUntrackedOnWorktreeCreate
-              )
-            } catch {
-              await send(
-                .presentAlert(
-                  title: "Unable to copy files to new worktree",
-                  message: "Check your repository state and try again."
-                )
-              )
-            }
+            let newWorktree = try await gitClient.createWorktree(
+              name,
+              repository.rootURL,
+              repositorySettings.copyIgnoredOnWorktreeCreate,
+              repositorySettings.copyUntrackedOnWorktreeCreate
+            )
             await send(
               .createRandomWorktreeSucceeded(
                 newWorktree,

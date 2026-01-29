@@ -5,7 +5,6 @@ enum GitOperation: String {
   case repoRoot = "repo_root"
   case worktreeList = "worktree_list"
   case worktreeCreate = "worktree_create"
-  case worktreeSync = "worktree_sync"
   case worktreeRemove = "worktree_remove"
   case branchNames = "branch_names"
   case branchRename = "branch_rename"
@@ -119,19 +118,32 @@ struct GitClient {
     return Set(names)
   }
 
-  nonisolated func createWorktree(named name: String, in repoRoot: URL) async throws -> Worktree {
+  nonisolated func createWorktree(
+    named name: String,
+    in repoRoot: URL,
+    copyIgnored: Bool,
+    copyUntracked: Bool
+  ) async throws -> Worktree {
     let repositoryRootURL = repoRoot.standardizedFileURL
     let wtURL = try wtScriptURL()
     let baseDir = SupacodePaths.repositoryDirectory(for: repositoryRootURL)
+    var arguments = ["--base-dir", baseDir.path(percentEncoded: false), "sw"]
+    if copyIgnored {
+      arguments.append("--copy-ignored")
+    }
+    if copyUntracked {
+      arguments.append("--copy-untracked")
+    }
+    arguments.append(name)
     let output = try await runLoginShellProcess(
       operation: .worktreeCreate,
       executableURL: wtURL,
-      arguments: ["--base-dir", baseDir.path(percentEncoded: false), "sw", name],
+      arguments: arguments,
       currentDirectoryURL: repoRoot
     )
     let pathLine = output.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
     if pathLine.isEmpty {
-      let command = "\(wtURL.lastPathComponent) sw \(name)"
+      let command = ([wtURL.lastPathComponent] + arguments).joined(separator: " ")
       throw GitClientError.commandFailed(command: command, message: "Empty output")
     }
     let worktreeURL = URL(fileURLWithPath: pathLine).standardizedFileURL
@@ -143,30 +155,6 @@ struct GitClient {
       detail: detail,
       workingDirectory: worktreeURL,
       repositoryRootURL: repositoryRootURL
-    )
-  }
-
-  nonisolated func syncWorktree(
-    at worktreeURL: URL,
-    copyIgnored: Bool,
-    copyUntracked: Bool
-  ) async throws {
-    if !copyIgnored && !copyUntracked {
-      return
-    }
-    let wtURL = try wtScriptURL()
-    var arguments = ["sync", "-f"]
-    if copyIgnored {
-      arguments.append("--copy-ignored")
-    }
-    if copyUntracked {
-      arguments.append("--copy-untracked")
-    }
-    _ = try await runLoginShellProcess(
-      operation: .worktreeSync,
-      executableURL: wtURL,
-      arguments: arguments,
-      currentDirectoryURL: worktreeURL
     )
   }
 

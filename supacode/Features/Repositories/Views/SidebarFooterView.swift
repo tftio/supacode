@@ -21,8 +21,9 @@ struct SidebarFooterView: View {
         .help("Submit GitHub issue")
       } label: {
         Label("Help", systemImage: "questionmark.circle")
+          .labelStyle(.iconOnly)
       }
-      .labelStyle(.iconOnly)
+      .menuIndicator(.hidden)
       .help("Help")
       Button("Settings", systemImage: "gearshape") {
         SettingsWindowManager.shared.show()

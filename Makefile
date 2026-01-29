@@ -87,7 +87,7 @@ format: # Swift format
 		mise exec -- swiftlint --fix --quiet; \
 	fi
 
-install-git-hooks:
+install-git-hooks: # Install git hooks to format/lint staged files
 	@mkdir -p "$(CURRENT_MAKEFILE_DIR)/.githooks"
 	@git config core.hooksPath "$(CURRENT_MAKEFILE_DIR)/.githooks"
 	@chmod +x "$(CURRENT_MAKEFILE_DIR)/.githooks/pre-commit"

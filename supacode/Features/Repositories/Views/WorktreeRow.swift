@@ -34,18 +34,6 @@ struct WorktreeRow: View {
       state: pullRequestState,
       number: pullRequestNumber
     )
-    let pullRequestCheckBreakdown: PullRequestCheckBreakdown? = {
-      guard let rollup = displayPullRequest?.statusCheckRollup else {
-        return nil
-      }
-      guard !rollup.checks.isEmpty else {
-        return nil
-      }
-      guard pullRequestState != "MERGED" else {
-        return nil
-      }
-      return PullRequestCheckBreakdown(checks: rollup.checks)
-    }()
     let pullRequestHelp = PullRequestBadgeStyle.helpText(state: pullRequestState, url: pullRequestURL)
     HStack(alignment: .center) {
       ZStack {
@@ -98,8 +86,7 @@ struct WorktreeRow: View {
           text: pullRequestBadgeStyle.text,
           color: pullRequestBadgeStyle.color,
           help: pullRequestHelp,
-          url: pullRequestURL,
-          checkBreakdown: pullRequestCheckBreakdown
+          url: pullRequestURL
         )
       }
       if let shortcutHint {
@@ -113,34 +100,19 @@ struct WorktreeRow: View {
     text: String,
     color: Color,
     help: String,
-    url: URL?,
-    checkBreakdown: PullRequestCheckBreakdown?
+    url: URL?
   ) -> some View {
     if let url {
       Button {
         openURL(url)
       } label: {
-        pullRequestBadgeContent(text: text, color: color, checkBreakdown: checkBreakdown)
+        PullRequestBadgeView(text: text, color: color)
       }
       .buttonStyle(.plain)
       .help(help)
     } else {
-      pullRequestBadgeContent(text: text, color: color, checkBreakdown: checkBreakdown)
-        .help(help)
-    }
-  }
-
-  @ViewBuilder
-  private func pullRequestBadgeContent(
-    text: String,
-    color: Color,
-    checkBreakdown: PullRequestCheckBreakdown?
-  ) -> some View {
-    HStack(spacing: 6) {
       PullRequestBadgeView(text: text, color: color)
-      if let checkBreakdown {
-        PullRequestChecksRingView(breakdown: checkBreakdown)
-      }
+        .help(help)
     }
   }
 }

@@ -35,6 +35,7 @@ struct TerminalTabLabelView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    .contentShape(.rect)
     .padding(.horizontal, TerminalTabBarMetrics.tabHorizontalPadding)
     .padding(.trailing, TerminalTabBarMetrics.closeButtonSize + TerminalTabBarMetrics.contentSpacing)
   }

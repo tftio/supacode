@@ -16,7 +16,7 @@ final class WorktreeInfoWatcherManager {
 
   private enum RefreshTiming {
     static let focused = Duration.seconds(30)
-    static let unfocused = Duration.seconds(300)
+    static let unfocused = Duration.seconds(60)
   }
 
   private var worktrees: [Worktree.ID: Worktree] = [:]

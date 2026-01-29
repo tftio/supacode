@@ -4,11 +4,19 @@ import SwiftUI
 struct SidebarFooterView: View {
   let store: StoreOf<RepositoriesFeature>
   @Environment(\.openURL) private var openURL
+  @Environment(CommandKeyObserver.self) private var commandKeyObserver
 
   var body: some View {
     HStack {
-      Button("Add Repository", systemImage: "folder.badge.plus") {
+      Button {
         store.send(.setOpenPanelPresented(true))
+      } label: {
+        HStack(spacing: 6) {
+          Label("Add Repository", systemImage: "folder.badge.plus")
+          if commandKeyObserver.isPressed {
+            ShortcutHintView(text: AppShortcuts.openRepository.display, color: .secondary)
+          }
+        }
       }
       .help("Add Repository (\(AppShortcuts.openRepository.display))")
       Spacer()

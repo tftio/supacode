@@ -11,9 +11,8 @@ struct PullRequestStatusButton: View {
       }
     } label: {
       HStack {
-        if let indicatorColor = indicatorColor {
-          Image(systemName: "circle.fill")
-            .foregroundStyle(indicatorColor)
+        if let checkBreakdown = model.checkBreakdown {
+          PullRequestChecksRingView(breakdown: checkBreakdown)
         }
         Text(model.label)
       }
@@ -24,29 +23,17 @@ struct PullRequestStatusButton: View {
     .help("Open pull request on GitHub")
   }
 
-  private var indicatorColor: Color? {
-    switch model.indicatorState {
-    case .passed, .ignored:
-      return .green
-    case .pending:
-      return .yellow
-    case .failed:
-      return .red
-    case .none:
-      return nil
-    }
-  }
 }
 
 struct PullRequestStatusModel: Equatable {
   let label: String
   let url: URL?
-  let indicatorState: PullRequestCheckState?
+  let checkBreakdown: PullRequestCheckBreakdown?
 
-  init(label: String, url: URL?, indicatorState: PullRequestCheckState?) {
+  init(label: String, url: URL?, checkBreakdown: PullRequestCheckBreakdown?) {
     self.label = label
     self.url = url
-    self.indicatorState = indicatorState
+    self.checkBreakdown = checkBreakdown
   }
 
   init?(snapshot: WorktreeInfoSnapshot?) {
@@ -62,7 +49,7 @@ struct PullRequestStatusModel: Equatable {
     if state == "MERGED" {
       self.label = "PR #\(number) - Merged"
       self.url = url
-      self.indicatorState = nil
+      self.checkBreakdown = nil
       return
     }
     let isDraft = snapshot.pullRequestIsDraft
@@ -71,31 +58,30 @@ struct PullRequestStatusModel: Equatable {
     if checks.isEmpty {
       self.label = prefix + "Checks unavailable"
       self.url = url
-      self.indicatorState = nil
+      self.checkBreakdown = nil
       return
     }
-    let summary = PullRequestCheckSummary(checks: checks)
-    if summary.failed > 0 {
-      self.label = prefix + "\(summary.failed)/\(summary.total) checks failed"
-      self.url = url
-      self.indicatorState = .failed
-      return
+    let breakdown = PullRequestCheckBreakdown(checks: checks)
+    let checksLabel = breakdown.total == 1 ? "check" : "checks"
+    var parts: [String] = []
+    if breakdown.failed > 0 {
+      parts.append("\(breakdown.failed) failed")
     }
-    if summary.pending > 0 {
-      self.label = prefix + "\(summary.pending) checks pending"
-      self.url = url
-      self.indicatorState = .pending
-      return
+    if breakdown.inProgress > 0 {
+      parts.append("\(breakdown.inProgress) in progress")
     }
-    if summary.ignored > 0 {
-      self.label = prefix + "\(summary.ignored) checks skipped"
-      self.url = url
-      self.indicatorState = .ignored
-      return
+    if breakdown.skipped > 0 {
+      parts.append("\(breakdown.skipped) skipped")
     }
-    self.label = prefix + "All checks passed"
+    if breakdown.expected > 0 {
+      parts.append("\(breakdown.expected) expected")
+    }
+    if breakdown.total > 0 {
+      parts.append("\(breakdown.passed) successful")
+    }
+    self.label = prefix + parts.joined(separator: ", ") + " \(checksLabel)"
     self.url = url
-    self.indicatorState = .passed
+    self.checkBreakdown = breakdown
   }
 
   static func shouldDisplay(state: String?, number: Int?) -> Bool {

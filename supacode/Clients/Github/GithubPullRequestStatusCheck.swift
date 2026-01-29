@@ -1,81 +1,9 @@
 import Foundation
 
-nonisolated enum PullRequestCheckState: Equatable {
-  case passed
-  case failed
-  case pending
-  case ignored
-}
-
-nonisolated struct PullRequestCheckSummary: Equatable {
-  let passed: Int
-  let failed: Int
-  let pending: Int
-  let ignored: Int
-
-  var total: Int {
-    passed + failed + pending
-  }
-
-  init(checks: [GithubPullRequestStatusCheck]) {
-    var passed = 0
-    var failed = 0
-    var pending = 0
-    var ignored = 0
-    for check in checks {
-      switch check.summarizedState {
-      case .passed:
-        passed += 1
-      case .failed:
-        failed += 1
-      case .pending:
-        pending += 1
-      case .ignored:
-        ignored += 1
-      }
-    }
-    self.passed = passed
-    self.failed = failed
-    self.pending = pending
-    self.ignored = ignored
-  }
-}
-
 nonisolated struct GithubPullRequestStatusCheck: Decodable, Equatable, Hashable {
   let status: String?
   let conclusion: String?
   let state: String?
-
-  var summarizedState: PullRequestCheckState {
-    if let status, status.uppercased() != "COMPLETED" {
-      return .pending
-    }
-    if let state {
-      switch state.uppercased() {
-      case "SUCCESS":
-        return .passed
-      case "FAILURE", "ERROR":
-        return .failed
-      case "PENDING", "EXPECTED":
-        return .pending
-      default:
-        return .pending
-      }
-    }
-    if let conclusion {
-      switch conclusion.uppercased() {
-      case "SUCCESS", "NEUTRAL":
-        return .passed
-      case "CANCELLED", "SKIPPED":
-        return .ignored
-      case "FAILURE", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE":
-        return .failed
-      default:
-        return .pending
-      }
-    }
-    return .pending
-  }
 }
 
 nonisolated struct GithubPullRequestStatusCheckRollup: Decodable, Equatable, Hashable {
@@ -105,4 +33,64 @@ nonisolated struct GithubPullRequestStatusCheckRollup: Decodable, Equatable, Has
 
 nonisolated private struct GithubPullRequestStatusCheckContexts: Decodable, Equatable {
   let nodes: [GithubPullRequestStatusCheck]
+}
+
+nonisolated struct PullRequestCheckBreakdown: Equatable {
+  let passed: Int
+  let failed: Int
+  let inProgress: Int
+  let expected: Int
+  let skipped: Int
+
+  var total: Int {
+    passed + failed + inProgress + expected + skipped
+  }
+
+  init(checks: [GithubPullRequestStatusCheck]) {
+    var passed = 0
+    var failed = 0
+    var inProgress = 0
+    var expected = 0
+    var skipped = 0
+    for check in checks {
+      if let status = check.status, status.uppercased() != "COMPLETED" {
+        inProgress += 1
+        continue
+      }
+      if let state = check.state {
+        switch state.uppercased() {
+        case "SUCCESS":
+          passed += 1
+        case "FAILURE", "ERROR":
+          failed += 1
+        case "EXPECTED":
+          expected += 1
+        case "PENDING":
+          inProgress += 1
+        default:
+          inProgress += 1
+        }
+        continue
+      }
+      if let conclusion = check.conclusion {
+        switch conclusion.uppercased() {
+        case "SUCCESS", "NEUTRAL":
+          passed += 1
+        case "CANCELLED", "SKIPPED":
+          skipped += 1
+        case "FAILURE", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE", "STALE":
+          failed += 1
+        default:
+          inProgress += 1
+        }
+        continue
+      }
+      inProgress += 1
+    }
+    self.passed = passed
+    self.failed = failed
+    self.inProgress = inProgress
+    self.expected = expected
+    self.skipped = skipped
+  }
 }

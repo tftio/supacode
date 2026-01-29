@@ -523,17 +523,36 @@ struct RepositoriesFeature {
         let selectionWasRemoved,
         let nextSelection
       ):
+        let wasPinned = state.pinnedWorktreeIDs.contains(worktreeID)
         state.deletingWorktreeIDs.remove(worktreeID)
+        state.pendingWorktrees.removeAll { $0.id == worktreeID }
         state.pendingSetupScriptWorktreeIDs.remove(worktreeID)
         state.pendingTerminalFocusWorktreeIDs.remove(worktreeID)
-        let roots = state.repositories.map(\.rootURL)
+        state.worktreeInfoByID.removeValue(forKey: worktreeID)
+        state.pinnedWorktreeIDs.removeAll { $0 == worktreeID }
+        _ = removeWorktree(worktreeID, repositoryID: repositoryID, state: &state)
         if selectionWasRemoved {
           state.selectedWorktreeID =
             nextSelection ?? firstAvailableWorktreeID(in: repositoryID, state: state)
         }
-        return .merge(
+        let roots = state.repositories.map(\.rootURL)
+        let repositories = state.repositories
+        let selectedWorktree = state.worktree(for: state.selectedWorktreeID)
+        var effects: [Effect<Action>] = [
           roots.isEmpty ? .none : .send(.reloadRepositories(animated: true)),
-          .send(.delegate(.selectedWorktreeChanged(state.worktree(for: state.selectedWorktreeID))))
+          .send(.delegate(.repositoriesChanged(repositories))),
+          .send(.delegate(.selectedWorktreeChanged(selectedWorktree))),
+        ]
+        if wasPinned {
+          let pinnedWorktreeIDs = state.pinnedWorktreeIDs
+          effects.append(
+            .run { _ in
+              await repositoryPersistence.savePinnedWorktreeIDs(pinnedWorktreeIDs)
+            }
+          )
+        }
+        return .merge(
+          effects
         )
 
       case .worktreeRemovalFailed(let message, let worktreeID):
@@ -1106,6 +1125,25 @@ private func insertWorktree(
     name: repository.name,
     worktrees: worktrees
   )
+}
+
+@discardableResult
+private func removeWorktree(
+  _ worktreeID: Worktree.ID,
+  repositoryID: Repository.ID,
+  state: inout RepositoriesFeature.State
+) -> Bool {
+  guard let index = state.repositories.firstIndex(where: { $0.id == repositoryID }) else { return false }
+  let repository = state.repositories[index]
+  let filteredWorktrees = repository.worktrees.filter { $0.id != worktreeID }
+  guard filteredWorktrees.count != repository.worktrees.count else { return false }
+  state.repositories[index] = Repository(
+    id: repository.id,
+    rootURL: repository.rootURL,
+    name: repository.name,
+    worktrees: filteredWorktrees
+  )
+  return true
 }
 
 private func updateWorktreeName(

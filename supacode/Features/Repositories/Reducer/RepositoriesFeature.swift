@@ -670,22 +670,40 @@ struct RepositoriesFeature {
               )
             }
           }
-        case .pullRequestRefresh(let worktreeID):
-          guard let worktree = state.worktree(for: worktreeID) else {
+        case .repositoryPullRequestRefresh(let repositoryRootURL, let worktreeIDs):
+          let worktrees = worktreeIDs.compactMap { state.worktree(for: $0) }
+          var seen = Set<String>()
+          let branches = worktrees
+            .map(\.name)
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+          guard !branches.isEmpty else {
             return .none
           }
+          let gitClient = gitClient
           let githubCLI = githubCLI
-          let worktreeURL = worktree.workingDirectory
           return .run { send in
             guard await githubCLI.isAvailable() else {
               return
             }
-            let result = await Result { try await githubCLI.currentPullRequest(worktreeURL) }
-            switch result {
-            case .success(let pullRequest):
-              await send(
-                .worktreePullRequestLoaded(worktreeID: worktreeID, pullRequest: pullRequest)
+            guard let remoteInfo = await gitClient.remoteInfo(repositoryRootURL) else {
+              return
+            }
+            let result = await Result {
+              try await githubCLI.batchPullRequests(
+                remoteInfo.host,
+                remoteInfo.owner,
+                remoteInfo.repo,
+                branches
               )
+            }
+            switch result {
+            case .success(let prsByBranch):
+              for worktree in worktrees {
+                let pullRequest = prsByBranch[worktree.name]
+                await send(
+                  .worktreePullRequestLoaded(worktreeID: worktree.id, pullRequest: pullRequest)
+                )
+              }
             case .failure:
               return
             }

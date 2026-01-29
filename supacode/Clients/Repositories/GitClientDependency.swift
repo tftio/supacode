@@ -13,6 +13,7 @@ struct GitClientDependency {
   var branchName: @Sendable (URL) async -> String?
   var lineChanges: @Sendable (URL) async -> (added: Int, removed: Int)?
   var renameBranch: @Sendable (_ worktreeURL: URL, _ branchName: String) async throws -> Void
+  var remoteInfo: @Sendable (_ repositoryRoot: URL) async -> GithubRemoteInfo?
 }
 
 extension GitClientDependency: DependencyKey {
@@ -36,6 +37,9 @@ extension GitClientDependency: DependencyKey {
     lineChanges: { await GitClient().lineChanges(at: $0) },
     renameBranch: { worktreeURL, branchName in
       try await GitClient().renameBranch(in: worktreeURL, to: branchName)
+    },
+    remoteInfo: { repositoryRoot in
+      await GitClient().remoteInfo(for: repositoryRoot)
     }
   )
   static let testValue = liveValue

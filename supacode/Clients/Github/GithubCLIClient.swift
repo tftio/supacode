@@ -42,7 +42,7 @@ extension GithubAuthStatusResponse.GithubAuthAccount: Decodable {
 struct GithubCLIClient {
   var defaultBranch: @Sendable (URL) async throws -> String
   var latestRun: @Sendable (URL, String) async throws -> GithubWorkflowRun?
-  var currentPullRequest: @Sendable (URL) async throws -> GithubPullRequest?
+  var batchPullRequests: @Sendable (String, String, String, [String]) async throws -> [String: GithubPullRequest]
   var isAvailable: @Sendable () async -> Bool
   var authStatus: @Sendable () async throws -> GithubAuthStatus?
 }
@@ -87,58 +87,49 @@ extension GithubCLIClient: DependencyKey {
         let runs = try decoder.decode([GithubWorkflowRun].self, from: data)
         return runs.first
       },
-      currentPullRequest: { worktreeRoot in
-        let baseFields = [
-          "number",
-          "title",
-          "state",
-          "additions",
-          "deletions",
-          "isDraft",
-          "reviewDecision",
-          "updatedAt",
-          "url",
-        ]
-        let headRefNameField = "headRefName"
-        let statusCheckField = "statusCheckRollup"
-        var requestedFields = baseFields + [headRefNameField, statusCheckField]
-        var output: String?
-        while true {
-          do {
-            output = try await runGhAllowingNoPR(
-              shell: shell,
-              arguments: [
-                "pr",
-                "view",
-                "--json",
-                requestedFields.joined(separator: ","),
-              ],
-              repoRoot: worktreeRoot
+      batchPullRequests: { host, owner, repo, branches in
+        let dedupedBranches = deduplicatedBranches(branches)
+        guard !dedupedBranches.isEmpty else {
+          return [:]
+        }
+        let chunkSize = 25
+        var results: [String: GithubPullRequest] = [:]
+        var index = 0
+        while index < dedupedBranches.count {
+          let end = min(index + chunkSize, dedupedBranches.count)
+          let chunk = Array(dedupedBranches[index..<end])
+          let (query, aliasMap) = makeBatchPullRequestsQuery(branches: chunk)
+          let output = try await runGh(
+            shell: shell,
+            arguments: [
+              "api",
+              "graphql",
+              "--hostname",
+              host,
+              "-f",
+              "query=\(query)",
+              "-f",
+              "owner=\(owner)",
+              "-f",
+              "repo=\(repo)",
+            ],
+            repoRoot: nil
+          )
+          if !output.isEmpty {
+            let data = Data(output.utf8)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let response = try decoder.decode(GithubGraphQLPullRequestResponse.self, from: data)
+            let prsByBranch = response.pullRequestsByBranch(
+              aliasMap: aliasMap,
+              owner: owner,
+              repo: repo
             )
-            break
-          } catch {
-            let dropHeadRefName = isUnsupportedFieldError(error, fieldName: headRefNameField)
-            let dropStatusCheck = isUnsupportedFieldError(error, fieldName: statusCheckField)
-            var updatedFields = requestedFields
-            if dropHeadRefName {
-              updatedFields.removeAll { $0 == headRefNameField }
-            }
-            if dropStatusCheck {
-              updatedFields.removeAll { $0 == statusCheckField }
-            }
-            if updatedFields == requestedFields {
-              throw error
-            }
-            requestedFields = updatedFields
+            results.merge(prsByBranch) { _, new in new }
           }
+          index = end
         }
-        guard let output, !output.isEmpty else {
-          return nil
-        }
-        let data = Data(output.utf8)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(GithubPullRequest.self, from: data)
+        return results
       },
       isAvailable: {
         do {
@@ -169,7 +160,7 @@ extension GithubCLIClient: DependencyKey {
   static let testValue = GithubCLIClient(
     defaultBranch: { _ in "main" },
     latestRun: { _, _ in nil },
-    currentPullRequest: { _ in nil },
+    batchPullRequests: { _, _, _, _ in [:] },
     isAvailable: { true },
     authStatus: { GithubAuthStatus(username: "testuser", host: "github.com") }
   )
@@ -180,6 +171,82 @@ extension DependencyValues {
     get { self[GithubCLIClient.self] }
     set { self[GithubCLIClient.self] = newValue }
   }
+}
+
+nonisolated private func deduplicatedBranches(_ branches: [String]) -> [String] {
+  var seen = Set<String>()
+  return branches.filter { !$0.isEmpty && seen.insert($0).inserted }
+}
+
+nonisolated private func makeBatchPullRequestsQuery(
+  branches: [String]
+) -> (query: String, aliasMap: [String: String]) {
+  var aliasMap: [String: String] = [:]
+  var selections: [String] = []
+  for (index, branch) in branches.enumerated() {
+    let alias = "branch\(index)"
+    aliasMap[alias] = branch
+    let escapedBranch = escapeGraphQLString(branch)
+    let selection = """
+    \(alias): pullRequests(first: 5, states: OPEN, headRefName: \"\(escapedBranch)\") {
+      nodes {
+        number
+        title
+        state
+        additions
+        deletions
+        isDraft
+        reviewDecision
+        url
+        updatedAt
+        headRefName
+        headRepository {
+          name
+          owner { login }
+        }
+        statusCheckRollup {
+          contexts(first: 100) {
+            nodes {
+              ... on CheckRun {
+                name
+                status
+                conclusion
+                startedAt
+                completedAt
+                detailsUrl
+              }
+              ... on StatusContext {
+                context
+                state
+                targetUrl
+                createdAt
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    selections.append(selection)
+  }
+  let selectionBlock = selections.joined(separator: "\n")
+  let query = """
+  query($owner: String!, $repo: String!) {
+    repository(owner: $owner, name: $repo) {
+  \(selectionBlock)
+    }
+  }
+  """
+  return (query, aliasMap)
+}
+
+nonisolated private func escapeGraphQLString(_ value: String) -> String {
+  value
+    .replacing("\\", with: "\\\\")
+    .replacing("\"", with: "\\\"")
+    .replacing("\n", with: "\\n")
+    .replacing("\r", with: "\\r")
+    .replacing("\t", with: "\\t")
 }
 
 nonisolated private func runGh(
@@ -198,31 +265,6 @@ nonisolated private func runGh(
     }
     throw GithubCLIError.commandFailed(error.localizedDescription)
   }
-}
-
-nonisolated private func runGhAllowingNoPR(
-  shell: ShellClient,
-  arguments: [String],
-  repoRoot: URL?
-) async throws -> String? {
-  do {
-    return try await runGh(shell: shell, arguments: arguments, repoRoot: repoRoot)
-  } catch {
-    let message = error.localizedDescription.lowercased()
-    if message.contains("no pull requests found") {
-      return nil
-    }
-    throw error
-  }
-}
-
-nonisolated private func isUnsupportedFieldError(_ error: Error, fieldName: String) -> Bool {
-  let message = error.localizedDescription.lowercased()
-  let normalizedFieldName = fieldName.lowercased()
-  if !message.contains(normalizedFieldName) {
-    return false
-  }
-  return message.contains("unknown") || message.contains("unsupported") || message.contains("field")
 }
 
 nonisolated private func decodeAuthStatusResponse(from data: Data) throws -> GithubAuthStatusResponse {

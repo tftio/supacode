@@ -24,7 +24,7 @@ final class WorktreeInfoWatcherManager {
   private var branchDebounceTasks: [Worktree.ID: Task<Void, Never>] = [:]
   private var filesDebounceTasks: [Worktree.ID: Task<Void, Never>] = [:]
   private var restartTasks: [Worktree.ID: Task<Void, Never>] = [:]
-  private var pullRequestTasks: [Worktree.ID: RefreshTask] = [:]
+  private var pullRequestTasks: [URL: RefreshTask] = [:]
   private var lineChangeTasks: [Worktree.ID: RefreshTask] = [:]
   private var selectedWorktreeID: Worktree.ID?
   private var eventContinuation: AsyncStream<WorktreeInfoWatcherClient.Event>.Continuation?
@@ -58,8 +58,15 @@ final class WorktreeInfoWatcherManager {
     self.worktrees = worktreesByID
     for worktree in worktrees {
       configureWatcher(for: worktree)
-      updatePullRequestSchedule(worktreeID: worktree.id, immediate: true)
       updateLineChangeSchedule(worktreeID: worktree.id, immediate: true)
+    }
+    let repositoryRoots = Set(worktrees.map(\.repositoryRootURL))
+    for repositoryRootURL in repositoryRoots {
+      updatePullRequestSchedule(repositoryRootURL: repositoryRootURL, immediate: true)
+    }
+    let obsoleteRepositories = pullRequestTasks.keys.filter { !repositoryRoots.contains($0) }
+    for repositoryRootURL in obsoleteRepositories {
+      pullRequestTasks.removeValue(forKey: repositoryRootURL)?.task.cancel()
     }
   }
 
@@ -68,14 +75,24 @@ final class WorktreeInfoWatcherManager {
       return
     }
     let previousWorktreeID = selectedWorktreeID
+    let previousRepository = previousWorktreeID.flatMap { worktrees[$0]?.repositoryRootURL }
     selectedWorktreeID = worktreeID
+    let nextRepository = worktreeID.flatMap { worktrees[$0]?.repositoryRootURL }
     if let previousWorktreeID {
-      updatePullRequestSchedule(worktreeID: previousWorktreeID, immediate: false)
       updateLineChangeSchedule(worktreeID: previousWorktreeID, immediate: false)
     }
     if let worktreeID {
-      updatePullRequestSchedule(worktreeID: worktreeID, immediate: true)
       updateLineChangeSchedule(worktreeID: worktreeID, immediate: true)
+    }
+    if let previousRepository, previousRepository == nextRepository {
+      updatePullRequestSchedule(repositoryRootURL: previousRepository, immediate: true)
+      return
+    }
+    if let previousRepository {
+      updatePullRequestSchedule(repositoryRootURL: previousRepository, immediate: false)
+    }
+    if let nextRepository {
+      updatePullRequestSchedule(repositoryRootURL: nextRepository, immediate: true)
     }
   }
 
@@ -190,7 +207,6 @@ final class WorktreeInfoWatcherManager {
     branchDebounceTasks.removeValue(forKey: worktreeID)?.cancel()
     filesDebounceTasks.removeValue(forKey: worktreeID)?.cancel()
     restartTasks.removeValue(forKey: worktreeID)?.cancel()
-    pullRequestTasks.removeValue(forKey: worktreeID)?.task.cancel()
     lineChangeTasks.removeValue(forKey: worktreeID)?.task.cancel()
   }
 
@@ -224,17 +240,46 @@ final class WorktreeInfoWatcherManager {
     eventContinuation?.finish()
   }
 
-  private func updatePullRequestSchedule(worktreeID: Worktree.ID, immediate: Bool) {
-    guard worktrees[worktreeID] != nil else {
+  private func updatePullRequestSchedule(repositoryRootURL: URL, immediate: Bool) {
+    let worktreeIDs = repositoryWorktreeIDs(for: repositoryRootURL)
+    guard !worktreeIDs.isEmpty else {
+      pullRequestTasks.removeValue(forKey: repositoryRootURL)?.task.cancel()
       return
     }
-    let interval = worktreeID == selectedWorktreeID ? RefreshTiming.focused : RefreshTiming.unfocused
-    updateRepeatingTask(
-      worktreeID: worktreeID,
-      interval: interval,
-      immediate: immediate,
-      tasks: &pullRequestTasks
-    ) { .pullRequestRefresh(worktreeID: $0) }
+    let isFocused = selectedWorktreeID.map { worktreeIDs.contains($0) } ?? false
+    let interval = isFocused ? RefreshTiming.focused : RefreshTiming.unfocused
+    if let existing = pullRequestTasks[repositoryRootURL], existing.interval == interval, !immediate {
+      return
+    }
+    pullRequestTasks[repositoryRootURL]?.task.cancel()
+    if immediate {
+      emitPullRequestRefresh(repositoryRootURL: repositoryRootURL)
+    }
+    let task = Task { [weak self] in
+      while !Task.isCancelled {
+        try? await Task.sleep(for: interval)
+        await MainActor.run {
+          self?.emitPullRequestRefresh(repositoryRootURL: repositoryRootURL)
+        }
+      }
+    }
+    pullRequestTasks[repositoryRootURL] = RefreshTask(interval: interval, task: task)
+  }
+
+  private func repositoryWorktreeIDs(for repositoryRootURL: URL) -> [Worktree.ID] {
+    worktrees
+      .values
+      .filter { $0.repositoryRootURL == repositoryRootURL }
+      .map(\.id)
+      .sorted()
+  }
+
+  private func emitPullRequestRefresh(repositoryRootURL: URL) {
+    let worktreeIDs = repositoryWorktreeIDs(for: repositoryRootURL)
+    guard !worktreeIDs.isEmpty else {
+      return
+    }
+    emit(.repositoryPullRequestRefresh(repositoryRootURL: repositoryRootURL, worktreeIDs: worktreeIDs))
   }
 
   private func updateLineChangeSchedule(worktreeID: Worktree.ID, immediate: Bool) {

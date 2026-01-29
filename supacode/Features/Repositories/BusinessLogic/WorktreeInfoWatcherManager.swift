@@ -178,7 +178,7 @@ final class WorktreeInfoWatcherManager {
   private func scheduleRestart(worktreeID: Worktree.ID) {
     restartTasks[worktreeID]?.cancel()
     let task = Task { [weak self] in
-      try? await Task.sleep(for: .milliseconds(200))
+      try? await Task.sleep(for: .seconds(5))
       await MainActor.run {
         self?.restartWatcher(worktreeID: worktreeID)
       }

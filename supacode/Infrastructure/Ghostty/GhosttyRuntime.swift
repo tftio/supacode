@@ -105,6 +105,14 @@ final class GhosttyRuntime {
     }
   }
 
+  func setColorScheme(_ scheme: ColorScheme) {
+    guard let app else { return }
+    let ghosttyScheme: ghostty_color_scheme_e = scheme == .dark
+      ? GHOSTTY_COLOR_SCHEME_DARK
+      : GHOSTTY_COLOR_SCHEME_LIGHT
+    ghostty_app_set_color_scheme(app, ghosttyScheme)
+  }
+
   private static func runtime(from userdata: UnsafeMutableRawPointer?) -> GhosttyRuntime? {
     guard let userdata else { return nil }
     return Unmanaged<GhosttyRuntime>.fromOpaque(userdata).takeUnretainedValue()

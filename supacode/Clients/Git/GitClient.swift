@@ -158,6 +158,11 @@ struct GitClient {
       }
       return trimmed
     } catch {
+      let rootPath = repoRoot.path(percentEncoded: false)
+      print(
+        "Default remote branch ref failed for \(rootPath): "
+          + error.localizedDescription
+      )
       return nil
     }
   }

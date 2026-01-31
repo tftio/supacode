@@ -40,9 +40,28 @@ struct RepositorySettingsFeature {
         return .run { send in
           let settings = repositorySettingsClient.load(rootURL)
           await send(.settingsLoaded(settings))
-          let branches = (try? await gitClient.branchRefs(rootURL)) ?? []
-          let defaultBaseRef =
-            (try? await gitClient.defaultRemoteBranchRef(rootURL)) ?? "origin/main"
+          let branches: [String]
+          do {
+            branches = try await gitClient.branchRefs(rootURL)
+          } catch {
+            let rootPath = rootURL.path(percentEncoded: false)
+            print(
+              "Repository settings branch refs failed for \(rootPath): "
+                + error.localizedDescription
+            )
+            branches = []
+          }
+          let defaultBaseRef: String
+          do {
+            defaultBaseRef = try await gitClient.defaultRemoteBranchRef(rootURL) ?? "origin/main"
+          } catch {
+            let rootPath = rootURL.path(percentEncoded: false)
+            print(
+              "Repository settings default base ref failed for \(rootPath): "
+                + error.localizedDescription
+            )
+            defaultBaseRef = "origin/main"
+          }
           await send(.branchDataLoaded(branches, defaultBaseRef: defaultBaseRef))
         }
 

@@ -63,7 +63,7 @@ struct ContentView: View {
   }
 
   private func toggleLeftSidebar() {
-    withAnimation(.easeInOut(duration: 0.2)) {
+    withAnimation(.easeOut(duration: 0.2)) {
       leftSidebarVisibility = leftSidebarVisibility == .detailOnly ? .all : .detailOnly
     }
   }

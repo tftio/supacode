@@ -8,11 +8,14 @@ struct RepoHeaderRow: View {
 
   var body: some View {
     HStack {
-      Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+      Image(systemName: "chevron.right")
         .font(.caption)
         .monospaced()
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
+        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+        .animation(.easeOut(duration: 0.2), value: isExpanded)
+        .frame(width: 10, alignment: .center)
       ZStack {
         RoundedRectangle(cornerRadius: 6, style: .continuous)
           .fill(.secondary.opacity(0.2))

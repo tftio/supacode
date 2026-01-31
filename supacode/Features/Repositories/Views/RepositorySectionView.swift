@@ -23,10 +23,12 @@ struct RepositorySectionView: View {
       )
     } header: {
       let toggleExpanded = {
-        if expandedRepoIDs.contains(repository.id) {
-          expandedRepoIDs.remove(repository.id)
-        } else {
-          expandedRepoIDs.insert(repository.id)
+        withAnimation(.easeOut(duration: 0.2)) {
+          if expandedRepoIDs.contains(repository.id) {
+            expandedRepoIDs.remove(repository.id)
+          } else {
+            expandedRepoIDs.insert(repository.id)
+          }
         }
       }
       HStack {
@@ -54,7 +56,6 @@ struct RepositorySectionView: View {
         } label: {
           Label("Repository options", systemImage: "ellipsis")
             .labelStyle(.iconOnly)
-            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -66,7 +67,6 @@ struct RepositorySectionView: View {
         } label: {
           Label("New Worktree", systemImage: "plus")
             .labelStyle(.iconOnly)
-            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -92,8 +92,7 @@ struct RepositorySectionView: View {
         .help("Remove repository ")
         .disabled(isRemovingRepository)
       }
-      .padding()
-      .padding(.bottom, isExpanded ? 6 : 0)
+      .listRowInsets(EdgeInsets())
     }
   }
 }

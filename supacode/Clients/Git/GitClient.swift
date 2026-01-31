@@ -124,21 +124,18 @@ struct GitClient {
     let path = repoRoot.path(percentEncoded: false)
     let localOutput = try await runGit(
       operation: .branchRefs,
-      arguments: ["-C", path, "for-each-ref", "--format=%(refname:short)", "refs/heads"]
+      arguments: [
+        "-C",
+        path,
+        "for-each-ref",
+        "--format=%(refname:short)\t%(upstream:short)",
+        "refs/heads",
+      ]
     )
-    let remoteOutput = try await runGit(
-      operation: .branchRefs,
-      arguments: ["-C", path, "for-each-ref", "--format=%(refname:short)", "refs/remotes"]
-    )
-    let localRefs = parseRefLines(localOutput)
-      .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-    let remoteRefs =
-      parseRefLines(remoteOutput)
+    let refs = parseLocalRefsWithUpstream(localOutput)
       .filter { !$0.hasSuffix("/HEAD") }
       .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-    let localUnique = deduplicated(localRefs)
-    let remoteUnique = deduplicated(remoteRefs)
-    return localUnique + remoteUnique
+    return deduplicated(refs)
   }
 
   nonisolated func defaultRemoteBranchRef(for repoRoot: URL) async throws -> String? {
@@ -344,6 +341,25 @@ struct GitClient {
       .split(whereSeparator: \.isNewline)
       .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
       .filter { !$0.isEmpty }
+  }
+
+  nonisolated private func parseLocalRefsWithUpstream(_ output: String) -> [String] {
+    output
+      .split(whereSeparator: \.isNewline)
+      .compactMap { line in
+        let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
+        guard let local = parts.first else {
+          return nil
+        }
+        let localRef = String(local).trimmingCharacters(in: .whitespacesAndNewlines)
+        let upstreamRef = parts.count > 1
+          ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines)
+          : ""
+        if !upstreamRef.isEmpty {
+          return upstreamRef
+        }
+        return localRef.isEmpty ? nil : localRef
+      }
   }
 
   nonisolated private func deduplicated(_ values: [String]) -> [String] {

@@ -7,13 +7,17 @@ struct RepositorySettingsFeature {
   struct State: Equatable {
     var rootURL: URL
     var settings: RepositorySettings
+    var branchOptions: [String] = []
+    var defaultWorktreeBaseRef = "origin/main"
   }
 
   enum Action: Equatable {
     case task
     case settingsLoaded(RepositorySettings)
+    case branchDataLoaded([String], defaultBaseRef: String)
     case setSetupScript(String)
     case setRunScript(String)
+    case setWorktreeBaseRef(String)
     case setCopyIgnoredOnWorktreeCreate(Bool)
     case setCopyUntrackedOnWorktreeCreate(Bool)
     case delegate(Delegate)
@@ -24,6 +28,7 @@ struct RepositorySettingsFeature {
   }
 
   @Dependency(\.repositorySettingsClient) private var repositorySettingsClient
+  @Dependency(\.gitClient) private var gitClient
 
   var body: some Reducer<State, Action> {
     Reduce { state, action in
@@ -31,13 +36,31 @@ struct RepositorySettingsFeature {
       case .task:
         let rootURL = state.rootURL
         let repositorySettingsClient = repositorySettingsClient
+        let gitClient = gitClient
         return .run { send in
           let settings = repositorySettingsClient.load(rootURL)
           await send(.settingsLoaded(settings))
+          let branches = (try? await gitClient.branchRefs(rootURL)) ?? []
+          let defaultBaseRef =
+            (try? await gitClient.defaultRemoteBranchRef(rootURL)) ?? "origin/main"
+          await send(.branchDataLoaded(branches, defaultBaseRef: defaultBaseRef))
         }
 
       case .settingsLoaded(let settings):
         state.settings = settings
+        return .none
+
+      case .branchDataLoaded(let branches, let defaultBaseRef):
+        state.defaultWorktreeBaseRef = defaultBaseRef
+        var options = branches
+        if !options.contains(defaultBaseRef) {
+          options.append(defaultBaseRef)
+        }
+        let selected = state.settings.worktreeBaseRef
+        if !selected.isEmpty, !options.contains(selected) {
+          options.append(selected)
+        }
+        state.branchOptions = options
         return .none
 
       case .setSetupScript(let script):
@@ -52,6 +75,16 @@ struct RepositorySettingsFeature {
 
       case .setRunScript(let script):
         state.settings.runScript = script
+        let settings = state.settings
+        let rootURL = state.rootURL
+        let repositorySettingsClient = repositorySettingsClient
+        return .run { send in
+          repositorySettingsClient.save(settings, rootURL)
+          await send(.delegate(.settingsChanged(rootURL)))
+        }
+
+      case .setWorktreeBaseRef(let ref):
+        state.settings.worktreeBaseRef = ref
         let settings = state.settings
         let rootURL = state.rootURL
         let repositorySettingsClient = repositorySettingsClient

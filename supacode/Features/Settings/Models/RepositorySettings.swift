@@ -4,6 +4,7 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
   var setupScript: String
   var runScript: String
   var openActionID: String
+  var worktreeBaseRef: String
   var copyIgnoredOnWorktreeCreate: Bool
   var copyUntrackedOnWorktreeCreate: Bool
 
@@ -11,6 +12,7 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     case setupScript
     case runScript
     case openActionID
+    case worktreeBaseRef
     case copyIgnoredOnWorktreeCreate
     case copyUntrackedOnWorktreeCreate
   }
@@ -19,6 +21,7 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     setupScript: "echo \"Setup your startup script in repo settings\"",
     runScript: "echo \"Configure run script in Settings, default hot key is CMD+R and CMD + . to stop\"",
     openActionID: OpenWorktreeAction.automaticSettingsID,
+    worktreeBaseRef: "",
     copyIgnoredOnWorktreeCreate: false,
     copyUntrackedOnWorktreeCreate: false
   )
@@ -27,12 +30,14 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     setupScript: String,
     runScript: String,
     openActionID: String,
+    worktreeBaseRef: String,
     copyIgnoredOnWorktreeCreate: Bool,
     copyUntrackedOnWorktreeCreate: Bool
   ) {
     self.setupScript = setupScript
     self.runScript = runScript
     self.openActionID = openActionID
+    self.worktreeBaseRef = worktreeBaseRef
     self.copyIgnoredOnWorktreeCreate = copyIgnoredOnWorktreeCreate
     self.copyUntrackedOnWorktreeCreate = copyUntrackedOnWorktreeCreate
   }
@@ -48,6 +53,9 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     openActionID =
       try container.decodeIfPresent(String.self, forKey: .openActionID)
       ?? Self.default.openActionID
+    worktreeBaseRef =
+      try container.decodeIfPresent(String.self, forKey: .worktreeBaseRef)
+      ?? Self.default.worktreeBaseRef
     copyIgnoredOnWorktreeCreate =
       try container.decodeIfPresent(
         Bool.self,

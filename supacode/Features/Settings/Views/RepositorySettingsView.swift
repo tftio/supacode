@@ -5,7 +5,34 @@ struct RepositorySettingsView: View {
   @Bindable var store: StoreOf<RepositorySettingsFeature>
 
   var body: some View {
+    let baseRefOptions =
+      store.branchOptions.isEmpty ? [store.defaultWorktreeBaseRef] : store.branchOptions
     Form {
+      Section {
+        Picker(
+          "Branch new workspaces from",
+          selection: Binding(
+            get: {
+              store.settings.worktreeBaseRef.isEmpty
+                ? store.defaultWorktreeBaseRef
+                : store.settings.worktreeBaseRef
+            },
+            set: { store.send(.setWorktreeBaseRef($0)) }
+          )
+        ) {
+          ForEach(baseRefOptions, id: \.self) { ref in
+            Text(ref)
+              .tag(ref)
+          }
+        }
+        .labelsHidden()
+      } header: {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Branch new workspaces from")
+          Text("Each workspace is an isolated copy of your codebase.")
+            .foregroundStyle(.secondary)
+        }
+      }
       Section {
         Toggle(
           "Copy ignored files to new worktrees",

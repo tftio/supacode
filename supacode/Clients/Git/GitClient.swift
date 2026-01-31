@@ -7,6 +7,8 @@ enum GitOperation: String {
   case worktreeCreate = "worktree_create"
   case worktreeRemove = "worktree_remove"
   case branchNames = "branch_names"
+  case branchRefs = "branch_refs"
+  case defaultRemoteBranchRef = "default_remote_branch_ref"
   case branchRename = "branch_rename"
   case branchDelete = "branch_delete"
   case lineChanges = "line_changes"
@@ -118,11 +120,54 @@ struct GitClient {
     return Set(names)
   }
 
+  nonisolated func branchRefs(for repoRoot: URL) async throws -> [String] {
+    let path = repoRoot.path(percentEncoded: false)
+    let localOutput = try await runGit(
+      operation: .branchRefs,
+      arguments: ["-C", path, "for-each-ref", "--format=%(refname:short)", "refs/heads"]
+    )
+    let remoteOutput = try await runGit(
+      operation: .branchRefs,
+      arguments: ["-C", path, "for-each-ref", "--format=%(refname:short)", "refs/remotes"]
+    )
+    let localRefs = parseRefLines(localOutput)
+      .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    let remoteRefs =
+      parseRefLines(remoteOutput)
+      .filter { !$0.hasSuffix("/HEAD") }
+      .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    let localUnique = deduplicated(localRefs)
+    let remoteUnique = deduplicated(remoteRefs)
+    return localUnique + remoteUnique
+  }
+
+  nonisolated func defaultRemoteBranchRef(for repoRoot: URL) async throws -> String? {
+    let path = repoRoot.path(percentEncoded: false)
+    do {
+      let output = try await runGit(
+        operation: .defaultRemoteBranchRef,
+        arguments: ["-C", path, "symbolic-ref", "-q", "refs/remotes/origin/HEAD"]
+      )
+      let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !trimmed.isEmpty else {
+        return nil
+      }
+      let prefix = "refs/remotes/"
+      if trimmed.hasPrefix(prefix) {
+        return String(trimmed.dropFirst(prefix.count))
+      }
+      return trimmed
+    } catch {
+      return nil
+    }
+  }
+
   nonisolated func createWorktree(
     named name: String,
     in repoRoot: URL,
     copyIgnored: Bool,
-    copyUntracked: Bool
+    copyUntracked: Bool,
+    baseRef: String
   ) async throws -> Worktree {
     let repositoryRootURL = repoRoot.standardizedFileURL
     let wtURL = try wtScriptURL()
@@ -133,6 +178,10 @@ struct GitClient {
     }
     if copyUntracked {
       arguments.append("--copy-untracked")
+    }
+    if !baseRef.isEmpty {
+      arguments.append("--from")
+      arguments.append(baseRef)
     }
     arguments.append(name)
     let output = try await runLoginShellProcess(
@@ -283,6 +332,18 @@ struct GitClient {
         result.added += added
         result.removed += removed
       }
+  }
+
+  nonisolated private func parseRefLines(_ output: String) -> [String] {
+    output
+      .split(whereSeparator: \.isNewline)
+      .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+  }
+
+  nonisolated private func deduplicated(_ values: [String]) -> [String] {
+    var seen = Set<String>()
+    return values.filter { seen.insert($0).inserted }
   }
 
   nonisolated private func runGit(

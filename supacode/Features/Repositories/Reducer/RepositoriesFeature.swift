@@ -335,6 +335,7 @@ struct RepositoriesFeature {
         let previousSelection = state.selectedWorktreeID
         let pendingID = "pending:\(UUID().uuidString)"
         let repositorySettings = repositorySettingsClient.load(repository.rootURL)
+        let selectedBaseRef = repositorySettings.worktreeBaseRef
         state.pendingWorktrees.append(
           PendingWorktree(
             id: pendingID,
@@ -366,11 +367,16 @@ struct RepositoriesFeature {
               )
               return
             }
+            let resolvedBaseRef =
+              selectedBaseRef.isEmpty
+                ? ((try? await gitClient.defaultRemoteBranchRef(repository.rootURL)) ?? "origin/main")
+                : selectedBaseRef
             let newWorktree = try await gitClient.createWorktree(
               name,
               repository.rootURL,
               repositorySettings.copyIgnoredOnWorktreeCreate,
-              repositorySettings.copyUntrackedOnWorktreeCreate
+              repositorySettings.copyUntrackedOnWorktreeCreate,
+              resolvedBaseRef
             )
             await send(
               .createRandomWorktreeSucceeded(

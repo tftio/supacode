@@ -143,8 +143,6 @@ struct SettingsFeature {
           }
         )
 
-      case .setGithubIntegrationEnabled(let value):
-        state.githubIntegrationEnabled = value
       case .setDeleteBranchOnArchive(let value):
         state.deleteBranchOnArchive = value
         let settings = state.globalSettings

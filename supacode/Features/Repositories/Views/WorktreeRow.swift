@@ -22,8 +22,8 @@ struct WorktreeRow: View {
         false
       }
     let displayPullRequest = matchesWorktree ? pullRequest : nil
-    let displayAddedLines = displayPullRequest?.additions ?? info?.addedLines
-    let displayRemovedLines = displayPullRequest?.deletions ?? info?.removedLines
+    let displayAddedLines = displayPullRequest == nil ? info?.addedLines : nil
+    let displayRemovedLines = displayPullRequest == nil ? info?.removedLines : nil
     let hasInfo = displayAddedLines != nil || displayRemovedLines != nil
     let pullRequestState = displayPullRequest?.state.uppercased()
     let pullRequestNumber = displayPullRequest?.number

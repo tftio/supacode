@@ -6,7 +6,6 @@ make build-app                   # Build macOS app (Debug) via xcodebuild
 make run-app                     # Build and launch Debug app
 make lint                        # Run swiftlint
 make test                        # Run all tests
-make format                      # Run swift-format
 make bump-version                # Bump patch version and create git tag
 make bump-and-release            # Bump version and push to trigger release
 ```

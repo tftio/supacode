@@ -5,14 +5,28 @@ struct TerminalTabBarTrailingAccessories: View {
 
   @Environment(GhosttyShortcutManager.self)
   private var ghosttyShortcuts
+  @Environment(CommandKeyObserver.self)
+  private var commandKeyObserver
 
   var body: some View {
-    Button("New Terminal", systemImage: "plus") {
+    Button {
       createTab()
+    } label: {
+      if commandKeyObserver.isPressed {
+        HStack(spacing: TerminalTabBarMetrics.contentSpacing) {
+          Text("New Tab")
+            .font(.caption)
+          if let shortcut = ghosttyShortcuts.display(for: "new_tab") {
+            ShortcutHintView(text: shortcut, color: TerminalTabBarColors.inactiveText)
+          }
+        }
+      } else {
+        Label("New Tab", systemImage: "plus")
+          .labelStyle(.iconOnly)
+      }
     }
-    .labelStyle(.iconOnly)
     .buttonStyle(.borderless)
-    .help(helpText("New Terminal", shortcut: ghosttyShortcuts.display(for: "new_tab")))
+    .help(helpText("New Tab", shortcut: ghosttyShortcuts.display(for: "new_tab")))
     .frame(height: TerminalTabBarMetrics.barHeight)
     .padding(.trailing, 8)
   }

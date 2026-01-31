@@ -7,6 +7,13 @@ import Testing
 @testable import supacode
 
 struct RepositorySettingsKeyTests {
+  @Test func encodingOmitsNilWorktreeBaseRef() throws {
+    let data = try JSONEncoder().encode(RepositorySettings.default)
+    let json = String(bytes: data, encoding: .utf8) ?? ""
+
+    #expect(!json.contains("worktreeBaseRef"))
+  }
+
   @Test(.dependencies) func loadCreatesDefaultAndPersists() throws {
     let storage = SettingsTestStorage()
     let rootURL = URL(fileURLWithPath: "/tmp/repo")

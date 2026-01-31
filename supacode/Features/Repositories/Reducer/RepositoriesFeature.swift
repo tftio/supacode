@@ -368,10 +368,10 @@ struct RepositoriesFeature {
               return
             }
             let resolvedBaseRef: String
-            if selectedBaseRef.isEmpty {
+            if (selectedBaseRef ?? "").isEmpty {
               resolvedBaseRef = await gitClient.automaticWorktreeBaseRef(repository.rootURL) ?? ""
             } else {
-              resolvedBaseRef = selectedBaseRef
+              resolvedBaseRef = selectedBaseRef ?? ""
             }
             let newWorktree = try await gitClient.createWorktree(
               name,

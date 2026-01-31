@@ -13,9 +13,9 @@ struct RepositorySettingsView: View {
           "Branch new workspaces from",
           selection: Binding(
             get: {
-              store.settings.worktreeBaseRef.isEmpty
+              (store.settings.worktreeBaseRef ?? "").isEmpty
                 ? store.defaultWorktreeBaseRef
-                : store.settings.worktreeBaseRef
+                : store.settings.worktreeBaseRef ?? store.defaultWorktreeBaseRef
             },
             set: { store.send(.setWorktreeBaseRef($0)) }
           )

@@ -65,8 +65,7 @@ struct RepositorySettingsFeature {
         if !options.contains(defaultBaseRef) {
           options.append(defaultBaseRef)
         }
-        let selected = state.settings.worktreeBaseRef
-        if !selected.isEmpty, !options.contains(selected) {
+        if let selected = state.settings.worktreeBaseRef, !options.contains(selected) {
           options.append(selected)
         }
         state.branchOptions = options

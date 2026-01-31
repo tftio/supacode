@@ -6,9 +6,11 @@ enum GitOperation: String {
   case worktreeList = "worktree_list"
   case worktreeCreate = "worktree_create"
   case worktreeRemove = "worktree_remove"
+  case repoIsBare = "repo_is_bare"
   case branchNames = "branch_names"
   case branchRefs = "branch_refs"
   case defaultRemoteBranchRef = "default_remote_branch_ref"
+  case localHeadRef = "local_head_ref"
   case branchRename = "branch_rename"
   case branchDelete = "branch_delete"
   case lineChanges = "line_changes"
@@ -67,6 +69,7 @@ struct GitClient {
     }
     let data = Data(trimmed.utf8)
     let entries = try JSONDecoder().decode([GitWtWorktreeEntry].self, from: data)
+      .filter { !$0.isBare }
     let worktreeEntries = entries.enumerated().map { index, entry in
       let worktreeURL = URL(fileURLWithPath: entry.path).standardizedFileURL
       let name = entry.branch.isEmpty ? worktreeURL.lastPathComponent : entry.branch
@@ -120,6 +123,15 @@ struct GitClient {
     return Set(names)
   }
 
+  nonisolated func isBareRepository(for repoRoot: URL) async throws -> Bool {
+    let path = repoRoot.path(percentEncoded: false)
+    let output = try await runGit(
+      operation: .repoIsBare,
+      arguments: ["-C", path, "rev-parse", "--is-bare-repository"]
+    )
+    return output.trimmingCharacters(in: .whitespacesAndNewlines) == "true"
+  }
+
   nonisolated func branchRefs(for repoRoot: URL) async throws -> [String] {
     let path = repoRoot.path(percentEncoded: false)
     let localOutput = try await runGit(
@@ -167,7 +179,12 @@ struct GitClient {
 
   nonisolated func automaticWorktreeBaseRef(for repoRoot: URL) async -> String? {
     let resolved = try? await defaultRemoteBranchRef(for: repoRoot)
-    return resolved ?? nil
+    if let resolved {
+      return Self.preferredBaseRef(remote: resolved, localHead: nil)
+    }
+    let localHead = try? await localHeadBranchRef(for: repoRoot)
+    let resolvedLocalHead = await resolveLocalHead(localHead, repoRoot: repoRoot)
+    return Self.preferredBaseRef(remote: nil, localHead: resolvedLocalHead)
   }
 
   nonisolated func createWorktree(
@@ -378,6 +395,28 @@ struct GitClient {
     return trimmed
   }
 
+  nonisolated private func localHeadBranchRef(for repoRoot: URL) async throws -> String? {
+    let path = repoRoot.path(percentEncoded: false)
+    let output = try await runGit(
+      operation: .localHeadRef,
+      arguments: ["-C", path, "symbolic-ref", "--short", "HEAD"]
+    )
+    let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
+  }
+
+  nonisolated private func resolveLocalHead(_ localHead: String?, repoRoot: URL) async -> String? {
+    guard let localHead else { return nil }
+    if await refExists(localHead, repoRoot: repoRoot) {
+      return localHead
+    }
+    return nil
+  }
+
+  nonisolated static func preferredBaseRef(remote: String?, localHead: String?) -> String? {
+    remote ?? localHead
+  }
+
   nonisolated private func refExists(_ ref: String, repoRoot: URL) async -> Bool {
     let path = repoRoot.path(percentEncoded: false)
     do {
@@ -550,8 +589,17 @@ nonisolated private func wrapShellError(
   return gitError
 }
 
-struct GitWtWorktreeEntry: Decodable {
+struct GitWtWorktreeEntry: Decodable, Equatable {
   let branch: String
   let path: String
   let head: String
+  let isBare: Bool
+
+  enum CodingKeys: String, CodingKey {
+    case branch
+    case path
+    case head
+    case isBare = "is_bare"
+  }
+
 }

@@ -46,6 +46,7 @@ struct RepositorySettingsView: View {
             set: { store.send(.setCopyIgnoredOnWorktreeCreate($0)) }
           )
         )
+        .disabled(store.isBareRepository)
         Toggle(
           "Copy untracked files to new worktrees",
           isOn: Binding(
@@ -53,6 +54,11 @@ struct RepositorySettingsView: View {
             set: { store.send(.setCopyUntrackedOnWorktreeCreate($0)) }
           )
         )
+        .disabled(store.isBareRepository)
+        if store.isBareRepository {
+          Text("Copy flags are ignored for bare repositories.")
+            .foregroundStyle(.secondary)
+        }
       } header: {
         VStack(alignment: .leading, spacing: 4) {
           Text("Worktree")

@@ -12,6 +12,8 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     permissions:
       contents: read
+      actions: read
+      issues: write
       pull-requests: write
     env:
       MISE_HTTP_TIMEOUT: 120

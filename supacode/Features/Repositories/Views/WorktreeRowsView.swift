@@ -28,6 +28,7 @@ struct WorktreeRowsView: View {
           shortcutHint: shortcutHint
         )
       }
+      .animation(.easeOut(duration: 0.2), value: rows.map(\.id))
     }
   }
 
@@ -56,6 +57,7 @@ struct WorktreeRowsView: View {
       )
       .tag(SidebarSelection.worktree(row.id))
       .listRowInsets(EdgeInsets())
+      .transition(.opacity)
       .contextMenu {
         if !row.isMainWorktree {
           if row.isPinned {
@@ -94,6 +96,7 @@ struct WorktreeRowsView: View {
       )
       .tag(SidebarSelection.worktree(row.id))
       .listRowInsets(EdgeInsets())
+      .transition(.opacity)
       .disabled(isRepositoryRemoving)
     }
   }

@@ -233,6 +233,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     case 0x37, 0x36: mod = GHOSTTY_MODS_SUPER.rawValue
     default: return
     }
+    if hasMarkedText() { return }
     let mods = ghosttyMods(event.modifierFlags)
     var action = GHOSTTY_ACTION_RELEASE
     if (mods.rawValue & mod) != 0 {

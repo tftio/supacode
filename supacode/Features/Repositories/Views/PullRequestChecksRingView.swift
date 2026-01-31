@@ -4,7 +4,7 @@ struct PullRequestChecksRingView: View {
   let breakdown: PullRequestCheckBreakdown
   @ScaledMetric(relativeTo: .caption) private var diameter: CGFloat = 12
   @ScaledMetric(relativeTo: .caption) private var lineWidth: CGFloat = 2
-  private let segmentGapFraction = 0.02
+  private let segmentGapFraction = 0.05
 
   var body: some View {
     if breakdown.total == 0 {

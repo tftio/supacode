@@ -4,16 +4,22 @@ struct PullRequestChecksRingView: View {
   let breakdown: PullRequestCheckBreakdown
   @ScaledMetric(relativeTo: .caption) private var diameter: CGFloat = 12
   @ScaledMetric(relativeTo: .caption) private var lineWidth: CGFloat = 2
+  private let segmentGapFraction = 0.008
 
   var body: some View {
     if breakdown.total == 0 {
       EmptyView()
     } else {
       let segments = segments(for: breakdown)
+      let applyGap = segments.count > 1
       ZStack {
         ForEach(segments) { segment in
-          RingSegmentShape(startAngle: segment.startAngle, endAngle: segment.endAngle)
-            .stroke(segment.color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+          if let trimmed = trimmedSegment(segment, applyGap: applyGap) {
+            Circle()
+              .trim(from: trimmed.start, to: trimmed.end)
+              .rotation(.degrees(-90))
+              .stroke(trimmed.color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+          }
         }
       }
       .frame(width: diameter, height: diameter)
@@ -26,19 +32,19 @@ struct PullRequestChecksRingView: View {
     guard total > 0 else {
       return []
     }
-    var start = -90.0
+    var start = 0.0
     var segments: [Segment] = []
     func addSegment(id: String, count: Int, color: Color) {
       guard count > 0 else {
         return
       }
-      let sweep = (Double(count) / total) * 360
+      let sweep = Double(count) / total
       let end = start + sweep
       segments.append(
         Segment(
           id: id,
-          startAngle: .degrees(start),
-          endAngle: .degrees(end),
+          start: start,
+          end: end,
           color: color
         )
       )
@@ -52,29 +58,24 @@ struct PullRequestChecksRingView: View {
     return segments
   }
 
-  private struct Segment: Identifiable {
-    let id: String
-    let startAngle: Angle
-    let endAngle: Angle
-    let color: Color
+  private func trimmedSegment(_ segment: Segment, applyGap: Bool) -> Segment? {
+    let length = segment.end - segment.start
+    guard length > 0 else {
+      return nil
+    }
+    let gap = applyGap ? min(segmentGapFraction, length * 0.45) : 0
+    let start = segment.start + gap
+    let end = segment.end - gap
+    guard end > start else {
+      return nil
+    }
+    return Segment(id: segment.id, start: start, end: end, color: segment.color)
   }
 
-  private struct RingSegmentShape: Shape {
-    let startAngle: Angle
-    let endAngle: Angle
-
-    func path(in rect: CGRect) -> Path {
-      let center = CGPoint(x: rect.midX, y: rect.midY)
-      let radius = min(rect.width, rect.height) / 2
-      var path = Path()
-      path.addArc(
-        center: center,
-        radius: radius,
-        startAngle: startAngle,
-        endAngle: endAngle,
-        clockwise: false
-      )
-      return path
-    }
+  private struct Segment: Identifiable {
+    let id: String
+    let start: Double
+    let end: Double
+    let color: Color
   }
 }

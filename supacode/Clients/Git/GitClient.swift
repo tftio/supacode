@@ -146,22 +146,23 @@ struct GitClient {
         arguments: ["-C", path, "symbolic-ref", "-q", "refs/remotes/origin/HEAD"]
       )
       let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
-      guard !trimmed.isEmpty else {
-        return nil
+      if let resolved = normalizeRemoteRef(trimmed),
+        await refExists(resolved, repoRoot: repoRoot)
+      {
+        return resolved
       }
-      let prefix = "refs/remotes/"
-      if trimmed.hasPrefix(prefix) {
-        return String(trimmed.dropFirst(prefix.count))
-      }
-      return trimmed
     } catch {
       let rootPath = repoRoot.path(percentEncoded: false)
       print(
         "Default remote branch ref failed for \(rootPath): "
           + error.localizedDescription
       )
-      return nil
     }
+    let fallback = "origin/main"
+    if await refExists(fallback, repoRoot: repoRoot) {
+      return fallback
+    }
+    return nil
   }
 
   nonisolated func createWorktree(
@@ -358,6 +359,31 @@ struct GitClient {
   nonisolated private func deduplicated(_ values: [String]) -> [String] {
     var seen = Set<String>()
     return values.filter { seen.insert($0).inserted }
+  }
+
+  nonisolated private func normalizeRemoteRef(_ value: String) -> String? {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+      return nil
+    }
+    let prefix = "refs/remotes/"
+    if trimmed.hasPrefix(prefix) {
+      return String(trimmed.dropFirst(prefix.count))
+    }
+    return trimmed
+  }
+
+  nonisolated private func refExists(_ ref: String, repoRoot: URL) async -> Bool {
+    let path = repoRoot.path(percentEncoded: false)
+    do {
+      _ = try await runGit(
+        operation: .defaultRemoteBranchRef,
+        arguments: ["-C", path, "rev-parse", "--verify", "--quiet", ref]
+      )
+      return true
+    } catch {
+      return false
+    }
   }
 
   nonisolated private func runGit(

@@ -87,4 +87,24 @@ struct GitClientBranchRefsTests {
 
     #expect(ref == nil)
   }
+
+  @Test func defaultRemoteBranchRefFallsBackToOriginMain() async throws {
+    let shell = ShellClient(
+      run: { _, arguments, _ in
+        if arguments.contains("symbolic-ref") {
+          throw ShellClientError(command: "git", stdout: "", stderr: "missing", exitCode: 1)
+        }
+        if arguments.contains("rev-parse") {
+          return ShellOutput(stdout: "hash", stderr: "", exitCode: 0)
+        }
+        return ShellOutput(stdout: "", stderr: "", exitCode: 0)
+      },
+      runLogin: { _, _, _ in ShellOutput(stdout: "", stderr: "", exitCode: 0) }
+    )
+    let client = GitClient(shell: shell)
+
+    let ref = try await client.defaultRemoteBranchRef(for: URL(fileURLWithPath: "/tmp/repo"))
+
+    #expect(ref == "origin/main")
+  }
 }

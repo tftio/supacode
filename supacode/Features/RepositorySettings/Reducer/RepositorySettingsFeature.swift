@@ -53,14 +53,14 @@ struct RepositorySettingsFeature {
           }
           let defaultBaseRef: String
           do {
-            defaultBaseRef = try await gitClient.defaultRemoteBranchRef(rootURL) ?? "origin/main"
+            defaultBaseRef = try await gitClient.defaultRemoteBranchRef(rootURL) ?? "HEAD"
           } catch {
             let rootPath = rootURL.path(percentEncoded: false)
             print(
               "Repository settings default base ref failed for \(rootPath): "
                 + error.localizedDescription
             )
-            defaultBaseRef = "origin/main"
+            defaultBaseRef = "HEAD"
           }
           await send(.branchDataLoaded(branches, defaultBaseRef: defaultBaseRef))
         }

@@ -48,6 +48,6 @@ jobs:
         run: |
           set -euo pipefail
           make build-ghostty-xcframework
-      - run: make lint
+      - run: make check
       - run: make build-app
       - run: make test

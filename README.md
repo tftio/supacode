@@ -18,7 +18,7 @@ make run-app                     # Build and launch
 ## Development
 
 ```bash
-make lint      # Run swiftlint
+make check     # Run swiftformat and swiftlint
 make test      # Run tests
 make format    # Run swift-format
 ```

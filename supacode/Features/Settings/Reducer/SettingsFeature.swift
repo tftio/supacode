@@ -10,6 +10,7 @@ struct SettingsFeature {
     var updatesAutomaticallyCheckForUpdates: Bool
     var updatesAutomaticallyDownloadUpdates: Bool
     var inAppNotificationsEnabled: Bool
+    var dockBadgeEnabled: Bool
     var notificationSoundEnabled: Bool
     var githubIntegrationEnabled: Bool
     var deleteBranchOnArchive: Bool
@@ -22,6 +23,7 @@ struct SettingsFeature {
       updatesAutomaticallyCheckForUpdates = settings.updatesAutomaticallyCheckForUpdates
       updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
       inAppNotificationsEnabled = settings.inAppNotificationsEnabled
+      dockBadgeEnabled = settings.dockBadgeEnabled
       notificationSoundEnabled = settings.notificationSoundEnabled
       githubIntegrationEnabled = settings.githubIntegrationEnabled
       deleteBranchOnArchive = settings.deleteBranchOnArchive
@@ -34,6 +36,7 @@ struct SettingsFeature {
         updatesAutomaticallyCheckForUpdates: updatesAutomaticallyCheckForUpdates,
         updatesAutomaticallyDownloadUpdates: updatesAutomaticallyDownloadUpdates,
         inAppNotificationsEnabled: inAppNotificationsEnabled,
+        dockBadgeEnabled: dockBadgeEnabled,
         notificationSoundEnabled: notificationSoundEnabled,
         githubIntegrationEnabled: githubIntegrationEnabled,
         deleteBranchOnArchive: deleteBranchOnArchive
@@ -73,6 +76,7 @@ struct SettingsFeature {
         state.updatesAutomaticallyCheckForUpdates = settings.updatesAutomaticallyCheckForUpdates
         state.updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
         state.inAppNotificationsEnabled = settings.inAppNotificationsEnabled
+        state.dockBadgeEnabled = settings.dockBadgeEnabled
         state.notificationSoundEnabled = settings.notificationSoundEnabled
         state.githubIntegrationEnabled = settings.githubIntegrationEnabled
         state.deleteBranchOnArchive = settings.deleteBranchOnArchive

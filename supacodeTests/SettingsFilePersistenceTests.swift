@@ -101,6 +101,7 @@ struct SettingsFilePersistenceTests {
     #expect(settings.global.updatesAutomaticallyCheckForUpdates == false)
     #expect(settings.global.updatesAutomaticallyDownloadUpdates == true)
     #expect(settings.global.inAppNotificationsEnabled == true)
+    #expect(settings.global.dockBadgeEnabled == true)
     #expect(settings.global.notificationSoundEnabled == true)
     #expect(settings.global.githubIntegrationEnabled == true)
     #expect(settings.global.deleteBranchOnArchive == true)

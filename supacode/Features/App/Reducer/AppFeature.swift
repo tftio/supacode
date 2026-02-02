@@ -21,6 +21,7 @@ struct AppFeature {
     var openActionSelection: OpenWorktreeAction = .finder
     var selectedRunScript: String = ""
     var runScriptStatusByWorktreeID: [Worktree.ID: Bool] = [:]
+    var notificationIndicatorCount: Int = 0
     @Presents var alert: AlertState<Alert>?
 
     init(
@@ -196,6 +197,10 @@ struct AppFeature {
         return .none
 
       case .settings(.delegate(.settingsChanged(let settings))):
+        let badgeLabel =
+          settings.dockBadgeEnabled
+          ? (state.notificationIndicatorCount == 0 ? nil : String(state.notificationIndicatorCount))
+          : nil
         return .merge(
           .send(.repositories(.setGithubIntegrationEnabled(settings.githubIntegrationEnabled))),
           .send(
@@ -208,6 +213,11 @@ struct AppFeature {
           ),
           .run { _ in
             await terminalClient.send(.setNotificationsEnabled(settings.inAppNotificationsEnabled))
+          },
+          .run { _ in
+            await MainActor.run {
+              NSApplication.shared.dockTile.badgeLabel = badgeLabel
+            }
           },
           .run { _ in
             await worktreeInfoWatcher.send(
@@ -426,9 +436,14 @@ struct AppFeature {
         }
 
       case .terminalEvent(.notificationIndicatorChanged(let count)):
+        state.notificationIndicatorCount = count
+        let badgeLabel =
+          state.settings.dockBadgeEnabled
+          ? (count == 0 ? nil : String(count))
+          : nil
         return .run { _ in
           await MainActor.run {
-            NSApplication.shared.dockTile.badgeLabel = count == 0 ? nil : String(count)
+            NSApplication.shared.dockTile.badgeLabel = badgeLabel
           }
         }
 

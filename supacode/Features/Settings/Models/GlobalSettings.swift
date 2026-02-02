@@ -4,6 +4,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var updatesAutomaticallyCheckForUpdates: Bool
   var updatesAutomaticallyDownloadUpdates: Bool
   var inAppNotificationsEnabled: Bool
+  var dockBadgeEnabled: Bool
   var notificationSoundEnabled: Bool
   var githubIntegrationEnabled: Bool
   var deleteBranchOnArchive: Bool
@@ -14,6 +15,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     updatesAutomaticallyCheckForUpdates: true,
     updatesAutomaticallyDownloadUpdates: false,
     inAppNotificationsEnabled: true,
+    dockBadgeEnabled: true,
     notificationSoundEnabled: true,
     githubIntegrationEnabled: true,
     deleteBranchOnArchive: true
@@ -25,6 +27,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     updatesAutomaticallyCheckForUpdates: Bool,
     updatesAutomaticallyDownloadUpdates: Bool,
     inAppNotificationsEnabled: Bool,
+    dockBadgeEnabled: Bool,
     notificationSoundEnabled: Bool,
     githubIntegrationEnabled: Bool,
     deleteBranchOnArchive: Bool
@@ -34,6 +37,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.updatesAutomaticallyCheckForUpdates = updatesAutomaticallyCheckForUpdates
     self.updatesAutomaticallyDownloadUpdates = updatesAutomaticallyDownloadUpdates
     self.inAppNotificationsEnabled = inAppNotificationsEnabled
+    self.dockBadgeEnabled = dockBadgeEnabled
     self.notificationSoundEnabled = notificationSoundEnabled
     self.githubIntegrationEnabled = githubIntegrationEnabled
     self.deleteBranchOnArchive = deleteBranchOnArchive
@@ -50,6 +54,9 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     inAppNotificationsEnabled =
       try container.decodeIfPresent(Bool.self, forKey: .inAppNotificationsEnabled)
       ?? Self.default.inAppNotificationsEnabled
+    dockBadgeEnabled =
+      try container.decodeIfPresent(Bool.self, forKey: .dockBadgeEnabled)
+      ?? Self.default.dockBadgeEnabled
     notificationSoundEnabled =
       try container.decodeIfPresent(Bool.self, forKey: .notificationSoundEnabled)
       ?? Self.default.notificationSoundEnabled

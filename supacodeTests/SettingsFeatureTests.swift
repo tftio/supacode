@@ -15,6 +15,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: true,
       inAppNotificationsEnabled: false,
+      dockBadgeEnabled: false,
       notificationSoundEnabled: true,
       githubIntegrationEnabled: true,
       deleteBranchOnArchive: false
@@ -32,6 +33,7 @@ struct SettingsFeatureTests {
       $0.updatesAutomaticallyCheckForUpdates = false
       $0.updatesAutomaticallyDownloadUpdates = true
       $0.inAppNotificationsEnabled = false
+      $0.dockBadgeEnabled = false
       $0.notificationSoundEnabled = true
       $0.githubIntegrationEnabled = true
       $0.deleteBranchOnArchive = false
@@ -46,6 +48,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: false,
       inAppNotificationsEnabled: false,
+      dockBadgeEnabled: true,
       notificationSoundEnabled: false,
       githubIntegrationEnabled: true,
       deleteBranchOnArchive: true
@@ -71,6 +74,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: initialSettings.updatesAutomaticallyCheckForUpdates,
       updatesAutomaticallyDownloadUpdates: initialSettings.updatesAutomaticallyDownloadUpdates,
       inAppNotificationsEnabled: initialSettings.inAppNotificationsEnabled,
+      dockBadgeEnabled: initialSettings.dockBadgeEnabled,
       notificationSoundEnabled: initialSettings.notificationSoundEnabled,
       githubIntegrationEnabled: initialSettings.githubIntegrationEnabled,
       deleteBranchOnArchive: initialSettings.deleteBranchOnArchive
@@ -115,6 +119,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: true,
       inAppNotificationsEnabled: false,
+      dockBadgeEnabled: false,
       notificationSoundEnabled: false,
       githubIntegrationEnabled: true,
       deleteBranchOnArchive: true
@@ -126,6 +131,7 @@ struct SettingsFeatureTests {
       $0.updatesAutomaticallyCheckForUpdates = false
       $0.updatesAutomaticallyDownloadUpdates = true
       $0.inAppNotificationsEnabled = false
+      $0.dockBadgeEnabled = false
       $0.notificationSoundEnabled = false
       $0.githubIntegrationEnabled = true
       $0.deleteBranchOnArchive = true

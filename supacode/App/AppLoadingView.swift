@@ -30,7 +30,6 @@ struct AppLoadingView: View {
   var body: some View {
     VStack {
       Text(Self.messages[messageIndex])
-        .font(.title3)
         .ghosttyMonospaced(.title3)
         .bold()
       ProgressView()

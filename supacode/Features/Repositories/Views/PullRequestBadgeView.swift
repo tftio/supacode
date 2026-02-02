@@ -34,10 +34,11 @@ enum PullRequestBadgeStyle {
 struct PullRequestBadgeView: View {
   let text: String
   let color: Color
+  @Environment(GhosttyFontManager.self) private var ghosttyFonts
+  @State private var didLogFont = false
 
   var body: some View {
     Text(text)
-      .font(.caption2)
       .ghosttyMonospaced(.caption2)
       .foregroundStyle(color)
       .padding(.horizontal, 6)
@@ -48,5 +49,14 @@ struct PullRequestBadgeView: View {
           .stroke(color, lineWidth: 1)
       }
       .accessibilityLabel(text)
+      .onAppear {
+        if didLogFont {
+          return
+        }
+        didLogFont = true
+        let font = ghosttyFonts.nsFont(for: .caption2)
+        let family = font.familyName ?? "unknown"
+        print("PullRequestBadgeView font: \(family) \(font.fontName) \(font.pointSize)")
+      }
   }
 }

@@ -6,7 +6,6 @@ struct ShortcutHintView: View {
 
   var body: some View {
     Text(text)
-      .font(.caption2)
       .ghosttyMonospaced(.caption2)
       .foregroundStyle(color)
   }

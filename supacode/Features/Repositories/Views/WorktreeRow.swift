@@ -38,7 +38,6 @@ struct WorktreeRow: View {
       ZStack {
         if showsNotificationIndicator {
           Image(systemName: "bell.fill")
-            .font(.caption)
             .ghosttyMonospaced(.caption)
             .foregroundStyle(.orange)
             .opacity(showsSpinner ? 0 : 1)
@@ -46,7 +45,6 @@ struct WorktreeRow: View {
             .accessibilityLabel("Unread notifications")
         } else {
           Image(systemName: branchIconName)
-            .font(.caption)
             .ghosttyMonospaced(.caption)
             .foregroundStyle(.secondary)
             .opacity(showsSpinner ? 0 : 1)
@@ -71,7 +69,6 @@ struct WorktreeRow: View {
       Spacer(minLength: 8)
       if isRunScriptRunning {
         Image(systemName: "play.fill")
-          .font(.caption)
           .ghosttyMonospaced(.caption)
           .foregroundStyle(.green)
           .help("Run script active")
@@ -117,7 +114,6 @@ private struct WorktreeRowInfoView: View {
         }
       }
     }
-    .font(.caption)
     .ghosttyMonospaced(.caption)
     .frame(minHeight: 14)
   }

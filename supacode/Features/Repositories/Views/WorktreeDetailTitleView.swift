@@ -18,7 +18,6 @@ struct WorktreeDetailTitleView: View {
           .accessibilityHidden(true)
         Text(branchName)
       }
-      .font(.headline)
       .ghosttyMonospaced(.headline)
     }
     .help("Rename branch")

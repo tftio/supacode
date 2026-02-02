@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import PostHog
 
 @Reducer
 struct SettingsFeature {
@@ -58,6 +59,7 @@ struct SettingsFeature {
     case settingsChanged(GlobalSettings)
   }
 
+  @Dependency(\.analyticsClient) private var analyticsClient
   @Dependency(\.settingsClient) private var settingsClient
 
   var body: some Reducer<State, Action> {
@@ -83,6 +85,7 @@ struct SettingsFeature {
         return .send(.delegate(.settingsChanged(settings)))
 
       case .binding:
+        analyticsClient.capture("settings_changed", nil)
         let settings = state.globalSettings
         return .merge(
           .send(.delegate(.settingsChanged(settings))),

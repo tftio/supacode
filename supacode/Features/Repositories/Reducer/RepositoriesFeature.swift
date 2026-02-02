@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import IdentifiedCollections
+import PostHog
 import SwiftUI
 
 private enum CancelID {
@@ -106,6 +107,7 @@ struct RepositoriesFeature {
     case openRepositorySettings(Repository.ID)
   }
 
+  @Dependency(\.analyticsClient) private var analyticsClient
   @Dependency(\.gitClient) private var gitClient
   @Dependency(\.githubCLI) private var githubCLI
   @Dependency(\.githubIntegration) private var githubIntegration
@@ -197,6 +199,7 @@ struct RepositoriesFeature {
         return .merge(allEffects)
 
       case .openRepositories(let urls):
+        analyticsClient.capture("repository_added", ["count": urls.count])
         state.alert = nil
         return .run { send in
           let loadedPaths = await repositoryPersistence.loadRoots()
@@ -410,6 +413,7 @@ struct RepositoriesFeature {
         let repositoryID,
         let pendingID
       ):
+        analyticsClient.capture("worktree_created", nil)
         state.pendingSetupScriptWorktreeIDs.insert(worktree.id)
         state.pendingTerminalFocusWorktreeIDs.insert(worktree.id)
         removePendingWorktree(pendingID, state: &state)
@@ -546,6 +550,7 @@ struct RepositoriesFeature {
         _,
         let nextSelection
       ):
+        analyticsClient.capture("worktree_removed", nil)
         let previousSelection = state.selectedWorktreeID
         let previousSelectedWorktree = state.worktree(for: previousSelection)
         let wasPinned = state.pinnedWorktreeIDs.contains(worktreeID)
@@ -637,6 +642,7 @@ struct RepositoriesFeature {
         return .send(.repositoryRemoved(repository.id, selectionWasRemoved: selectionWasRemoved))
 
       case .repositoryRemoved(let repositoryID, let selectionWasRemoved):
+        analyticsClient.capture("repository_removed", nil)
         state.removingRepositoryIDs.remove(repositoryID)
         if selectionWasRemoved {
           state.selectedWorktreeID = nil
@@ -677,6 +683,7 @@ struct RepositoriesFeature {
           }
           return .none
         }
+        analyticsClient.capture("worktree_pinned", nil)
         state.pinnedWorktreeIDs.removeAll { $0 == worktreeID }
         state.pinnedWorktreeIDs.insert(worktreeID, at: 0)
         let pinnedWorktreeIDs = state.pinnedWorktreeIDs
@@ -685,6 +692,7 @@ struct RepositoriesFeature {
         }
 
       case .unpinWorktree(let worktreeID):
+        analyticsClient.capture("worktree_unpinned", nil)
         state.pinnedWorktreeIDs.removeAll { $0 == worktreeID }
         let pinnedWorktreeIDs = state.pinnedWorktreeIDs
         return .run { _ in

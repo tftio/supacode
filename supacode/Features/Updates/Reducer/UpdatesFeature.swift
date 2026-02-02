@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import PostHog
 
 @Reducer
 struct UpdatesFeature {
@@ -15,6 +16,7 @@ struct UpdatesFeature {
     case checkForUpdates
   }
 
+  @Dependency(\.analyticsClient) private var analyticsClient
   @Dependency(\.updaterClient) private var updaterClient
 
   var body: some Reducer<State, Action> {
@@ -28,6 +30,7 @@ struct UpdatesFeature {
         }
 
       case .checkForUpdates:
+        analyticsClient.capture("update_checked", nil)
         return .run { _ in
           await updaterClient.checkForUpdates()
         }

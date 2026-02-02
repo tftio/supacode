@@ -1,6 +1,7 @@
 import AppKit
 import ComposableArchitecture
 import Foundation
+import PostHog
 import Sentry
 import SwiftUI
 
@@ -64,6 +65,7 @@ struct AppFeature {
     case confirmQuit
   }
 
+  @Dependency(\.analyticsClient) private var analyticsClient
   @Dependency(\.repositorySettingsClient) private var repositorySettingsClient
   @Dependency(\.repositoryPersistence) private var repositoryPersistence
   @Dependency(\.workspaceClient) private var workspaceClient
@@ -92,6 +94,7 @@ struct AppFeature {
       case .scenePhaseChanged(let phase):
         switch phase {
         case .active:
+          analyticsClient.capture("app_activated", nil)
           return .send(.repositories(.loadPersistedRepositories))
         default:
           return .none
@@ -247,6 +250,7 @@ struct AppFeature {
         guard let worktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID) else {
           return .none
         }
+        analyticsClient.capture("worktree_opened", ["action": action.settingsID])
         return .run { send in
           await workspaceClient.open(action, worktree) { error in
             send(.openWorktreeFailed(error))
@@ -289,6 +293,7 @@ struct AppFeature {
         guard let worktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID) else {
           return .none
         }
+        analyticsClient.capture("terminal_tab_created", nil)
         let shouldRunSetupScript = state.repositories.pendingSetupScriptWorktreeIDs.contains(worktree.id)
         var effects: [Effect<Action>] = [
           .run { _ in
@@ -317,6 +322,7 @@ struct AppFeature {
           }
           return .none
         }
+        analyticsClient.capture("script_run", nil)
         let script = state.selectedRunScript
         return .run { _ in
           await terminalClient.send(.runScript(worktree, script: script))

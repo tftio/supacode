@@ -331,7 +331,7 @@ struct GitClient {
       do {
         _ = try await runGit(
           operation: .worktreePrune,
-          arguments: ["-C", rootPath, "worktree", "prune"]
+          arguments: ["-C", rootPath, "worktree", "prune", "--expire=now"]
         )
       } catch {
         _ = try await runGit(

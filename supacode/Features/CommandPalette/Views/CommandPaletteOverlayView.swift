@@ -295,7 +295,7 @@ private struct CommandPaletteRowView: View {
       HStack(spacing: 8) {
         if let leadingIcon {
           Image(systemName: leadingIcon)
-            .foregroundStyle(emphasis ? Color.accentColor : .secondary)
+            .foregroundStyle(emphasis ? .primary : .secondary)
             .font(.system(size: 14, weight: .medium))
         }
 
@@ -318,9 +318,9 @@ private struct CommandPaletteRowView: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(
-              Capsule().fill(Color.accentColor.opacity(0.15))
+              Capsule().fill(Color(nsColor: .quaternaryLabelColor))
             )
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(.secondary)
         }
 
         if let shortcutIndex {
@@ -331,10 +331,6 @@ private struct CommandPaletteRowView: View {
       .padding(8)
       .contentShape(Rectangle())
       .background(rowBackground)
-      .overlay(
-        RoundedRectangle(cornerRadius: 5)
-          .strokeBorder(Color.accentColor.opacity(emphasis && !isSelected ? 0.3 : 0), lineWidth: 1.5)
-      )
       .cornerRadius(5)
     }
     .buttonStyle(.plain)
@@ -347,9 +343,9 @@ private struct CommandPaletteRowView: View {
   private var rowBackground: some View {
     Group {
       if isSelected {
-        Color.accentColor.opacity(0.2)
+        Color(nsColor: .selectedContentBackgroundColor)
       } else if hoveredID == row.id {
-        Color.secondary.opacity(0.2)
+        Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
       } else {
         Color.clear
       }

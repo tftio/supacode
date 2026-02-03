@@ -60,7 +60,7 @@ struct PullRequestStatusModel: Equatable {
     self.url = URL(string: pullRequest.url)
     self.title = pullRequest.title
     if state == "MERGED" {
-      self.detailText = "Merged"
+      self.detailText = nil
       self.statusChecks = []
       return
     }

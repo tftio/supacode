@@ -5,9 +5,6 @@ struct GhosttySurfaceSearchOverlay: View {
   let surfaceView: GhosttySurfaceView
   @Bindable var state: GhosttySurfaceState
 
-  @Environment(GhosttyShortcutManager.self)
-  private var ghosttyShortcuts
-
   @State private var searchText: String
   @State private var corner: GhosttySearchCorner = .topRight
   @State private var dragOffset: CGSize = .zero
@@ -48,23 +45,20 @@ struct GhosttySurfaceSearchOverlay: View {
             matchLabel
           }
 
-          Button("Next", systemImage: "chevron.up") {
+          Button(buttonLabel("Next", shortcut: "⌘G"), systemImage: "chevron.up") {
             navigateSearch(.next)
           }
           .buttonStyle(GhosttySearchButtonStyle())
-          .help(helpText("Next Match", shortcut: ghosttyShortcuts.display(for: "navigate_search:next")))
 
-          Button("Previous", systemImage: "chevron.down") {
+          Button(buttonLabel("Previous", shortcut: "⇧⌘G"), systemImage: "chevron.down") {
             navigateSearch(.previous)
           }
           .buttonStyle(GhosttySearchButtonStyle())
-          .help(helpText("Previous Match", shortcut: ghosttyShortcuts.display(for: "navigate_search:previous")))
 
-          Button("End Search", systemImage: "xmark") {
+          Button(buttonLabel("Close", shortcut: "⇧⌘F"), systemImage: "xmark") {
             closeSearch()
           }
           .buttonStyle(GhosttySearchButtonStyle())
-          .help(helpText("End Search", shortcut: ghosttyShortcuts.display(for: "end_search")))
         }
         .padding(8)
         .background(.background)
@@ -192,9 +186,8 @@ struct GhosttySurfaceSearchOverlay: View {
     }
   }
 
-  private func helpText(_ title: String, shortcut: String?) -> String {
-    guard let shortcut else { return title }
-    return "\(title) (\(shortcut))"
+  private func buttonLabel(_ title: String, shortcut: String) -> String {
+    "\(title) (\(shortcut))"
   }
 
   private func centerPosition(

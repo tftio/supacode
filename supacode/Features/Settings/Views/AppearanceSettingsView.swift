@@ -27,13 +27,6 @@ struct AppearanceSettingsView: View {
           )
           .help("Ask before quitting Supacode")
         }
-        Section("Worktree") {
-          Toggle(
-            "Sort merged worktrees to bottom",
-            isOn: $store.sortMergedWorktreesToBottom
-          )
-          .help("Move merged PR worktrees to the bottom of each repository list.")
-        }
       }
       .formStyle(.grouped)
     }

@@ -270,25 +270,31 @@ struct AppFeature {
         return .none
 
       case .requestQuit:
-        guard state.settings.confirmBeforeQuit else {
-          analyticsClient.capture("app_quit", nil)
+        #if !DEBUG
+          guard state.settings.confirmBeforeQuit else {
+            analyticsClient.capture("app_quit", nil)
+            return .run { @MainActor _ in
+              NSApplication.shared.terminate(nil)
+            }
+          }
+          state.alert = AlertState {
+            TextState("Quit Supacode?")
+          } actions: {
+            ButtonState(role: .cancel, action: .dismiss) {
+              TextState("Cancel")
+            }
+            ButtonState(role: .destructive, action: .confirmQuit) {
+              TextState("Quit")
+            }
+          } message: {
+            TextState("This will close all terminal sessions.")
+          }
+          return .none
+        #else
           return .run { @MainActor _ in
             NSApplication.shared.terminate(nil)
           }
-        }
-        state.alert = AlertState {
-          TextState("Quit Supacode?")
-        } actions: {
-          ButtonState(role: .cancel, action: .dismiss) {
-            TextState("Cancel")
-          }
-          ButtonState(role: .destructive, action: .confirmQuit) {
-            TextState("Quit")
-          }
-        } message: {
-          TextState("This will close all terminal sessions.")
-        }
-        return .none
+        #endif
 
       case .newTerminal:
         guard let worktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID) else {

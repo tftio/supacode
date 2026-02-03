@@ -20,6 +20,11 @@ struct WorktreeSettingsView: View {
               .foregroundStyle(.red)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
+          Toggle(
+            "Sort merged worktrees to bottom",
+            isOn: $store.sortMergedWorktreesToBottom
+          )
+          .help("Move merged PR worktrees to the bottom of each repository list.")
         }
       }
       .formStyle(.grouped)

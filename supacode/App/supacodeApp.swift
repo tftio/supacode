@@ -66,6 +66,7 @@ struct SupacodeApp: App {
       let posthogAPIKey = "phc_3hNmki5nVyvW3o2GxqRB12cK7EKXOg2ehJLkCO3sL0S"
       let posthogHost = "https://us.i.posthog.com"
       let config = PostHogConfig(apiKey: posthogAPIKey, host: posthogHost)
+      config.enableSwizzling = false
       PostHogSDK.shared.setup(config)
       if let hardwareUUID = HardwareInfo.uuid {
         PostHogSDK.shared.identify(hardwareUUID)

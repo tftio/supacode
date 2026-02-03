@@ -29,7 +29,6 @@ extension ShellClient: DependencyKey {
         arguments: shellArguments,
         currentDirectoryURL: currentDirectoryURL
       )
-      print("\tout: \(result.stdout)")
       return result
     }
   )

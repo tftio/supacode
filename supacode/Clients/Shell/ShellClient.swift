@@ -86,11 +86,11 @@ nonisolated private func runProcess(
 nonisolated private func shellExecCommand(for shellURL: URL) -> String {
   switch shellURL.lastPathComponent {
   case "fish":
-    return "test -f ~/.config/fish/config.fish && source ~/.config/fish/config.fish; exec $argv"
+    return "test -f ~/.config/fish/config.fish; and source ~/.config/fish/config.fish >/dev/null 2>&1; exec $argv"
   case "bash":
-    return "[ -f ~/.bashrc ] && . ~/.bashrc; exec \"$@\""
+    return "[ -f ~/.bashrc ] && . ~/.bashrc >/dev/null 2>&1; exec \"$@\""
   default:
-    return "[ -f ~/.zshrc ] && . ~/.zshrc; exec \"$@\""
+    return "[ -f ~/.zshrc ] && . ~/.zshrc >/dev/null 2>&1; exec \"$@\""
   }
 }
 

@@ -139,6 +139,13 @@ struct SupacodeApp: App {
       WorktreeCommands(store: store)
       SidebarCommands()
       TerminalCommands(ghosttyShortcuts: ghosttyShortcuts)
+      CommandGroup(after: .textEditing) {
+        Button("Command Palette") {
+          store.send(.commandPalette(.togglePresented))
+        }
+        .keyboardShortcut("p", modifiers: .command)
+        .help("Command Palette (⌘P)")
+      }
       UpdateCommands(store: store.scope(state: \.updates, action: \.updates))
       CommandGroup(replacing: .windowArrangement) {
         Button("Minimize") {

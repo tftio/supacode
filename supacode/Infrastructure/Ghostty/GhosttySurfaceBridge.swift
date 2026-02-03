@@ -14,6 +14,7 @@ final class GhosttySurfaceBridge {
   var onCloseTab: ((ghostty_action_close_tab_mode_e) -> Bool)?
   var onGotoTab: ((ghostty_action_goto_tab_e) -> Bool)?
   var onMoveTab: ((ghostty_action_move_tab_s) -> Bool)?
+  var onCommandPaletteToggle: (() -> Bool)?
   var onProgressReport: ((ghostty_action_progress_report_state_e) -> Void)?
   var onDesktopNotification: ((String, String) -> Void)?
   private var progressResetTask: Task<Void, Never>?
@@ -60,6 +61,8 @@ final class GhosttySurfaceBridge {
       return onGotoTab?(action.action.goto_tab) ?? false
     case GHOSTTY_ACTION_MOVE_TAB:
       return onMoveTab?(action.action.move_tab) ?? false
+    case GHOSTTY_ACTION_TOGGLE_COMMAND_PALETTE:
+      return onCommandPaletteToggle?() ?? false
     case GHOSTTY_ACTION_GOTO_WINDOW,
       GHOSTTY_ACTION_TOGGLE_QUICK_TERMINAL,
       GHOSTTY_ACTION_CLOSE_ALL_WINDOWS:

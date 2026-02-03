@@ -19,6 +19,7 @@ struct AppFeature {
     var repositories: RepositoriesFeature.State
     var settings: SettingsFeature.State
     var updates = UpdatesFeature.State()
+    var commandPalette = CommandPaletteFeature.State()
     var openActionSelection: OpenWorktreeAction = .finder
     var selectedRunScript: String = ""
     var runScriptStatusByWorktreeID: [Worktree.ID: Bool] = [:]
@@ -40,6 +41,7 @@ struct AppFeature {
     case repositories(RepositoriesFeature.Action)
     case settings(SettingsFeature.Action)
     case updates(UpdatesFeature.Action)
+    case commandPalette(CommandPaletteFeature.Action)
     case openActionSelectionChanged(OpenWorktreeAction)
     case worktreeSettingsLoaded(RepositorySettings, worktreeID: Worktree.ID)
     case openSelectedWorktree
@@ -438,6 +440,12 @@ struct AppFeature {
       case .updates:
         return .none
 
+      case .commandPalette(.delegate(.selectWorktree(let worktreeID))):
+        return .send(.repositories(.selectWorktree(worktreeID)))
+
+      case .commandPalette:
+        return .none
+
       case .terminalEvent(.notificationReceived(let worktreeID, _, _)):
         var effects: [Effect<Action>] = [
           .send(.repositories(.worktreeNotificationReceived(worktreeID)))
@@ -471,6 +479,15 @@ struct AppFeature {
         }
         return .none
 
+      case .terminalEvent(.commandPaletteToggleRequested(let worktreeID)):
+        if state.commandPalette.isPresented {
+          return .send(.commandPalette(.setPresented(false)))
+        }
+        return .merge(
+          .send(.repositories(.selectWorktree(worktreeID))),
+          .send(.commandPalette(.setPresented(true)))
+        )
+
       case .terminalEvent:
         return .none
       }
@@ -485,6 +502,9 @@ struct AppFeature {
     }
     Scope(state: \.updates, action: \.updates) {
       UpdatesFeature()
+    }
+    Scope(state: \.commandPalette, action: \.commandPalette) {
+      CommandPaletteFeature()
     }
   }
 }

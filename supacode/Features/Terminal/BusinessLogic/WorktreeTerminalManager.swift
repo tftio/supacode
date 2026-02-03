@@ -98,6 +98,9 @@ final class WorktreeTerminalManager {
     state.onRunScriptStatusChanged = { [weak self] isRunning in
       self?.emit(.runScriptStatusChanged(worktreeID: worktree.id, isRunning: isRunning))
     }
+    state.onCommandPaletteToggle = { [weak self] in
+      self?.emit(.commandPaletteToggleRequested(worktreeID: worktree.id))
+    }
     states[worktree.id] = state
     return state
   }

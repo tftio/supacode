@@ -30,6 +30,7 @@ struct TerminalClient {
     case focusChanged(worktreeID: Worktree.ID, surfaceID: UUID)
     case taskStatusChanged(worktreeID: Worktree.ID, status: WorktreeTaskStatus)
     case runScriptStatusChanged(worktreeID: Worktree.ID, isRunning: Bool)
+    case commandPaletteToggleRequested(worktreeID: Worktree.ID)
   }
 }
 

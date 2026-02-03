@@ -66,12 +66,31 @@ struct ContentView: View {
     .alert(store: repositoriesStore.scope(state: \.$alert, action: \.alert))
     .alert(store: store.scope(state: \.$alert, action: \.alert))
     .focusedSceneValue(\.toggleLeftSidebarAction, toggleLeftSidebar)
+    .overlay {
+      CommandPaletteOverlayView(
+        store: store.scope(state: \.commandPalette, action: \.commandPalette),
+        rows: commandPaletteRows(from: store.repositories)
+      )
+    }
     .background(WindowTabbingDisabler())
   }
 
   private func toggleLeftSidebar() {
     withAnimation(.easeOut(duration: 0.2)) {
       leftSidebarVisibility = leftSidebarVisibility == .detailOnly ? .all : .detailOnly
+    }
+  }
+
+  private func commandPaletteRows(
+    from repositories: RepositoriesFeature.State
+  ) -> [CommandPaletteWorktreeRow] {
+    repositories.orderedWorktreeRows().compactMap { row in
+      guard !row.isPending, !row.isDeleting else { return nil }
+      let repositoryName = repositories.repositoryName(for: row.repositoryID) ?? "Repository"
+      let title = "\(repositoryName) / \(row.name)"
+      let trimmedDetail = row.detail.trimmingCharacters(in: .whitespacesAndNewlines)
+      let subtitle = trimmedDetail.isEmpty ? nil : trimmedDetail
+      return CommandPaletteWorktreeRow(id: row.id, title: title, subtitle: subtitle)
     }
   }
 }

@@ -20,7 +20,7 @@ extension ShellClient: DependencyKey {
       let shellURL = URL(fileURLWithPath: defaultShellPath())
       let execCommand = shellExecCommand(for: shellURL)
       let shellArguments =
-        ["-l", "-i", "-c", execCommand, "--", executableURL.path(percentEncoded: false)] + arguments
+        ["-l", "-c", execCommand, "--", executableURL.path(percentEncoded: false)] + arguments
       print("[Shell] runLogin: \(shellURL.path) \(shellArguments.joined(separator: " "))")
       return try await runProcess(
         executableURL: shellURL,
@@ -55,6 +55,7 @@ nonisolated private func runProcess(
     process.currentDirectoryURL = currentDirectoryURL
     let outputPipe = Pipe()
     let errorPipe = Pipe()
+    process.standardInput = FileHandle.nullDevice
     process.standardOutput = outputPipe
     process.standardError = errorPipe
     let outputHandle = outputPipe.fileHandleForReading
@@ -81,9 +82,11 @@ nonisolated private func runProcess(
 nonisolated private func shellExecCommand(for shellURL: URL) -> String {
   switch shellURL.lastPathComponent {
   case "fish":
-    return "exec $argv"
+    return "test -f ~/.config/fish/config.fish && source ~/.config/fish/config.fish; exec $argv"
+  case "bash":
+    return "[ -f ~/.bashrc ] && . ~/.bashrc; exec \"$@\""
   default:
-    return "exec \"$@\""
+    return "[ -f ~/.zshrc ] && . ~/.zshrc; exec \"$@\""
   }
 }
 

@@ -249,6 +249,17 @@ nonisolated private func escapeGraphQLString(_ value: String) -> String {
     .replacing("\t", with: "\\t")
 }
 
+nonisolated private func isOutdatedGitHubCLI(_ error: ShellClientError) -> Bool {
+  let combined = "\(error.stdout)\n\(error.stderr)".lowercased()
+  if combined.contains("unknown flag: --json") {
+    return true
+  }
+  if combined.contains("unknown shorthand flag") && combined.contains("json") {
+    return true
+  }
+  return false
+}
+
 nonisolated private func runGh(
   shell: ShellClient,
   arguments: [String],
@@ -261,6 +272,9 @@ nonisolated private func runGh(
     return try await shell.runLogin(env, ["gh"] + arguments, repoRoot, log: shouldLog).stdout
   } catch {
     if let shellError = error as? ShellClientError {
+      if isOutdatedGitHubCLI(shellError) {
+        throw GithubCLIError.outdated
+      }
       let message = shellError.errorDescription ?? "Command failed: \(command)"
       throw GithubCLIError.commandFailed(message)
     }

@@ -6,6 +6,7 @@ final class GithubSettingsViewModel {
   enum State: Equatable {
     case loading
     case unavailable
+    case outdated
     case notAuthenticated
     case authenticated(username: String, host: String)
     case error(String)
@@ -32,6 +33,15 @@ final class GithubSettingsViewModel {
         state = .authenticated(username: status.username, host: status.host)
       } else {
         state = .notAuthenticated
+      }
+    } catch let error as GithubCLIError {
+      switch error {
+      case .outdated:
+        state = .outdated
+      case .unavailable:
+        state = .unavailable
+      case .commandFailed(let message):
+        state = .error(message)
       }
     } catch {
       state = .error(error.localizedDescription)
@@ -81,6 +91,15 @@ struct GithubSettingsView: View {
                 .font(.callout)
             }
 
+          case .outdated:
+            VStack(alignment: .leading, spacing: 8) {
+              Label("GitHub CLI outdated", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+              Text("Update GitHub CLI to the latest version to use GitHub integration.")
+                .foregroundStyle(.secondary)
+                .font(.callout)
+            }
+
           case .authenticated(let username, let host):
             LabeledContent("Signed in as") {
               Text(username)
@@ -104,7 +123,8 @@ struct GithubSettingsView: View {
       }
       .formStyle(.grouped)
 
-      if case .unavailable = viewModel.state {
+      switch viewModel.state {
+      case .unavailable:
         HStack {
           Button("Get GitHub CLI") {
             NSWorkspace.shared.open(URL(string: "https://cli.github.com")!)
@@ -113,6 +133,17 @@ struct GithubSettingsView: View {
           Spacer()
         }
         .padding(.top)
+      case .outdated:
+        HStack {
+          Button("Update GitHub CLI") {
+            NSWorkspace.shared.open(URL(string: "https://cli.github.com")!)
+          }
+          .help("Open GitHub CLI website")
+          Spacer()
+        }
+        .padding(.top)
+      default:
+        EmptyView()
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

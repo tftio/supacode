@@ -2,6 +2,7 @@ name: PR DMG
 
 on:
   pull_request:
+    types: [labeled]
 
 concurrency:
   group: pr-dmg-${{ github.event.pull_request.number }}
@@ -9,6 +10,7 @@ concurrency:
 
 jobs:
   build_dmg:
+    if: github.event.label.name == 'create-dmg'
     runs-on: [self-hosted, macOS, ARM64]
     permissions:
       contents: read

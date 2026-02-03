@@ -4,6 +4,7 @@ import Foundation
 struct GitClientDependency {
   var repoRoot: @Sendable (URL) async throws -> URL
   var worktrees: @Sendable (URL) async throws -> [Worktree]
+  var pruneWorktrees: @Sendable (URL) async throws -> Void
   var localBranchNames: @Sendable (URL) async throws -> Set<String>
   var branchRefs: @Sendable (URL) async throws -> [String]
   var defaultRemoteBranchRef: @Sendable (URL) async throws -> String?
@@ -29,6 +30,7 @@ extension GitClientDependency: DependencyKey {
   static let liveValue = GitClientDependency(
     repoRoot: { try await GitClient().repoRoot(for: $0) },
     worktrees: { try await GitClient().worktrees(for: $0) },
+    pruneWorktrees: { try await GitClient().pruneWorktrees(for: $0) },
     localBranchNames: { try await GitClient().localBranchNames(for: $0) },
     branchRefs: { try await GitClient().branchRefs(for: $0) },
     defaultRemoteBranchRef: { try await GitClient().defaultRemoteBranchRef(for: $0) },

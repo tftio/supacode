@@ -104,6 +104,14 @@ struct GitClient {
       .map(\.worktree)
   }
 
+  nonisolated func pruneWorktrees(for repoRoot: URL) async throws {
+    let path = repoRoot.path(percentEncoded: false)
+    _ = try await runGit(
+      operation: .worktreePrune,
+      arguments: ["-C", path, "worktree", "prune"]
+    )
+  }
+
   nonisolated func localBranchNames(for repoRoot: URL) async throws -> Set<String> {
     let path = repoRoot.path(percentEncoded: false)
     let output = try await runGit(

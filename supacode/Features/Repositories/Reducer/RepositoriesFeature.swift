@@ -828,7 +828,11 @@ struct RepositoriesFeature {
   }
 
   private func loadRepositories(_ roots: [URL], animated: Bool = false) -> Effect<Action> {
-    .run { [animated, roots] send in
+    let gitClient = gitClient
+    return .run { [animated, roots] send in
+      for root in roots {
+        _ = try? await gitClient.pruneWorktrees(root)
+      }
       let (repositories, failures) = await loadRepositoriesData(roots)
       await send(
         .repositoriesLoaded(

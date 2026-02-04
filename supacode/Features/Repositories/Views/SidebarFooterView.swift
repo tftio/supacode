@@ -34,11 +34,6 @@ struct SidebarFooterView: View {
       }
       .menuIndicator(.hidden)
       .help("Help")
-      Button("Settings", systemImage: "gearshape") {
-        SettingsWindowManager.shared.show()
-      }
-      .labelStyle(.iconOnly)
-      .help("Settings (\(AppShortcuts.openSettings.display))")
       Button {
         store.send(.selectArchivedWorktrees)
       } label: {
@@ -46,6 +41,11 @@ struct SidebarFooterView: View {
           .accessibilityLabel("Archived Worktrees")
       }
       .help("Archived Worktrees (\(AppShortcuts.archivedWorktrees.display))")
+      Button("Settings", systemImage: "gearshape") {
+        SettingsWindowManager.shared.show()
+      }
+      .labelStyle(.iconOnly)
+      .help("Settings (\(AppShortcuts.openSettings.display))")
     }
     .buttonStyle(.plain)
     .font(.callout)

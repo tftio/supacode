@@ -29,17 +29,29 @@ private enum GhosttyCLI {
 @MainActor
 final class SupacodeAppDelegate: NSObject, NSApplicationDelegate {
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows _: Bool) -> Bool {
-    guard let window = sender.windows.first(where: { $0.identifier?.rawValue == "main" }) else {
-      return false
+    guard let window = mainWindow(from: sender) else {
+      return true
     }
-    if !window.isVisible {
-      window.makeKeyAndOrderFront(nil)
+    if window.isMiniaturized {
+      window.deminiaturize(nil)
     }
+    window.makeKeyAndOrderFront(nil)
+    sender.activate(ignoringOtherApps: true)
     return false
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     false
+  }
+
+  private func mainWindow(from sender: NSApplication) -> NSWindow? {
+    if let window = sender.windows.first(where: { $0.identifier?.rawValue == "main" }) {
+      return window
+    }
+    if let window = sender.windows.first(where: { $0.identifier?.rawValue != "settings" }) {
+      return window
+    }
+    return sender.windows.first
   }
 }
 

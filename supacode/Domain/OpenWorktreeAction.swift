@@ -1,6 +1,11 @@
 import AppKit
 
 enum OpenWorktreeAction: CaseIterable, Identifiable {
+  enum MenuIcon {
+    case app(NSImage)
+    case symbol(String)
+  }
+
   case alacritty
   case editor
   case finder
@@ -55,13 +60,15 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     }
   }
 
-  var appIcon: NSImage? {
-    if case .editor = self {
-      return NSImage(systemSymbolName: "apple.terminal", accessibilityDescription: nil)
+  var menuIcon: MenuIcon? {
+    switch self {
+    case .editor:
+      return .symbol("apple.terminal")
+    default:
+      guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
+      else { return nil }
+      return .app(NSWorkspace.shared.icon(forFile: appURL.path))
     }
-    guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier)
-    else { return nil }
-    return NSWorkspace.shared.icon(forFile: appURL.path)
   }
 
   var isInstalled: Bool {

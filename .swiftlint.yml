@@ -32,3 +32,11 @@ function_body_length:
 
 redundant_discardable_let:
   ignore_swiftui_view_bodies: true
+
+custom_rules:
+  store_state_mutation_in_views:
+    name: "Store State Mutation In Views"
+    regex: "\\bstore\\.[A-Za-z0-9_]+\\s*(?:\\+=|-=|\\*=|/=|=(?!=))"
+    message: "Do not mutate store state directly in views. Send actions instead."
+    severity: error
+    included: "supacode/.*/Views/.*\\.swift"

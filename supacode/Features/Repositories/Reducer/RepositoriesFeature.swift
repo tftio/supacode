@@ -660,7 +660,6 @@ struct RepositoriesFeature {
           state.alert = nil
           return .none
         }
-        state.alert = nil
         let previousSelection = state.selectedWorktreeID
         let previousSelectedWorktree = state.worktree(for: previousSelection)
         let selectionWasRemoved = state.selectedWorktreeID == worktree.id
@@ -670,20 +669,23 @@ struct RepositoriesFeature {
           : nil
         var didUpdateWorktreeOrder = false
         let wasPinned = state.pinnedWorktreeIDs.contains(worktreeID)
-        state.pinnedWorktreeIDs.removeAll { $0 == worktreeID }
-        if var order = state.worktreeOrderByRepository[repositoryID] {
-          order.removeAll { $0 == worktreeID }
-          if order.isEmpty {
-            state.worktreeOrderByRepository.removeValue(forKey: repositoryID)
-          } else {
-            state.worktreeOrderByRepository[repositoryID] = order
+        withAnimation {
+          state.alert = nil
+          state.pinnedWorktreeIDs.removeAll { $0 == worktreeID }
+          if var order = state.worktreeOrderByRepository[repositoryID] {
+            order.removeAll { $0 == worktreeID }
+            if order.isEmpty {
+              state.worktreeOrderByRepository.removeValue(forKey: repositoryID)
+            } else {
+              state.worktreeOrderByRepository[repositoryID] = order
+            }
+            didUpdateWorktreeOrder = true
           }
-          didUpdateWorktreeOrder = true
-        }
-        state.archivedWorktreeIDs.append(worktreeID)
-        if selectionWasRemoved {
-          let nextWorktreeID = nextSelection ?? firstAvailableWorktreeID(in: repositoryID, state: state)
-          state.selection = nextWorktreeID.map(SidebarSelection.worktree)
+          state.archivedWorktreeIDs.append(worktreeID)
+          if selectionWasRemoved {
+            let nextWorktreeID = nextSelection ?? firstAvailableWorktreeID(in: repositoryID, state: state)
+            state.selection = nextWorktreeID.map(SidebarSelection.worktree)
+          }
         }
         let archivedWorktreeIDs = state.archivedWorktreeIDs
         let repositories = state.repositories

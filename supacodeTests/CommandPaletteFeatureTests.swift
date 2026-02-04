@@ -13,7 +13,6 @@ struct CommandPaletteFeatureTests {
     expectNoDifference(
       items.map(\.id),
       [
-        "global.about",
         "global.check-for-updates",
         "global.open-settings",
         "global.open-repository",

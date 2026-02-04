@@ -334,7 +334,7 @@ private struct CommandPaletteRowView: View {
 
   private var badge: String? {
     switch row.kind {
-    case .about, .checkForUpdates, .openRepository, .openSettings, .newWorktree, .refreshWorktrees,
+    case .checkForUpdates, .openRepository, .openSettings, .newWorktree, .refreshWorktrees,
       .worktreeSelect:
       return nil
     case .removeWorktree:
@@ -346,8 +346,6 @@ private struct CommandPaletteRowView: View {
 
   private var leadingIcon: String? {
     switch row.kind {
-    case .about:
-      return "info.circle"
     case .checkForUpdates:
       return "arrow.down.circle"
     case .openRepository:
@@ -369,7 +367,7 @@ private struct CommandPaletteRowView: View {
 
   private var emphasis: Bool {
     switch row.kind {
-    case .about, .checkForUpdates, .openRepository, .openSettings, .newWorktree, .refreshWorktrees:
+    case .checkForUpdates, .openRepository, .openSettings, .newWorktree, .refreshWorktrees:
       return true
     case .worktreeSelect, .removeWorktree, .archiveWorktree:
       return false
@@ -388,7 +386,7 @@ private struct CommandPaletteRowView: View {
       return AppShortcuts.newWorktree.displaySymbols
     case .refreshWorktrees:
       return AppShortcuts.refreshWorktrees.displaySymbols
-    case .about, .worktreeSelect, .removeWorktree, .archiveWorktree:
+    case .worktreeSelect, .removeWorktree, .archiveWorktree:
       return nil
     }
   }
@@ -463,8 +461,6 @@ private struct CommandPaletteRowView: View {
     switch row.kind {
     case .worktreeSelect:
       base = "Switch to \(row.title)"
-    case .about:
-      base = "Show About Supacode"
     case .checkForUpdates:
       base = "Check for Updates"
     case .openRepository:
@@ -501,7 +497,7 @@ private struct CommandPaletteRowView: View {
       return AppShortcuts.newWorktree.display
     case .refreshWorktrees:
       return AppShortcuts.refreshWorktrees.display
-    case .about, .worktreeSelect, .removeWorktree, .archiveWorktree:
+    case .worktreeSelect, .removeWorktree, .archiveWorktree:
       return nil
     }
   }

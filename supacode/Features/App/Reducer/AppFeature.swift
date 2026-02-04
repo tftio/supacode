@@ -498,11 +498,6 @@ struct AppFeature {
       case .commandPalette(.delegate(.selectWorktree(let worktreeID))):
         return .send(.repositories(.selectWorktree(worktreeID)))
 
-      case .commandPalette(.delegate(.showAbout)):
-        return .run { @MainActor _ in
-          NSApplication.shared.orderFrontStandardAboutPanel(nil)
-        }
-
       case .commandPalette(.delegate(.checkForUpdates)):
         return .send(.updates(.checkForUpdates))
 

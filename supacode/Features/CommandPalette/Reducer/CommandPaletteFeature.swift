@@ -21,7 +21,6 @@ struct CommandPaletteFeature {
   @CasePathable
   enum Delegate: Equatable {
     case selectWorktree(Worktree.ID)
-    case showAbout
     case checkForUpdates
     case openSettings
     case newWorktree
@@ -90,12 +89,6 @@ struct CommandPaletteFeature {
     from repositories: RepositoriesFeature.State
   ) -> [CommandPaletteItem] {
     var items: [CommandPaletteItem] = [
-      CommandPaletteItem(
-        id: "global.about",
-        title: "About Supacode",
-        subtitle: nil,
-        kind: .about
-      ),
       CommandPaletteItem(
         id: "global.check-for-updates",
         title: "Check for Updates",
@@ -169,8 +162,6 @@ private func delegateAction(for kind: CommandPaletteItem.Kind) -> CommandPalette
   switch kind {
   case .worktreeSelect(let id):
     return .selectWorktree(id)
-  case .about:
-    return .showAbout
   case .checkForUpdates:
     return .checkForUpdates
   case .openSettings:

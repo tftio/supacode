@@ -38,6 +38,7 @@ struct WorktreeRow: View {
       state: pullRequestState,
       number: pullRequestNumber
     )
+    let showsMergedArchiveAction = pullRequestState == "MERGED" && archiveAction != nil
     let nameColor = colorScheme == .dark ? Color.white : Color.primary
     HStack(alignment: .center) {
       ZStack {
@@ -81,7 +82,7 @@ struct WorktreeRow: View {
           .help("Run script active")
           .accessibilityLabel("Run script active")
       }
-      if let pullRequestBadgeStyle {
+      if let pullRequestBadgeStyle, !showsMergedArchiveAction {
         PullRequestChecksPopoverButton(
           checks: pullRequestChecks,
           pullRequestURL: pullRequestURL,

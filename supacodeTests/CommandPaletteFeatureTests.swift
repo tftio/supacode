@@ -307,6 +307,54 @@ struct CommandPaletteFeatureTests {
     )
   }
 
+  @Test func fuzzyRanksPrefixAndShorterLabelFirst() {
+    let short = CommandPaletteItem(
+      id: "worktree.set.select",
+      title: "Set",
+      subtitle: nil,
+      kind: .worktreeSelect("wt-set")
+    )
+    let long = CommandPaletteItem(
+      id: "worktree.settings.select",
+      title: "Settings",
+      subtitle: nil,
+      kind: .worktreeSelect("wt-settings")
+    )
+
+    expectNoDifference(
+      CommandPaletteFeature.filterItems(items: [long, short], query: "set"),
+      [short, long]
+    )
+  }
+
+  @Test func fuzzyMatchesSubtitleWhenLabelDoesNot() {
+    let item = CommandPaletteItem(
+      id: "worktree.fox.select",
+      title: "Repo / fox",
+      subtitle: "main",
+      kind: .worktreeSelect("wt-fox")
+    )
+
+    expectNoDifference(
+      CommandPaletteFeature.filterItems(items: [item], query: "main"),
+      [item]
+    )
+  }
+
+  @Test func fuzzyMatchesMultiplePieces() {
+    let item = CommandPaletteItem(
+      id: "worktree.fox.select",
+      title: "Repo / fox",
+      subtitle: "main",
+      kind: .worktreeSelect("wt-fox")
+    )
+
+    expectNoDifference(
+      CommandPaletteFeature.filterItems(items: [item], query: "repo main"),
+      [item]
+    )
+  }
+
   @Test func activateDispatchesDelegate() async {
     var state = CommandPaletteFeature.State()
     state.isPresented = true

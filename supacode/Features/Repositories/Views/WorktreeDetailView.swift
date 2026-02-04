@@ -98,12 +98,6 @@ struct WorktreeDetailView: View {
       runScriptIsRunning: runScriptIsRunning
     )
     return applyFocusedActions(content: content, actions: actions)
-      .overlay {
-        CommandPaletteOverlayView(
-          store: store.scope(state: \.commandPalette, action: \.commandPalette),
-          items: store.commandPaletteItems
-        )
-      }
   }
 
   private func applyFocusedActions<Content: View>(

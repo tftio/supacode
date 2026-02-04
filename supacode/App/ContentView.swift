@@ -66,6 +66,12 @@ struct ContentView: View {
     .alert(store: repositoriesStore.scope(state: \.$alert, action: \.alert))
     .alert(store: store.scope(state: \.$alert, action: \.alert))
     .focusedSceneValue(\.toggleLeftSidebarAction, toggleLeftSidebar)
+    .overlay {
+      CommandPaletteOverlayView(
+        store: store.scope(state: \.commandPalette, action: \.commandPalette),
+        items: store.commandPaletteItems
+      )
+    }
     .background(WindowTabbingDisabler())
   }
 

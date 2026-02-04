@@ -1,5 +1,3 @@
-import Foundation
-
 struct CommandPaletteItem: Identifiable, Equatable {
   let id: String
   let title: String
@@ -23,15 +21,5 @@ struct CommandPaletteItem: Identifiable, Equatable {
     case .worktreeSelect, .removeWorktree, .archiveWorktree, .runWorktree, .openWorktreeInEditor:
       return false
     }
-  }
-
-  func matches(query: String) -> Bool {
-    if title.localizedCaseInsensitiveContains(query) {
-      return true
-    }
-    if let subtitle, subtitle.localizedCaseInsensitiveContains(query) {
-      return true
-    }
-    return false
   }
 }

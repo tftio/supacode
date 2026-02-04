@@ -20,7 +20,7 @@ struct CommandPaletteOverlayView: View {
 
           GeometryReader { geometry in
             VStack {
-              Spacer().frame(height: geometry.size.height * 0.05)
+              Spacer()
 
               CommandPaletteCard(
                 query: $store.query,
@@ -52,10 +52,9 @@ struct CommandPaletteOverlayView: View {
 
               Spacer()
             }
-            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+            .frame(width: geometry.size.width, height: geometry.size.height)
           }
         }
-        .ignoresSafeArea()
       }
     }
     .onChange(of: store.isPresented) { _, newValue in

@@ -486,7 +486,6 @@ final class WorktreeTerminalState {
     view.onFocusChange = { [weak self, weak view] focused in
       guard let self, let view, focused else { return }
       self.focusedSurfaceIdByTab[tabId] = view.id
-      self.tabManager.selectTab(tabId)
       self.updateTabTitle(for: tabId)
       self.emitFocusChangedIfNeeded(view.id)
       self.emitTaskStatusIfChanged()
@@ -517,9 +516,10 @@ final class WorktreeTerminalState {
   private func focusSurface(_ surface: GhosttySurfaceView, in tabId: TerminalTabID) {
     let previousSurface = focusedSurfaceIdByTab[tabId].flatMap { surfaces[$0] }
     focusedSurfaceIdByTab[tabId] = surface.id
+    updateTabTitle(for: tabId)
+    guard tabId == tabManager.selectedTabId else { return }
     let fromSurface = (previousSurface === surface) ? nil : previousSurface
     GhosttySurfaceView.moveFocus(to: surface, from: fromSurface)
-    updateTabTitle(for: tabId)
     emitFocusChangedIfNeeded(surface.id)
   }
 

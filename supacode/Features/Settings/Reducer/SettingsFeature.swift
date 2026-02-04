@@ -7,6 +7,7 @@ struct SettingsFeature {
   @ObservableState
   struct State: Equatable {
     var appearanceMode: AppearanceMode
+    var defaultEditorID: String
     var confirmBeforeQuit: Bool
     var updatesAutomaticallyCheckForUpdates: Bool
     var updatesAutomaticallyDownloadUpdates: Bool
@@ -20,7 +21,9 @@ struct SettingsFeature {
     var repositorySettings: RepositorySettingsFeature.State?
 
     init(settings: GlobalSettings = .default) {
+      let normalizedDefaultEditorID = OpenWorktreeAction.normalizedDefaultEditorID(settings.defaultEditorID)
       appearanceMode = settings.appearanceMode
+      defaultEditorID = normalizedDefaultEditorID
       confirmBeforeQuit = settings.confirmBeforeQuit
       updatesAutomaticallyCheckForUpdates = settings.updatesAutomaticallyCheckForUpdates
       updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
@@ -35,6 +38,7 @@ struct SettingsFeature {
     var globalSettings: GlobalSettings {
       GlobalSettings(
         appearanceMode: appearanceMode,
+        defaultEditorID: defaultEditorID,
         confirmBeforeQuit: confirmBeforeQuit,
         updatesAutomaticallyCheckForUpdates: updatesAutomaticallyCheckForUpdates,
         updatesAutomaticallyDownloadUpdates: updatesAutomaticallyDownloadUpdates,
@@ -73,17 +77,29 @@ struct SettingsFeature {
         return .send(.settingsLoaded(settingsFile.global))
 
       case .settingsLoaded(let settings):
-        state.appearanceMode = settings.appearanceMode
-        state.confirmBeforeQuit = settings.confirmBeforeQuit
-        state.updatesAutomaticallyCheckForUpdates = settings.updatesAutomaticallyCheckForUpdates
-        state.updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
-        state.inAppNotificationsEnabled = settings.inAppNotificationsEnabled
-        state.dockBadgeEnabled = settings.dockBadgeEnabled
-        state.notificationSoundEnabled = settings.notificationSoundEnabled
-        state.githubIntegrationEnabled = settings.githubIntegrationEnabled
-        state.deleteBranchOnDeleteWorktree = settings.deleteBranchOnDeleteWorktree
-        state.automaticallyArchiveMergedWorktrees = settings.automaticallyArchiveMergedWorktrees
-        return .send(.delegate(.settingsChanged(settings)))
+        let normalizedDefaultEditorID = OpenWorktreeAction.normalizedDefaultEditorID(settings.defaultEditorID)
+        let normalizedSettings: GlobalSettings
+        if normalizedDefaultEditorID == settings.defaultEditorID {
+          normalizedSettings = settings
+        } else {
+          var updatedSettings = settings
+          updatedSettings.defaultEditorID = normalizedDefaultEditorID
+          normalizedSettings = updatedSettings
+          @Shared(.settingsFile) var settingsFile
+          $settingsFile.withLock { $0.global = normalizedSettings }
+        }
+        state.appearanceMode = normalizedSettings.appearanceMode
+        state.defaultEditorID = normalizedSettings.defaultEditorID
+        state.confirmBeforeQuit = normalizedSettings.confirmBeforeQuit
+        state.updatesAutomaticallyCheckForUpdates = normalizedSettings.updatesAutomaticallyCheckForUpdates
+        state.updatesAutomaticallyDownloadUpdates = normalizedSettings.updatesAutomaticallyDownloadUpdates
+        state.inAppNotificationsEnabled = normalizedSettings.inAppNotificationsEnabled
+        state.dockBadgeEnabled = normalizedSettings.dockBadgeEnabled
+        state.notificationSoundEnabled = normalizedSettings.notificationSoundEnabled
+        state.githubIntegrationEnabled = normalizedSettings.githubIntegrationEnabled
+        state.deleteBranchOnDeleteWorktree = normalizedSettings.deleteBranchOnDeleteWorktree
+        state.automaticallyArchiveMergedWorktrees = normalizedSettings.automaticallyArchiveMergedWorktrees
+        return .send(.delegate(.settingsChanged(normalizedSettings)))
 
       case .binding:
         analyticsClient.capture("settings_changed", nil)

@@ -227,6 +227,14 @@ struct AppFeature {
           settings.dockBadgeEnabled
           ? (state.notificationIndicatorCount == 0 ? nil : String(state.notificationIndicatorCount))
           : nil
+        if let selectedWorktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID) {
+          let rootURL = selectedWorktree.repositoryRootURL
+          @Shared(.repositorySettings(rootURL)) var repositorySettings
+          state.openActionSelection = OpenWorktreeAction.fromSettingsID(
+            repositorySettings.openActionID,
+            defaultEditorID: settings.defaultEditorID
+          )
+        }
         return .merge(
           .send(.repositories(.setGithubIntegrationEnabled(settings.githubIntegrationEnabled))),
           .send(
@@ -307,11 +315,11 @@ struct AppFeature {
           state.alert = AlertState {
             TextState("Quit Supacode?")
           } actions: {
+            ButtonState(action: .confirmQuit) {
+              TextState("Quit")
+            }
             ButtonState(role: .cancel, action: .dismiss) {
               TextState("Cancel")
-            }
-            ButtonState(role: .destructive, action: .confirmQuit) {
-              TextState("Quit")
             }
           } message: {
             TextState("This will close all terminal sessions.")
@@ -435,7 +443,14 @@ struct AppFeature {
         guard state.repositories.selectedWorktreeID == worktreeID else {
           return .none
         }
-        state.openActionSelection = OpenWorktreeAction.fromSettingsID(settings.openActionID)
+        @Shared(.settingsFile) var settingsFile
+        let normalizedDefaultEditorID = OpenWorktreeAction.normalizedDefaultEditorID(
+          settingsFile.global.defaultEditorID
+        )
+        state.openActionSelection = OpenWorktreeAction.fromSettingsID(
+          settings.openActionID,
+          defaultEditorID: normalizedDefaultEditorID
+        )
         state.selectedRunScript = settings.runScript
         return .none
 

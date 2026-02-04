@@ -12,6 +12,7 @@ struct SettingsFeatureTests {
   @Test(.dependencies) func loadSettings() async {
     let loaded = GlobalSettings(
       appearanceMode: .dark,
+      defaultEditorID: OpenWorktreeAction.automaticSettingsID,
       confirmBeforeQuit: true,
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: true,
@@ -32,6 +33,7 @@ struct SettingsFeatureTests {
     await store.send(.task)
     await store.receive(\.settingsLoaded) {
       $0.appearanceMode = .dark
+      $0.defaultEditorID = OpenWorktreeAction.automaticSettingsID
       $0.confirmBeforeQuit = true
       $0.updatesAutomaticallyCheckForUpdates = false
       $0.updatesAutomaticallyDownloadUpdates = true
@@ -48,6 +50,7 @@ struct SettingsFeatureTests {
   @Test(.dependencies) func savesUpdatesChanges() async {
     let initialSettings = GlobalSettings(
       appearanceMode: .system,
+      defaultEditorID: OpenWorktreeAction.automaticSettingsID,
       confirmBeforeQuit: true,
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: false,
@@ -70,6 +73,7 @@ struct SettingsFeatureTests {
     }
     let expectedSettings = GlobalSettings(
       appearanceMode: .light,
+      defaultEditorID: initialSettings.defaultEditorID,
       confirmBeforeQuit: initialSettings.confirmBeforeQuit,
       updatesAutomaticallyCheckForUpdates: initialSettings.updatesAutomaticallyCheckForUpdates,
       updatesAutomaticallyDownloadUpdates: initialSettings.updatesAutomaticallyDownloadUpdates,
@@ -115,6 +119,7 @@ struct SettingsFeatureTests {
 
     let loaded = GlobalSettings(
       appearanceMode: .light,
+      defaultEditorID: OpenWorktreeAction.automaticSettingsID,
       confirmBeforeQuit: false,
       updatesAutomaticallyCheckForUpdates: false,
       updatesAutomaticallyDownloadUpdates: true,
@@ -128,6 +133,7 @@ struct SettingsFeatureTests {
 
     await store.send(.settingsLoaded(loaded)) {
       $0.appearanceMode = .light
+      $0.defaultEditorID = OpenWorktreeAction.automaticSettingsID
       $0.confirmBeforeQuit = false
       $0.updatesAutomaticallyCheckForUpdates = false
       $0.updatesAutomaticallyDownloadUpdates = true

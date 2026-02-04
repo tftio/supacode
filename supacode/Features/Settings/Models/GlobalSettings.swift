@@ -1,5 +1,6 @@
 nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var appearanceMode: AppearanceMode
+  var defaultEditorID: String
   var confirmBeforeQuit: Bool
   var updatesAutomaticallyCheckForUpdates: Bool
   var updatesAutomaticallyDownloadUpdates: Bool
@@ -12,6 +13,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
 
   static let `default` = GlobalSettings(
     appearanceMode: .dark,
+    defaultEditorID: OpenWorktreeAction.automaticSettingsID,
     confirmBeforeQuit: true,
     updatesAutomaticallyCheckForUpdates: true,
     updatesAutomaticallyDownloadUpdates: false,
@@ -25,6 +27,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
 
   init(
     appearanceMode: AppearanceMode,
+    defaultEditorID: String,
     confirmBeforeQuit: Bool,
     updatesAutomaticallyCheckForUpdates: Bool,
     updatesAutomaticallyDownloadUpdates: Bool,
@@ -36,6 +39,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     automaticallyArchiveMergedWorktrees: Bool
   ) {
     self.appearanceMode = appearanceMode
+    self.defaultEditorID = defaultEditorID
     self.confirmBeforeQuit = confirmBeforeQuit
     self.updatesAutomaticallyCheckForUpdates = updatesAutomaticallyCheckForUpdates
     self.updatesAutomaticallyDownloadUpdates = updatesAutomaticallyDownloadUpdates
@@ -50,6 +54,9 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     appearanceMode = try container.decode(AppearanceMode.self, forKey: .appearanceMode)
+    defaultEditorID =
+      try container.decodeIfPresent(String.self, forKey: .defaultEditorID)
+      ?? Self.default.defaultEditorID
     confirmBeforeQuit =
       try container.decodeIfPresent(Bool.self, forKey: .confirmBeforeQuit)
       ?? Self.default.confirmBeforeQuit

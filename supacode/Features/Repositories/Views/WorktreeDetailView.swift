@@ -195,9 +195,7 @@ struct WorktreeDetailView: View {
       ToolbarSpacer(.flexible)
 
       ToolbarItemGroup {
-        if !toolbarState.archiveEnabled,
-          let model = PullRequestStatusModel(pullRequest: toolbarState.pullRequest)
-        {
+        if let model = PullRequestStatusModel(pullRequest: toolbarState.pullRequest) {
           PullRequestStatusButton(model: model).padding(.horizontal)
         } else {
           MiddleStatusView().padding(.horizontal)

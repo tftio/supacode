@@ -82,6 +82,67 @@ struct CommandPaletteFeature {
     let matcher: (CommandPaletteItem) -> Bool = { $0.matches(query: trimmed) }
     return globalItems.filter(matcher) + worktreeItems.filter(matcher)
   }
+
+  static func commandPaletteItems(
+    from repositories: RepositoriesFeature.State
+  ) -> [CommandPaletteItem] {
+    var items: [CommandPaletteItem] = [
+      CommandPaletteItem(
+        id: "global.open-settings",
+        title: "Open Settings",
+        subtitle: nil,
+        kind: .openSettings
+      ),
+      CommandPaletteItem(
+        id: "global.new-worktree",
+        title: "New Worktree",
+        subtitle: nil,
+        kind: .newWorktree
+      ),
+    ]
+    for row in repositories.orderedWorktreeRows() {
+      guard !row.isPending, !row.isDeleting else { continue }
+      let repositoryName = repositories.repositoryName(for: row.repositoryID) ?? "Repository"
+      let title = "\(repositoryName) / \(row.name)"
+      let trimmedDetail = row.detail.trimmingCharacters(in: .whitespacesAndNewlines)
+      let detail = trimmedDetail.isEmpty ? nil : trimmedDetail
+      items.append(
+        CommandPaletteItem(
+          id: "worktree.\(row.id).select",
+          title: title,
+          subtitle: detail,
+          kind: .worktreeSelect(row.id)
+        )
+      )
+      items.append(
+        CommandPaletteItem(
+          id: "worktree.\(row.id).run",
+          title: title,
+          subtitle: detail,
+          kind: .runWorktree(row.id)
+        )
+      )
+      items.append(
+        CommandPaletteItem(
+          id: "worktree.\(row.id).editor",
+          title: title,
+          subtitle: detail,
+          kind: .openWorktreeInEditor(row.id)
+        )
+      )
+      if row.isRemovable, !row.isMainWorktree {
+        items.append(
+          CommandPaletteItem(
+            id: "worktree.\(row.id).remove",
+            title: title,
+            subtitle: detail,
+            kind: .removeWorktree(row.id, row.repositoryID)
+          )
+        )
+      }
+    }
+    return items
+  }
 }
 
 private func delegateAction(for kind: CommandPaletteItem.Kind) -> CommandPaletteFeature.Delegate {

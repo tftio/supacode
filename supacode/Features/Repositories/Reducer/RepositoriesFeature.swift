@@ -1384,8 +1384,8 @@ struct RepositoriesFeature {
     let didPruneWorktreeOrder = pruneWorktreeOrderByRepository(roots: roots, state: &state)
     let didPruneArchivedWorktreeIDs =
       shouldPruneArchivedWorktreeIDs
-        ? pruneArchivedWorktreeIDs(availableWorktreeIDs: availableWorktreeIDs, state: &state)
-        : false
+      ? pruneArchivedWorktreeIDs(availableWorktreeIDs: availableWorktreeIDs, state: &state)
+      : false
     if !state.isShowingArchivedWorktrees, !isSelectionValid(state.selectedWorktreeID, state: state) {
       state.selection = nil
     }

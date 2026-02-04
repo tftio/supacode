@@ -45,7 +45,7 @@ struct SidebarFooterView: View {
         Label("Archived Worktrees", systemImage: "archivebox")
           .labelStyle(.iconOnly)
       }
-      .help("Archived Worktrees")
+      .help("Archived Worktrees (\(AppShortcuts.archivedWorktrees.display))")
     }
     .buttonStyle(.plain)
     .font(.callout)

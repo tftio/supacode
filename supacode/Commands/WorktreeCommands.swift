@@ -62,6 +62,14 @@ struct WorktreeCommands: Commands {
       )
       .help("New Worktree (\(AppShortcuts.newWorktree.display))")
       .disabled(!repositories.canCreateWorktree)
+      Button("Archived Worktrees") {
+        store.send(.repositories(.selectArchivedWorktrees))
+      }
+      .keyboardShortcut(
+        AppShortcuts.archivedWorktrees.keyEquivalent,
+        modifiers: AppShortcuts.archivedWorktrees.modifiers
+      )
+      .help("Archived Worktrees (\(AppShortcuts.archivedWorktrees.display))")
       Button("Remove Worktree") {
         removeWorktreeAction?()
       }

@@ -146,7 +146,7 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
       return action
     }
     if let defaultEditorID, defaultEditorID != automaticSettingsID,
-      let action = editorPriority.first(where: { $0.settingsID == defaultEditorID })
+      let action = allCases.first(where: { $0.settingsID == defaultEditorID })
     {
       return action
     }

@@ -5,7 +5,7 @@ struct AppearanceSettingsView: View {
   @Bindable var store: StoreOf<SettingsFeature>
 
   var body: some View {
-    let editorOptions = OpenWorktreeAction.editorPriority.filter(\.isInstalled)
+    let openActionOptions = OpenWorktreeAction.availableCases
     VStack(alignment: .leading) {
       Form {
         Section("Appearance") {
@@ -28,7 +28,7 @@ struct AppearanceSettingsView: View {
           ) {
             Text("Automatic")
               .tag(OpenWorktreeAction.automaticSettingsID)
-            ForEach(editorOptions) { action in
+            ForEach(openActionOptions) { action in
               Text(action.labelTitle)
                 .tag(action.settingsID)
             }

@@ -71,18 +71,18 @@ struct RepositorySectionView: View {
           .foregroundStyle(.secondary)
           .help("New Worktree (\(AppShortcuts.newWorktree.display))")
           .disabled(isRemovingRepository)
+          Button {
+            toggleExpanded()
+          } label: {
+            Image(systemName: "chevron.right")
+              .rotationEffect(.degrees(isExpanded ? 90 : 0))
+              .frame(maxHeight: .infinity)
+              .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .foregroundStyle(.secondary)
+          .help(isExpanded ? "Collapse" : "Expand")
         }
-        Button {
-          toggleExpanded()
-        } label: {
-          Image(systemName: "chevron.right")
-            .rotationEffect(.degrees(isExpanded ? 90 : 0))
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .help(isExpanded ? "Collapse" : "Expand")
       }
       .onHover { isHovering = $0 }
       .contentShape(.rect)

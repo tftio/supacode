@@ -114,7 +114,10 @@ struct SettingsView: View {
     }
     .navigationSplitViewStyle(.balanced)
     .frame(minWidth: 750, minHeight: 500)
-    .background(WindowLevelSetter(level: .floating))
+    .background {
+      WindowAppearanceSetter(colorScheme: settingsStore.appearanceMode.colorScheme)
+      WindowLevelSetter(level: .floating)
+    }
     .ignoresSafeArea(.container, edges: .top)
   }
 }

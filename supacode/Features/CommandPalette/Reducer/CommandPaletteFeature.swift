@@ -190,13 +190,15 @@ struct CommandPaletteFeature {
       ),
     ]
     if let selectedWorktreeID = repositories.selectedWorktreeID,
+      let repositoryID = repositories.repositoryID(containing: selectedWorktreeID),
       let pullRequest = repositories.worktreeInfo(for: selectedWorktreeID)?.pullRequest,
       pullRequest.number > 0,
       pullRequest.state.uppercased() != "CLOSED"
     {
       let pullRequestActions = pullRequestItems(
         pullRequest: pullRequest,
-        worktreeID: selectedWorktreeID
+        worktreeID: selectedWorktreeID,
+        repositoryID: repositoryID
       )
       items.append(contentsOf: pullRequestActions)
     }
@@ -219,7 +221,8 @@ struct CommandPaletteFeature {
 
 private func pullRequestItems(
   pullRequest: GithubPullRequest,
-  worktreeID: Worktree.ID
+  worktreeID: Worktree.ID,
+  repositoryID: Repository.ID
 ) -> [CommandPaletteItem] {
   let state = pullRequest.state.uppercased()
   let isOpen = state == "OPEN"
@@ -240,7 +243,7 @@ private func pullRequestItems(
 
   var items: [CommandPaletteItem] = [
     CommandPaletteItem(
-      id: "pr.\(worktreeID).open",
+      id: "pr.\(repositoryID).open",
       title: "Open PR on GitHub",
       subtitle: pullRequest.title,
       kind: .openPullRequest(worktreeID),
@@ -251,7 +254,7 @@ private func pullRequestItems(
   if isOpen && isDraft {
     items.append(
       CommandPaletteItem(
-        id: "pr.\(worktreeID).ready",
+        id: "pr.\(repositoryID).ready",
         title: "Mark PR Ready for Review",
         subtitle: pullRequest.title,
         kind: .markPullRequestReady(worktreeID),
@@ -265,7 +268,7 @@ private func pullRequestItems(
     let followupTier = logTier + 1
     items.append(
       CommandPaletteItem(
-        id: "pr.\(worktreeID).copy-ci-logs",
+        id: "pr.\(repositoryID).copy-ci-logs",
         title: "Copy CI Failure Logs",
         subtitle: pullRequest.title,
         kind: .copyCiFailureLogs(worktreeID),
@@ -274,7 +277,7 @@ private func pullRequestItems(
     )
     items.append(
       CommandPaletteItem(
-        id: "pr.\(worktreeID).rerun-failed-jobs",
+        id: "pr.\(repositoryID).rerun-failed-jobs",
         title: "Re-run Failed Jobs",
         subtitle: pullRequest.title,
         kind: .rerunFailedJobs(worktreeID),
@@ -284,7 +287,7 @@ private func pullRequestItems(
     if checks.contains(where: { $0.checkState == .failure && $0.detailsUrl != nil }) {
       items.append(
         CommandPaletteItem(
-          id: "pr.\(worktreeID).open-failing-check",
+          id: "pr.\(repositoryID).open-failing-check",
           title: "Open Failing Check Details",
           subtitle: pullRequest.title,
           kind: .openFailingCheckDetails(worktreeID),
@@ -302,7 +305,7 @@ private func pullRequestItems(
       : "\(successfulChecks) successful checks"
     items.append(
       CommandPaletteItem(
-        id: "pr.\(worktreeID).merge",
+        id: "pr.\(repositoryID).merge",
         title: "Merge Ready",
         subtitle: successfulChecksLabel,
         kind: .mergePullRequest(worktreeID),

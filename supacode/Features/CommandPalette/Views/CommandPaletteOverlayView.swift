@@ -266,9 +266,7 @@ private struct CommandPaletteList: View {
 
   var body: some View {
     if rows.isEmpty {
-      Text("No matches")
-        .foregroundStyle(.secondary)
-        .padding()
+      EmptyView()
     } else {
       ScrollViewReader { proxy in
         ScrollView {

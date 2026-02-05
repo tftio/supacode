@@ -87,6 +87,9 @@ struct RepositorySectionView: View {
           }
         }
         .contentShape(.rect)
+        .contentShape(.dragPreview, .rect)
+        .environment(\.colorScheme, colorScheme)
+        .preferredColorScheme(colorScheme)
       }
       .onHover { isHovering = $0 }
       .contextMenu {
@@ -100,9 +103,6 @@ struct RepositorySectionView: View {
         .help("Remove repository ")
         .disabled(isRemovingRepository)
       }
-      .contentShape(.dragPreview, .rect)
-      .environment(\.colorScheme, colorScheme)
-      .preferredColorScheme(colorScheme)
       .listRowInsets(EdgeInsets())
     }
   }

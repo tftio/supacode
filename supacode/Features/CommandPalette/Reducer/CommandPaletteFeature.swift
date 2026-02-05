@@ -8,6 +8,7 @@ struct CommandPaletteFeature {
     var isPresented = false
     var query = ""
     var selectedIndex: Int?
+    var recencyByItemID: [CommandPaletteItem.ID: TimeInterval] = [:]
   }
 
   enum SelectionMove: Equatable {
@@ -19,10 +20,12 @@ struct CommandPaletteFeature {
     case binding(BindingAction<State>)
     case setPresented(Bool)
     case togglePresented
-    case activate(CommandPaletteItem.Kind)
+    case activateItem(CommandPaletteItem)
     case updateSelection(itemsCount: Int)
     case resetSelection(itemsCount: Int)
     case moveSelection(SelectionMove, itemsCount: Int)
+    case recencyLoaded([CommandPaletteItem.ID: TimeInterval])
+    case pruneRecency([CommandPaletteItem.ID])
     case delegate(Delegate)
   }
 
@@ -37,6 +40,9 @@ struct CommandPaletteFeature {
     case archiveWorktree(Worktree.ID, Repository.ID)
     case refreshWorktrees
   }
+
+  @Dependency(\.commandPaletteRecency) private var commandPaletteRecency
+  @Dependency(\.date.now) private var now
 
   var body: some Reducer<State, Action> {
     BindingReducer()
@@ -65,11 +71,18 @@ struct CommandPaletteFeature {
         }
         return .none
 
-      case .activate(let kind):
+      case .activateItem(let item):
         state.isPresented = false
         state.query = ""
         state.selectedIndex = nil
-        return .send(.delegate(delegateAction(for: kind)))
+        state.recencyByItemID[item.id] = now.timeIntervalSince1970
+        let recencyByItemID = state.recencyByItemID
+        return .merge(
+          .run { _ in
+            await commandPaletteRecency.save(recencyByItemID)
+          },
+          .send(.delegate(delegateAction(for: item.kind)))
+        )
 
       case .updateSelection(let itemsCount):
         if itemsCount == 0 {
@@ -109,18 +122,36 @@ struct CommandPaletteFeature {
         }
         return .none
 
+      case .recencyLoaded(let recency):
+        state.recencyByItemID = recency
+        return .none
+
+      case .pruneRecency(let ids):
+        let idSet = Set(ids)
+        let pruned = state.recencyByItemID.filter { idSet.contains($0.key) }
+        guard pruned != state.recencyByItemID else { return .none }
+        state.recencyByItemID = pruned
+        return .run { _ in
+          await commandPaletteRecency.save(pruned)
+        }
+
       case .delegate:
         return .none
       }
     }
   }
 
-  static func filterItems(items: [CommandPaletteItem], query: String) -> [CommandPaletteItem] {
+  static func filterItems(
+    items: [CommandPaletteItem],
+    query: String,
+    recencyByID: [CommandPaletteItem.ID: TimeInterval] = [:],
+    now: Date = .now
+  ) -> [CommandPaletteItem] {
     let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
     let globalItems = items.filter(\.isGlobal)
     guard !trimmed.isEmpty else { return globalItems }
     let worktreeItems = items.filter { !$0.isGlobal }
-    let scorer = CommandPaletteFuzzyScorer(query: trimmed)
+    let scorer = CommandPaletteFuzzyScorer(query: trimmed, recencyByID: recencyByID, now: now)
     return scorer.rankedItems(from: globalItems) + scorer.rankedItems(from: worktreeItems)
   }
 
@@ -223,6 +254,7 @@ private struct CommandPaletteFuzzyScorer {
   private struct ScoredItem {
     let item: CommandPaletteItem
     let score: ItemScore
+    let recencyScore: Double
     let index: Int
   }
 
@@ -231,16 +263,32 @@ private struct CommandPaletteFuzzyScorer {
 
   private let query: PreparedQuery
   private let allowNonContiguousMatches: Bool
+  private let recencyByID: [CommandPaletteItem.ID: TimeInterval]
+  private let now: Date
 
-  init(query: String, allowNonContiguousMatches: Bool = true) {
+  init(
+    query: String,
+    recencyByID: [CommandPaletteItem.ID: TimeInterval],
+    now: Date,
+    allowNonContiguousMatches: Bool = true
+  ) {
     self.query = Self.prepareQuery(query)
     self.allowNonContiguousMatches = allowNonContiguousMatches
+    self.recencyByID = recencyByID
+    self.now = now
   }
 
   func rankedItems(from items: [CommandPaletteItem]) -> [CommandPaletteItem] {
     let scoredItems = items.enumerated().compactMap { index, item in
       let score = scoreItem(item)
-      return score.score > 0 ? ScoredItem(item: item, score: score, index: index) : nil
+      return score.score > 0
+        ? ScoredItem(
+          item: item,
+          score: score,
+          recencyScore: recencyScore(for: item),
+          index: index
+        )
+        : nil
     }
     let sorted = scoredItems.sorted { compare($0, $1) < 0 }
     return sorted.map(\.item)
@@ -404,6 +452,10 @@ private struct CommandPaletteFuzzyScorer {
       return itemBMatchDistance > itemAMatchDistance ? -1 : 1
     }
 
+    if itemA.recencyScore != itemB.recencyScore {
+      return itemA.recencyScore > itemB.recencyScore ? -1 : 1
+    }
+
     let fallback = fallbackCompare(itemA.item, itemB.item)
     if fallback != 0 {
       return fallback
@@ -492,6 +544,14 @@ private struct CommandPaletteFuzzyScorer {
     case .orderedSame:
       return 0
     }
+  }
+
+  private func recencyScore(for item: CommandPaletteItem) -> Double {
+    guard let lastActivated = recencyByID[item.id] else { return 0 }
+    let ageSeconds = max(0, now.timeIntervalSince1970 - lastActivated)
+    let ageDays = ageSeconds / 86_400
+    let cappedAgeDays = min(ageDays, 30)
+    return pow(0.5, cappedAgeDays / 7)
   }
 
   private func scoreFuzzy(

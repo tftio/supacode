@@ -1,5 +1,6 @@
 import AppKit
 import ComposableArchitecture
+import Foundation
 import SwiftUI
 
 struct CommandPaletteOverlayView: View {
@@ -9,7 +10,13 @@ struct CommandPaletteOverlayView: View {
   @State private var hoveredID: CommandPaletteItem.ID?
 
   var body: some View {
-    let filteredItems = CommandPaletteFeature.filterItems(items: items, query: store.query)
+    let now = Date.now
+    let filteredItems = CommandPaletteFeature.filterItems(
+      items: items,
+      query: store.query,
+      recencyByID: store.recencyByItemID,
+      now: now
+    )
     ZStack {
       if store.isPresented {
         ZStack {
@@ -71,6 +78,9 @@ struct CommandPaletteOverlayView: View {
     .onChange(of: filteredItems) { _, newValue in
       updateSelection(rows: newValue)
     }
+    .onChange(of: items) { _, newValue in
+      store.send(.pruneRecency(newValue.map(\.id)))
+    }
   }
 
   private func updateSelection(rows: [CommandPaletteItem]) {
@@ -99,19 +109,19 @@ struct CommandPaletteOverlayView: View {
       if trimmed.isEmpty {
         return
       }
-      store.send(.activate(rows[0].kind))
+      store.send(.activateItem(rows[0]))
       return
     }
     if rows.indices.contains(selectedIndex) {
-      store.send(.activate(rows[selectedIndex].kind))
+      store.send(.activateItem(rows[selectedIndex]))
       return
     }
-    store.send(.activate(rows[rows.count - 1].kind))
+    store.send(.activateItem(rows[rows.count - 1]))
   }
 
   private func activate(_ id: CommandPaletteItem.ID, rows: [CommandPaletteItem]) {
     guard let item = rows.first(where: { $0.id == id }) else { return }
-    store.send(.activate(item.kind))
+    store.send(.activateItem(item))
   }
 }
 

@@ -366,19 +366,58 @@ struct CommandPaletteFeatureTests {
     )
   }
 
-  @Test func activateDispatchesDelegate() async {
+  @Test func recencyBreaksFuzzyTiesWithinGroup() {
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    let recent = CommandPaletteItem(
+      id: "global.recent",
+      title: "Open",
+      subtitle: nil,
+      kind: .openRepository
+    )
+    let older = CommandPaletteItem(
+      id: "global.older",
+      title: "Open",
+      subtitle: nil,
+      kind: .openSettings
+    )
+    let recency: [CommandPaletteItem.ID: TimeInterval] = [
+      recent.id: now.timeIntervalSince1970 - 1 * 86_400,
+      older.id: now.timeIntervalSince1970 - 10 * 86_400,
+    ]
+
+    expectNoDifference(
+      CommandPaletteFeature.filterItems(
+        items: [older, recent],
+        query: "open",
+        recencyByID: recency,
+        now: now
+      ),
+      [recent, older]
+    )
+  }
+
+  @Test func activateDispatchesDelegateAndUpdatesRecency() async {
     var state = CommandPaletteFeature.State()
     state.isPresented = true
     state.query = "bear"
     state.selectedIndex = 1
+    let item = CommandPaletteItem(
+      id: "global.open-repository",
+      title: "Open Repository",
+      subtitle: nil,
+      kind: .openRepository
+    )
     let store = TestStore(initialState: state) {
       CommandPaletteFeature()
     }
+    let now = Date(timeIntervalSince1970: 1_234_567)
+    store.dependencies.date = .constant(now)
 
-    await store.send(.activate(.openRepository)) {
+    await store.send(.activateItem(item)) {
       $0.isPresented = false
       $0.query = ""
       $0.selectedIndex = nil
+      $0.recencyByItemID[item.id] = now.timeIntervalSince1970
     }
     await store.receive(.delegate(.openRepository))
   }

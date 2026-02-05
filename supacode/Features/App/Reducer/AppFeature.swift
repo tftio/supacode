@@ -71,6 +71,7 @@ struct AppFeature {
   }
 
   @Dependency(\.analyticsClient) private var analyticsClient
+  @Dependency(\.commandPaletteRecency) private var commandPaletteRecency
   @Dependency(\.repositoryPersistence) private var repositoryPersistence
   @Dependency(\.workspaceClient) private var workspaceClient
   @Dependency(\.settingsWindowClient) private var settingsWindowClient
@@ -85,6 +86,10 @@ struct AppFeature {
         return .merge(
           .send(.repositories(.task)),
           .send(.settings(.task)),
+          .run { send in
+            let recency = await commandPaletteRecency.load()
+            await send(.commandPalette(.recencyLoaded(recency)))
+          },
           .run { send in
             for await event in await terminalClient.events() {
               await send(.terminalEvent(event))

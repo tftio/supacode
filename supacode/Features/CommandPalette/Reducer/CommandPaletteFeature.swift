@@ -160,31 +160,31 @@ struct CommandPaletteFeature {
   ) -> [CommandPaletteItem] {
     var items: [CommandPaletteItem] = [
       CommandPaletteItem(
-        id: "global.check-for-updates",
+        id: CommandPaletteItemID.globalCheckForUpdates,
         title: "Check for Updates",
         subtitle: nil,
         kind: .checkForUpdates
       ),
       CommandPaletteItem(
-        id: "global.open-settings",
+        id: CommandPaletteItemID.globalOpenSettings,
         title: "Open Settings",
         subtitle: nil,
         kind: .openSettings
       ),
       CommandPaletteItem(
-        id: "global.open-repository",
+        id: CommandPaletteItemID.globalOpenRepository,
         title: "Open Repository",
         subtitle: nil,
         kind: .openRepository
       ),
       CommandPaletteItem(
-        id: "global.new-worktree",
+        id: CommandPaletteItemID.globalNewWorktree,
         title: "New Worktree",
         subtitle: nil,
         kind: .newWorktree
       ),
       CommandPaletteItem(
-        id: "global.refresh-worktrees",
+        id: CommandPaletteItemID.globalRefreshWorktrees,
         title: "Refresh Worktrees",
         subtitle: nil,
         kind: .refreshWorktrees
@@ -209,7 +209,7 @@ struct CommandPaletteFeature {
       let title = "\(repositoryName) / \(row.name)"
       items.append(
         CommandPaletteItem(
-          id: "worktree.\(row.id).select",
+          id: CommandPaletteItemID.worktreeSelect(row.id),
           title: title,
           subtitle: nil,
           kind: .worktreeSelect(row.id)
@@ -217,6 +217,19 @@ struct CommandPaletteFeature {
       )
     }
     return items
+  }
+
+  static func recencyRetentionIDs(
+    from repositories: IdentifiedArrayOf<Repository>
+  ) -> [CommandPaletteItem.ID] {
+    var ids = CommandPaletteItemID.globalIDs
+    for repository in repositories {
+      ids.append(contentsOf: CommandPaletteItemID.pullRequestIDs(repositoryID: repository.id))
+      for worktree in repository.worktrees {
+        ids.append(CommandPaletteItemID.worktreeSelect(worktree.id))
+      }
+    }
+    return ids
   }
 }
 
@@ -244,7 +257,7 @@ private func pullRequestItems(
 
   var items: [CommandPaletteItem] = [
     CommandPaletteItem(
-      id: "pr.\(repositoryID).open",
+      id: CommandPaletteItemID.pullRequestOpen(repositoryID),
       title: "Open PR on GitHub",
       subtitle: pullRequest.title,
       kind: .openPullRequest(worktreeID),
@@ -255,7 +268,7 @@ private func pullRequestItems(
   if isOpen && isDraft {
     items.append(
       CommandPaletteItem(
-        id: "pr.\(repositoryID).ready",
+        id: CommandPaletteItemID.pullRequestReady(repositoryID),
         title: "Mark PR Ready for Review",
         subtitle: pullRequest.title,
         kind: .markPullRequestReady(worktreeID),
@@ -269,7 +282,7 @@ private func pullRequestItems(
     let followupTier = logTier + 1
     items.append(
       CommandPaletteItem(
-        id: "pr.\(repositoryID).copy-ci-logs",
+        id: CommandPaletteItemID.pullRequestCopyCiLogs(repositoryID),
         title: "Copy CI Failure Logs",
         subtitle: pullRequest.title,
         kind: .copyCiFailureLogs(worktreeID),
@@ -278,7 +291,7 @@ private func pullRequestItems(
     )
     items.append(
       CommandPaletteItem(
-        id: "pr.\(repositoryID).rerun-failed-jobs",
+        id: CommandPaletteItemID.pullRequestRerunFailedJobs(repositoryID),
         title: "Re-run Failed Jobs",
         subtitle: pullRequest.title,
         kind: .rerunFailedJobs(worktreeID),
@@ -288,7 +301,7 @@ private func pullRequestItems(
     if checks.contains(where: { $0.checkState == .failure && $0.detailsUrl != nil }) {
       items.append(
         CommandPaletteItem(
-          id: "pr.\(repositoryID).open-failing-check",
+          id: CommandPaletteItemID.pullRequestOpenFailingCheck(repositoryID),
           title: "Open Failing Check Details",
           subtitle: pullRequest.title,
           kind: .openFailingCheckDetails(worktreeID),
@@ -306,7 +319,7 @@ private func pullRequestItems(
       : "\(successfulChecks) successful checks"
     items.append(
       CommandPaletteItem(
-        id: "pr.\(repositoryID).merge",
+        id: CommandPaletteItemID.pullRequestMerge(repositoryID),
         title: "Merge PR",
         subtitle: "Merge Ready - \(successfulChecksLabel)",
         kind: .mergePullRequest(worktreeID),
@@ -316,6 +329,63 @@ private func pullRequestItems(
   }
 
   return items
+}
+
+private enum CommandPaletteItemID {
+  static let globalCheckForUpdates = "global.check-for-updates"
+  static let globalOpenSettings = "global.open-settings"
+  static let globalOpenRepository = "global.open-repository"
+  static let globalNewWorktree = "global.new-worktree"
+  static let globalRefreshWorktrees = "global.refresh-worktrees"
+
+  static var globalIDs: [CommandPaletteItem.ID] {
+    [
+      globalCheckForUpdates,
+      globalOpenSettings,
+      globalOpenRepository,
+      globalNewWorktree,
+      globalRefreshWorktrees,
+    ]
+  }
+
+  static func worktreeSelect(_ worktreeID: Worktree.ID) -> CommandPaletteItem.ID {
+    "worktree.\(worktreeID).select"
+  }
+
+  static func pullRequestIDs(repositoryID: Repository.ID) -> [CommandPaletteItem.ID] {
+    [
+      pullRequestOpen(repositoryID),
+      pullRequestReady(repositoryID),
+      pullRequestCopyCiLogs(repositoryID),
+      pullRequestRerunFailedJobs(repositoryID),
+      pullRequestOpenFailingCheck(repositoryID),
+      pullRequestMerge(repositoryID),
+    ]
+  }
+
+  static func pullRequestOpen(_ repositoryID: Repository.ID) -> CommandPaletteItem.ID {
+    "pr.\(repositoryID).open"
+  }
+
+  static func pullRequestReady(_ repositoryID: Repository.ID) -> CommandPaletteItem.ID {
+    "pr.\(repositoryID).ready"
+  }
+
+  static func pullRequestCopyCiLogs(_ repositoryID: Repository.ID) -> CommandPaletteItem.ID {
+    "pr.\(repositoryID).copy-ci-logs"
+  }
+
+  static func pullRequestRerunFailedJobs(_ repositoryID: Repository.ID) -> CommandPaletteItem.ID {
+    "pr.\(repositoryID).rerun-failed-jobs"
+  }
+
+  static func pullRequestOpenFailingCheck(_ repositoryID: Repository.ID) -> CommandPaletteItem.ID {
+    "pr.\(repositoryID).open-failing-check"
+  }
+
+  static func pullRequestMerge(_ repositoryID: Repository.ID) -> CommandPaletteItem.ID {
+    "pr.\(repositoryID).merge"
+  }
 }
 
 private func prioritizeItems(

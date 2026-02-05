@@ -74,7 +74,6 @@ struct AppFeature {
   @Dependency(\.repositoryPersistence) private var repositoryPersistence
   @Dependency(\.workspaceClient) private var workspaceClient
   @Dependency(\.settingsWindowClient) private var settingsWindowClient
-  @Dependency(\.editorActionResolver) private var editorActionResolver
   @Dependency(\.terminalClient) private var terminalClient
   @Dependency(\.worktreeInfoWatcher) private var worktreeInfoWatcher
 
@@ -170,6 +169,7 @@ struct AppFeature {
 
       case .repositories(.delegate(.repositoriesChanged(let repositories))):
         let ids = Set(repositories.flatMap { $0.worktrees.map(\.id) })
+        let recencyIDs = CommandPaletteFeature.recencyRetentionIDs(from: repositories)
         let worktrees = state.repositories.worktreesForInfoWatcher()
         state.runScriptStatusByWorktreeID = state.runScriptStatusByWorktreeID.filter { ids.contains($0.key) }
         if case .repository(let repositoryID)? = state.settings.selection,
@@ -177,6 +177,7 @@ struct AppFeature {
         {
           return .merge(
             .send(.settings(.setSelection(.general))),
+            .send(.commandPalette(.pruneRecency(recencyIDs))),
             .run { _ in
               await terminalClient.send(.prune(ids))
             },
@@ -186,6 +187,7 @@ struct AppFeature {
           )
         }
         return .merge(
+          .send(.commandPalette(.pruneRecency(recencyIDs))),
           .run { _ in
             await terminalClient.send(.prune(ids))
           },

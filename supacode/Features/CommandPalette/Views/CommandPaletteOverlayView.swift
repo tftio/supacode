@@ -78,9 +78,6 @@ struct CommandPaletteOverlayView: View {
     .onChange(of: filteredItems) { _, newValue in
       updateSelection(rows: newValue)
     }
-    .onChange(of: items) { _, newValue in
-      store.send(.pruneRecency(newValue.map(\.id)))
-    }
   }
 
   private func updateSelection(rows: [CommandPaletteItem]) {
@@ -242,7 +239,7 @@ private struct CommandPaletteQuery: View {
 
       TextField("Execute a command…", text: $query)
         .padding()
-        .font(.system(size: 20, weight: .light))
+        .font(.title3.weight(.light))
         .frame(height: 48)
         .textFieldStyle(.plain)
         .focused($isTextFieldFocused)

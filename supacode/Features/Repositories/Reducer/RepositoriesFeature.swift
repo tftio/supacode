@@ -1273,6 +1273,7 @@ struct RepositoriesFeature {
           )
         }
         let repoRoot = worktree.repositoryRootURL
+        let worktreeRoot = worktree.workingDirectory
         let branchName = pullRequest.headRefName ?? worktree.name
         switch action {
         case .openOnGithub:
@@ -1319,7 +1320,7 @@ struct RepositoriesFeature {
               return
             }
             do {
-              try await githubCLI.markPullRequestReady(repoRoot)
+              try await githubCLI.markPullRequestReady(worktreeRoot, pullRequest.number)
             } catch {
               await send(
                 .presentAlert(
@@ -1346,7 +1347,7 @@ struct RepositoriesFeature {
             @Shared(.repositorySettings(repoRoot)) var repositorySettings
             let strategy = repositorySettings.pullRequestMergeStrategy
             do {
-              try await githubCLI.mergePullRequest(repoRoot, strategy)
+              try await githubCLI.mergePullRequest(worktreeRoot, pullRequest.number, strategy)
             } catch {
               await send(
                 .presentAlert(
@@ -1380,7 +1381,7 @@ struct RepositoriesFeature {
               return
             }
             do {
-              guard let run = try await githubCLI.latestRun(repoRoot, branchName) else {
+              guard let run = try await githubCLI.latestRun(worktreeRoot, branchName) else {
                 await send(
                   .presentAlert(
                     title: "No workflow runs found",
@@ -1398,7 +1399,7 @@ struct RepositoriesFeature {
                 )
                 return
               }
-              let logs = try await githubCLI.failedRunLogs(repoRoot, run.databaseId)
+              let logs = try await githubCLI.failedRunLogs(worktreeRoot, run.databaseId)
               await MainActor.run {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(logs, forType: .string)
@@ -1436,7 +1437,7 @@ struct RepositoriesFeature {
               return
             }
             do {
-              guard let run = try await githubCLI.latestRun(repoRoot, branchName) else {
+              guard let run = try await githubCLI.latestRun(worktreeRoot, branchName) else {
                 await send(
                   .presentAlert(
                     title: "No workflow runs found",
@@ -1454,7 +1455,7 @@ struct RepositoriesFeature {
                 )
                 return
               }
-              try await githubCLI.rerunFailedJobs(repoRoot, run.databaseId)
+              try await githubCLI.rerunFailedJobs(worktreeRoot, run.databaseId)
             } catch {
               await send(
                 .presentAlert(

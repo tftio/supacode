@@ -43,8 +43,8 @@ struct GithubCLIClient {
   var defaultBranch: @Sendable (URL) async throws -> String
   var latestRun: @Sendable (URL, String) async throws -> GithubWorkflowRun?
   var batchPullRequests: @Sendable (String, String, String, [String]) async throws -> [String: GithubPullRequest]
-  var mergePullRequest: @Sendable (URL, PullRequestMergeStrategy) async throws -> Void
-  var markPullRequestReady: @Sendable (URL) async throws -> Void
+  var mergePullRequest: @Sendable (URL, Int, PullRequestMergeStrategy) async throws -> Void
+  var markPullRequestReady: @Sendable (URL, Int) async throws -> Void
   var rerunFailedJobs: @Sendable (URL, Int) async throws -> Void
   var failedRunLogs: @Sendable (URL, Int) async throws -> String
   var isAvailable: @Sendable () async -> Bool
@@ -135,23 +135,25 @@ extension GithubCLIClient: DependencyKey {
         }
         return results
       },
-      mergePullRequest: { repoRoot, strategy in
+      mergePullRequest: { repoRoot, pullRequestNumber, strategy in
         _ = try await runGh(
           shell: shell,
           arguments: [
             "pr",
             "merge",
+            "\(pullRequestNumber)",
             "--\(strategy.ghArgument)",
           ],
           repoRoot: repoRoot
         )
       },
-      markPullRequestReady: { repoRoot in
+      markPullRequestReady: { repoRoot, pullRequestNumber in
         _ = try await runGh(
           shell: shell,
           arguments: [
             "pr",
             "ready",
+            "\(pullRequestNumber)",
           ],
           repoRoot: repoRoot
         )
@@ -210,8 +212,8 @@ extension GithubCLIClient: DependencyKey {
     defaultBranch: { _ in "main" },
     latestRun: { _, _ in nil },
     batchPullRequests: { _, _, _, _ in [:] },
-    mergePullRequest: { _, _ in },
-    markPullRequestReady: { _ in },
+    mergePullRequest: { _, _, _ in },
+    markPullRequestReady: { _, _ in },
     rerunFailedJobs: { _, _ in },
     failedRunLogs: { _, _ in "" },
     isAvailable: { true },

@@ -250,7 +250,7 @@ private struct CommandPaletteQuery: View {
       .frame(width: 0, height: 0)
       .accessibilityHidden(true)
 
-      TextField("Execute a command…", text: $query)
+      TextField("Search for actions or branchs...", text: $query)
         .padding()
         .font(.title3.weight(.light))
         .frame(height: Self.fieldHeight)

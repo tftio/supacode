@@ -39,7 +39,7 @@ struct AppFeature {
   }
 
   enum Action {
-    case task
+    case appLaunched
     case scenePhaseChanged(ScenePhase)
     case repositories(RepositoriesFeature.Action)
     case settings(SettingsFeature.Action)
@@ -78,7 +78,7 @@ struct AppFeature {
   var body: some Reducer<State, Action> {
     let core = Reduce<State, Action> { state, action in
       switch action {
-      case .task:
+      case .appLaunched:
         return .merge(
           .send(.repositories(.task)),
           .send(.settings(.task)),

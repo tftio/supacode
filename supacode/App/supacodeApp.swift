@@ -29,6 +29,12 @@ private enum GhosttyCLI {
 
 @MainActor
 final class SupacodeAppDelegate: NSObject, NSApplicationDelegate {
+  var appStore: StoreOf<AppFeature>?
+
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    appStore?.send(.appLaunched)
+  }
+
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows _: Bool) -> Bool {
     guard let window = mainWindow(from: sender) else {
       return true
@@ -135,6 +141,7 @@ struct SupacodeApp: App {
       )
     }
     _store = State(initialValue: appStore)
+    appDelegate.appStore = appStore
     SettingsWindowManager.shared.configure(
       store: appStore,
       ghosttyShortcuts: shortcuts,

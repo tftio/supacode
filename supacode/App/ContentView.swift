@@ -38,9 +38,6 @@ struct ContentView: View {
           .background(.background)
       }
     }
-    .task {
-      store.send(.task)
-    }
     .onChange(of: scenePhase) { _, newValue in
       store.send(.scenePhaseChanged(newValue))
     }

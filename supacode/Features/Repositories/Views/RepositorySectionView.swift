@@ -8,7 +8,7 @@ struct RepositorySectionView: View {
   let terminalManager: WorktreeTerminalManager
   @Environment(\.colorScheme) private var colorScheme
   @State private var isHovering = false
-  @State private var draggingRepositoryIDs: Set<Repository.ID> = []
+  @State private var draggingRepositoryRoots: Set<URL> = []
 
   var body: some View {
     let state = store.state
@@ -30,7 +30,8 @@ struct RepositorySectionView: View {
     let openRepoSettings = {
       _ = store.send(.openRepositorySettings(repository.id))
     }
-    let isDragging = draggingRepositoryIDs.contains(repository.id)
+    let repositoryRoot = repository.rootURL.standardizedFileURL
+    let isDragging = draggingRepositoryRoots.contains(repositoryRoot)
 
     Section {
       WorktreeRowsView(
@@ -93,21 +94,21 @@ struct RepositorySectionView: View {
         .environment(\.colorScheme, colorScheme)
         .preferredColorScheme(colorScheme)
         .onDragSessionUpdated { session in
-          let draggedIDs = Set(session.draggedItemIDs(for: Repository.ID.self))
+          let draggedRoots = Set(session.draggedItemIDs(for: URL.self))
           if case .ended = session.phase {
-            if !draggingRepositoryIDs.isEmpty {
-              draggingRepositoryIDs = []
+            if !draggingRepositoryRoots.isEmpty {
+              draggingRepositoryRoots = []
             }
             return
           }
           if case .dataTransferCompleted = session.phase {
-            if !draggingRepositoryIDs.isEmpty {
-              draggingRepositoryIDs = []
+            if !draggingRepositoryRoots.isEmpty {
+              draggingRepositoryRoots = []
             }
             return
           }
-          if draggedIDs != draggingRepositoryIDs {
-            draggingRepositoryIDs = draggedIDs
+          if draggedRoots != draggingRepositoryRoots {
+            draggingRepositoryRoots = draggedRoots
           }
         }
       }

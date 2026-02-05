@@ -66,15 +66,32 @@ struct PullRequestStatusModel: Equatable {
     }
     let isDraft = pullRequest.isDraft
     let prefix = isDraft ? "(Drafted) " : ""
+    let mergeable = pullRequest.mergeable?.uppercased()
+    let mergeStateStatus = pullRequest.mergeStateStatus?.uppercased()
+    let hasConflicts = mergeable == "CONFLICTING" || mergeStateStatus == "DIRTY"
     let checks = pullRequest.statusCheckRollup?.checks ?? []
     self.statusChecks = checks
+    let checksDetail: String?
     if checks.isEmpty {
-      self.detailText = isDraft ? "(Drafted)" : nil
+      checksDetail = nil
+    } else {
+      let breakdown = PullRequestCheckBreakdown(checks: checks)
+      let checksLabel = breakdown.total == 1 ? "check" : "checks"
+      checksDetail = breakdown.summaryText + " \(checksLabel)"
+    }
+    if hasConflicts {
+      if let checksDetail {
+        self.detailText = prefix + "Merge conflicts - " + checksDetail
+      } else {
+        self.detailText = prefix + "Merge conflicts"
+      }
       return
     }
-    let breakdown = PullRequestCheckBreakdown(checks: checks)
-    let checksLabel = breakdown.total == 1 ? "check" : "checks"
-    self.detailText = prefix + breakdown.summaryText + " \(checksLabel)"
+    if let checksDetail {
+      self.detailText = prefix + checksDetail
+    } else {
+      self.detailText = isDraft ? "(Drafted)" : nil
+    }
   }
 
   var badgeText: String {

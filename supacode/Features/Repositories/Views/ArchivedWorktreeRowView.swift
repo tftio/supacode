@@ -31,18 +31,9 @@ struct ArchivedWorktreeRowView: View {
         .buttonStyle(.borderless)
       }
       HStack(alignment: .firstTextBaseline, spacing: 8) {
-        HStack(spacing: 8) {
-          if !worktree.detail.isEmpty {
-            Text(worktree.detail)
-              .foregroundStyle(.secondary)
-              .monospaced()
-              .lineLimit(1)
-              .truncationMode(.middle)
-          }
-          if let createdAt = worktree.createdAt {
-            Text("Created \(createdAt, style: .relative)")
-              .foregroundStyle(.secondary)
-          }
+        if let createdAt = worktree.createdAt {
+          Text("Created \(createdAt, style: .relative)")
+            .foregroundStyle(.secondary)
         }
         Spacer(minLength: 8)
         WorktreePullRequestAccessoryView(display: display)

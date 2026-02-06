@@ -568,9 +568,9 @@ struct AppFeature {
       case .commandPalette:
         return .none
 
-      case .terminalEvent(.notificationReceived(let worktreeID, _, _)):
+      case .terminalEvent(.notificationReceived(let worktreeID, let title, let body)):
         var effects: [Effect<Action>] = [
-          .send(.repositories(.worktreeNotificationReceived(worktreeID)))
+          .send(.repositories(.worktreeNotificationReceived(worktreeID, title: title, body: body)))
         ]
         if state.settings.notificationSoundEnabled {
           effects.append(

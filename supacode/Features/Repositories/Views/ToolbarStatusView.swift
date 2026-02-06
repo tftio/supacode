@@ -3,6 +3,7 @@ import SwiftUI
 struct ToolbarStatusView: View {
   let toast: RepositoriesFeature.StatusToast?
   let pullRequest: GithubPullRequest?
+  var onNotificationTapped: () -> Void = {}
 
   var body: some View {
     Group {
@@ -25,6 +26,19 @@ struct ToolbarStatusView: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
         }
+        .transition(.opacity)
+      case .notification(let message, _):
+        Button(action: onNotificationTapped) {
+          HStack(spacing: 6) {
+            Image(systemName: "bell.fill")
+              .foregroundStyle(.yellow)
+              .accessibilityHidden(true)
+            Text(message)
+              .font(.footnote.monospaced())
+              .foregroundStyle(.secondary)
+          }
+        }
+        .buttonStyle(.plain)
         .transition(.opacity)
       case nil:
         if let model = PullRequestStatusModel(pullRequest: pullRequest) {

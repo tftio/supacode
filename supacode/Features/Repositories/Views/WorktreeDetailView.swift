@@ -84,6 +84,7 @@ struct WorktreeDetailView: View {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(selectedWorktree.workingDirectory.path, forType: .string)
           },
+          onNotificationTapped: { store.send(.repositories(.notificationToastTapped)) },
           onRunScript: { store.send(.runScript) },
           onStopRunScript: { store.send(.stopRunScript) }
         )
@@ -176,6 +177,7 @@ struct WorktreeDetailView: View {
     let onOpenWorktree: (OpenWorktreeAction) -> Void
     let onOpenActionSelectionChanged: (OpenWorktreeAction) -> Void
     let onCopyPath: () -> Void
+    let onNotificationTapped: () -> Void
     let onRunScript: () -> Void
     let onStopRunScript: () -> Void
 
@@ -190,8 +192,12 @@ struct WorktreeDetailView: View {
       ToolbarSpacer(.flexible)
 
       ToolbarItemGroup {
-        ToolbarStatusView(toast: toolbarState.statusToast, pullRequest: toolbarState.pullRequest)
-          .padding(.horizontal)
+        ToolbarStatusView(
+          toast: toolbarState.statusToast,
+          pullRequest: toolbarState.pullRequest,
+          onNotificationTapped: onNotificationTapped
+        )
+        .padding(.horizontal)
       }
 
       ToolbarSpacer(.flexible)
@@ -394,6 +400,7 @@ private struct WorktreeToolbarPreview: View {
         onOpenWorktree: { _ in },
         onOpenActionSelectionChanged: { _ in },
         onCopyPath: {},
+        onNotificationTapped: {},
         onRunScript: {},
         onStopRunScript: {}
       )

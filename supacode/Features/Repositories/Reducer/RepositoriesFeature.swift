@@ -103,7 +103,8 @@ struct RepositoriesFeature {
     case unpinWorktree(Worktree.ID)
     case presentAlert(title: String, message: String)
     case worktreeInfoEvent(WorktreeInfoWatcherClient.Event)
-    case worktreeNotificationReceived(Worktree.ID)
+    case worktreeNotificationReceived(Worktree.ID, title: String, body: String)
+    case notificationToastTapped
     case worktreeBranchNameLoaded(worktreeID: Worktree.ID, name: String)
     case worktreeLineChangesLoaded(worktreeID: Worktree.ID, added: Int, removed: Int)
     case worktreePullRequestLoaded(worktreeID: Worktree.ID, pullRequest: GithubPullRequest?)
@@ -138,6 +139,7 @@ struct RepositoriesFeature {
   enum StatusToast: Equatable {
     case inProgress(String)
     case success(String)
+    case notification(String, worktreeID: Worktree.ID)
   }
 
   enum Alert: Equatable {
@@ -1202,7 +1204,7 @@ struct RepositoriesFeature {
       case .showToast(let toast):
         state.statusToast = toast
         switch toast {
-        case .inProgress:
+        case .inProgress, .notification:
           return .cancel(id: CancelID.toastAutoDismiss)
         case .success:
           return .run { send in
@@ -1238,7 +1240,7 @@ struct RepositoriesFeature {
         }
         .cancellable(id: CancelID.delayedPRRefresh(worktreeID), cancelInFlight: true)
 
-      case .worktreeNotificationReceived(let worktreeID):
+      case .worktreeNotificationReceived(let worktreeID, let title, let body):
         guard let repositoryID = state.repositoryID(containing: worktreeID),
           let repository = state.repositories[id: repositoryID],
           let worktree = repository.worktrees[id: worktreeID]
@@ -1248,24 +1250,45 @@ struct RepositoriesFeature {
         if state.isWorktreeArchived(worktree.id) {
           return .none
         }
-        if state.isMainWorktree(worktree) || state.isWorktreePinned(worktree) {
+
+        var effects: [Effect<Action>] = []
+
+        if case .inProgress = state.statusToast {
+          // don't interrupt in-progress toasts
+        } else {
+          let content = [title, body].filter { !$0.isEmpty }.joined(separator: " – ")
+          if !content.isEmpty {
+            effects.append(.send(.showToast(.notification(content, worktreeID: worktreeID))))
+          }
+        }
+
+        if !state.isMainWorktree(worktree), !state.isWorktreePinned(worktree) {
+          let reordered = reorderedUnpinnedWorktreeIDs(
+            for: worktreeID,
+            in: repository,
+            state: state
+          )
+          if state.worktreeOrderByRepository[repositoryID] != reordered {
+            withAnimation(.snappy(duration: 0.2)) {
+              state.worktreeOrderByRepository[repositoryID] = reordered
+            }
+            let worktreeOrderByRepository = state.worktreeOrderByRepository
+            effects.append(
+              .run { _ in
+                await repositoryPersistence.saveWorktreeOrderByRepository(worktreeOrderByRepository)
+              }
+            )
+          }
+        }
+
+        return .merge(effects)
+
+      case .notificationToastTapped:
+        guard case .notification(_, let worktreeID) = state.statusToast else {
           return .none
         }
-        let reordered = reorderedUnpinnedWorktreeIDs(
-          for: worktreeID,
-          in: repository,
-          state: state
-        )
-        if state.worktreeOrderByRepository[repositoryID] == reordered {
-          return .none
-        }
-        withAnimation(.snappy(duration: 0.2)) {
-          state.worktreeOrderByRepository[repositoryID] = reordered
-        }
-        let worktreeOrderByRepository = state.worktreeOrderByRepository
-        return .run { _ in
-          await repositoryPersistence.saveWorktreeOrderByRepository(worktreeOrderByRepository)
-        }
+        state.statusToast = nil
+        return .send(.selectWorktree(worktreeID))
 
       case .worktreeInfoEvent(let event):
         switch event {

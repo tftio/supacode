@@ -29,7 +29,6 @@ struct ToolbarNotificationsPopoverButton: View {
           .font(.caption.monospacedDigit())
       }
     }
-    .buttonStyle(.plain)
     .help("Notifications. Hover or click to show all notifications.")
     .accessibilityLabel("Notifications")
     .onHover { hovering in

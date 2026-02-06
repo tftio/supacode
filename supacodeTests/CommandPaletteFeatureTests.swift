@@ -21,7 +21,6 @@ struct CommandPaletteFeatureTests {
       expectedIDs.append(contentsOf: [
         "debug.toast.inProgress",
         "debug.toast.success",
-        "debug.toast.notification",
       ])
     #endif
     expectNoDifference(items.map(\.id), expectedIDs)

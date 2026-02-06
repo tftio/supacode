@@ -2,9 +2,16 @@ import AppKit
 import Carbon
 import CoreText
 import GhosttyKit
+import OSLog
 import QuartzCore
 
 final class GhosttySurfaceView: NSView, Identifiable {
+  private static let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier!,
+    category: "SurfaceView"
+  )
+
+  var shortId: String { String(id.uuidString.prefix(6)) }
   private struct ScrollbarState {
     let total: UInt64
     let offset: UInt64
@@ -191,7 +198,11 @@ final class GhosttySurfaceView: NSView, Identifiable {
 
   func focusDidChange(_ focused: Bool) {
     guard surface != nil else { return }
-    guard self.focused != focused else { return }
+    guard self.focused != focused else {
+      Self.logger.debug("[focusDidChange] surface=\(self.shortId) already focused=\(focused), skipping")
+      return
+    }
+    Self.logger.debug("[focusDidChange] surface=\(self.shortId) focused=\(self.focused)->\(focused)")
     self.focused = focused
     setSurfaceFocus(focused)
     onFocusChange?(focused)
@@ -202,6 +213,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
 
   override func becomeFirstResponder() -> Bool {
     let result = super.becomeFirstResponder()
+    Self.logger.debug("[becomeFirstResponder] surface=\(self.shortId) result=\(result)")
     if result {
       focusDidChange(true)
     }
@@ -210,6 +222,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
 
   override func resignFirstResponder() -> Bool {
     let result = super.resignFirstResponder()
+    Self.logger.debug("[resignFirstResponder] surface=\(self.shortId) result=\(result)")
     if result {
       focusDidChange(false)
     }
@@ -217,6 +230,9 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func keyDown(with event: NSEvent) {
+    Self.logger.debug(
+      "[keyDown] surface=\(self.shortId) focused=\(self.focused) isFirstResponder=\(self.window?.firstResponder === self) key=\(event.charactersIgnoringModifiers ?? "?")"
+    )
     guard let surface else {
       interpretKeyEvents([event])
       return
@@ -427,8 +443,16 @@ final class GhosttySurfaceView: NSView, Identifiable {
     guard let window, event.window != nil, window == event.window else { return event }
     let location = convert(event.locationInWindow, from: nil)
     guard hitTest(location) == self else { return event }
-    guard !NSApp.isActive || !window.isKeyWindow else { return event }
+    let appActive = NSApp.isActive
+    let windowKey = window.isKeyWindow
+    let firstResponder = window.firstResponder
+    let frDesc = (firstResponder as? GhosttySurfaceView)?.shortId ?? String(describing: type(of: firstResponder))
+    Self.logger.debug(
+      "[localEventLeftMouseDown] surface=\(self.shortId) appActive=\(appActive) windowKey=\(windowKey) focused=\(self.focused) firstResponder=\(frDesc)"
+    )
+    guard !appActive || !windowKey else { return event }
     guard !focused else { return event }
+    Self.logger.debug("[localEventLeftMouseDown] surface=\(self.shortId) -> makeFirstResponder")
     window.makeFirstResponder(self)
     return event
   }
@@ -552,17 +576,23 @@ final class GhosttySurfaceView: NSView, Identifiable {
     let currentDelay = delay ?? 0
     guard currentDelay < maxDelay else { return }
     let nextDelay: TimeInterval = if let delay { delay * 2 } else { 0.05 }
+    logger.debug(
+      "[moveFocus] to=\(view.shortId) from=\(previous?.shortId ?? "nil") delay=\(currentDelay)"
+    )
     Task { @MainActor in
       if let delay {
         try? await Task.sleep(for: .seconds(delay))
       }
       guard let window = view.window else {
+        logger.debug("[moveFocus] to=\(view.shortId) no window, retrying with delay=\(nextDelay)")
         moveFocus(to: view, from: previous, delay: nextDelay)
         return
       }
       if let previous, previous !== view {
+        logger.debug("[moveFocus] resignFirstResponder on previous=\(previous.shortId)")
         _ = previous.resignFirstResponder()
       }
+      logger.debug("[moveFocus] makeFirstResponder on=\(view.shortId)")
       window.makeFirstResponder(view)
     }
   }
@@ -570,6 +600,9 @@ final class GhosttySurfaceView: NSView, Identifiable {
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
     guard event.type == .keyDown else { return false }
     guard let surface else { return false }
+    Self.logger.debug(
+      "[performKeyEquivalent] surface=\(self.shortId) focused=\(self.focused) key=\(event.charactersIgnoringModifiers ?? "?")"
+    )
     guard focused else { return false }
 
     if let bindingFlags = bindingFlags(for: event, surface: surface) {

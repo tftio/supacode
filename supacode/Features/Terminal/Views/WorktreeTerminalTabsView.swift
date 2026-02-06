@@ -1,5 +1,11 @@
 import AppKit
+import OSLog
 import SwiftUI
+
+private let logger = Logger(
+  subsystem: Bundle.main.bundleIdentifier!,
+  category: "TabsView"
+)
 
 struct WorktreeTerminalTabsView: View {
   let worktree: Worktree
@@ -39,6 +45,7 @@ struct WorktreeTerminalTabsView: View {
     }
     .background(
       WindowFocusObserverView { isKey in
+        logger.debug("[WindowFocusObserver] isKey=\(isKey)")
         state.syncFocus(windowIsKey: isKey)
       }
     )
@@ -48,8 +55,15 @@ struct WorktreeTerminalTabsView: View {
         state.focusSelectedTab()
       }
     }
-    .onChange(of: state.tabManager.selectedTabId) { _, _ in
-      if shouldAutoFocusTerminal {
+    .onChange(of: state.tabManager.selectedTabId) { _, newTabId in
+      let autoFocus = shouldAutoFocusTerminal
+      let firstResponder = NSApp.keyWindow?.firstResponder
+      let frDesc =
+        (firstResponder as? GhosttySurfaceView)?.shortId ?? String(describing: type(of: firstResponder))
+      logger.debug(
+        "[onChange selectedTabId] newTabId=\(newTabId.map { String($0.rawValue.uuidString.prefix(6)) } ?? "nil") autoFocus=\(autoFocus) firstResponder=\(frDesc)"
+      )
+      if autoFocus {
         state.focusSelectedTab()
       }
       state.syncFocus(windowIsKey: NSApp.keyWindow?.isKeyWindow ?? false)

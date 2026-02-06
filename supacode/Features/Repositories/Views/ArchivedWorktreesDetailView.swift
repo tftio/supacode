@@ -4,7 +4,7 @@ import SwiftUI
 struct ArchivedWorktreesDetailView: View {
   @Bindable var store: StoreOf<RepositoriesFeature>
   @State private var collapsedRepositoryIDs: Set<Repository.ID> = []
-  @State private var selectedArchivedWorktreeID: Worktree.ID?
+  @State private var selectedArchivedWorktreeIDs: Set<Worktree.ID> = []
 
   var body: some View {
     let groups = store.state.archivedWorktreesByRepository()
@@ -17,12 +17,18 @@ struct ArchivedWorktreesDetailView: View {
         }
       }
     )
+    let selectedTargets: [RepositoriesFeature.DeleteWorktreeTarget] =
+      selectedArchivedWorktreeIDs.compactMap { worktreeID in
+        guard let repositoryID = repositoryByWorktreeID[worktreeID] else { return nil }
+        return RepositoriesFeature.DeleteWorktreeTarget(
+          worktreeID: worktreeID,
+          repositoryID: repositoryID
+        )
+      }
     let deleteWorktreeAction: (() -> Void)? = {
-      guard let selectedArchivedWorktreeID,
-        let repositoryID = repositoryByWorktreeID[selectedArchivedWorktreeID]
-      else { return nil }
+      guard !selectedTargets.isEmpty else { return nil }
       return {
-        store.send(.requestDeleteWorktree(selectedArchivedWorktreeID, repositoryID))
+        store.send(.requestDeleteWorktrees(selectedTargets))
       }
     }()
     let confirmWorktreeAction: (() -> Void)? = {
@@ -38,7 +44,7 @@ struct ArchivedWorktreesDetailView: View {
         description: Text("Archive worktrees to keep them out of the main list.")
       )
     } else {
-      List(selection: $selectedArchivedWorktreeID) {
+      List(selection: $selectedArchivedWorktreeIDs) {
         ForEach(groups, id: \.repository.id) { group in
           Section {
             if !collapsedRepositoryIDs.contains(group.repository.id) {
@@ -72,14 +78,18 @@ struct ArchivedWorktreesDetailView: View {
         collapsedRepositoryIDs = collapsedRepositoryIDs.intersection(newValue)
       }
       .onChange(of: archivedWorktreeIDs) { _, newValue in
-        if let selectedArchivedWorktreeID,
-          !newValue.contains(selectedArchivedWorktreeID)
-        {
-          self.selectedArchivedWorktreeID = nil
-        }
+        selectedArchivedWorktreeIDs = selectedArchivedWorktreeIDs.intersection(newValue)
       }
       .focusedSceneValue(\.deleteWorktreeAction, deleteWorktreeAction)
       .focusedSceneValue(\.confirmWorktreeAction, confirmWorktreeAction)
+      .toolbar {
+        let deleteShortcut = KeyboardShortcut(.delete, modifiers: [.command, .shift]).display
+        Button("Delete Selected", systemImage: "trash", role: .destructive) {
+          deleteWorktreeAction?()
+        }
+        .help("Delete Selected (\(deleteShortcut))")
+        .disabled(deleteWorktreeAction == nil)
+      }
     }
   }
 

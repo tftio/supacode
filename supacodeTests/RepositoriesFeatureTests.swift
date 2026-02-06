@@ -66,6 +66,36 @@ struct RepositoriesFeatureTests {
     }
   }
 
+  @Test func requestDeleteWorktreesShowsBatchConfirmation() async {
+    let worktree1 = makeWorktree(id: "/tmp/repo/wt1", name: "owl", repoRoot: "/tmp/repo")
+    let worktree2 = makeWorktree(id: "/tmp/repo/wt2", name: "hawk", repoRoot: "/tmp/repo")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [worktree1, worktree2])
+    let targets = [
+      RepositoriesFeature.DeleteWorktreeTarget(worktreeID: worktree1.id, repositoryID: repository.id),
+      RepositoriesFeature.DeleteWorktreeTarget(worktreeID: worktree2.id, repositoryID: repository.id),
+    ]
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    }
+
+    let expectedAlert = AlertState<RepositoriesFeature.Alert> {
+      TextState("🚨 Delete 2 worktrees?")
+    } actions: {
+      ButtonState(role: .destructive, action: .confirmDeleteWorktrees(targets)) {
+        TextState("Delete 2 (⌘↩)")
+      }
+      ButtonState(role: .cancel) {
+        TextState("Cancel")
+      }
+    } message: {
+      TextState("Delete 2 worktrees? This deletes the worktree directories and their local branches.")
+    }
+
+    await store.send(.requestDeleteWorktrees(targets)) {
+      $0.alert = expectedAlert
+    }
+  }
+
   @Test func requestArchiveWorktreeShowsConfirmation() async {
     let worktree = makeWorktree(id: "/tmp/wt", name: "owl")
     let repository = makeRepository(id: "/tmp/repo", worktrees: [worktree])

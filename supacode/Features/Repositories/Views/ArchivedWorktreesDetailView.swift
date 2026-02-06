@@ -9,6 +9,7 @@ struct ArchivedWorktreesDetailView: View {
   var body: some View {
     let groups = store.state.archivedWorktreesByRepository()
     let groupIDs = Set(groups.map(\.repository.id))
+    let archivedRowIDs = groups.flatMap(\.worktrees).map(\.id)
     let archivedWorktreeIDs = Set(groups.flatMap(\.worktrees).map(\.id))
     let repositoryByWorktreeID = Dictionary(
       uniqueKeysWithValues: groups.flatMap { group in
@@ -80,6 +81,7 @@ struct ArchivedWorktreesDetailView: View {
       .onChange(of: archivedWorktreeIDs) { _, newValue in
         selectedArchivedWorktreeIDs = selectedArchivedWorktreeIDs.intersection(newValue)
       }
+      .animation(.easeOut(duration: 0.2), value: archivedRowIDs)
       .focusedSceneValue(\.deleteWorktreeAction, deleteWorktreeAction)
       .focusedSceneValue(\.confirmWorktreeAction, confirmWorktreeAction)
       .toolbar {

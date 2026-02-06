@@ -64,7 +64,11 @@ struct ToolbarNotificationsPopoverView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                   }
                   .buttonStyle(.plain)
-                  .help("Select worktree and focus terminal")
+                  .help(
+                    notification.content.isEmpty
+                      ? "Select worktree and focus terminal"
+                      : notification.content
+                  )
                 }
               }
             }

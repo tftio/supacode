@@ -122,24 +122,5 @@ bump-version: # Bump app version (usage: make bump-version [VERSION=x.x.x] [BUIL
 	git tag -s "v$$version" -m "v$$version"; \
 	echo "version bumped to $$version (build $$build), tagged v$$version"
 
-bump-and-release: bump-version # Bump version, generate release notes, create GitHub release
+bump-and-release: bump-version # Bump version and push tags to trigger release
 	git push --follow-tags
-	@TAG="$$(git describe --tags --abbrev=0)"; \
-	PREV_TAG="$$(git describe --tags --abbrev=0 "$$TAG^" 2>/dev/null || echo "")"; \
-	if [ -n "$$PREV_TAG" ]; then \
-		RANGE="$$PREV_TAG..$$TAG"; \
-	else \
-		RANGE="$$(git rev-list --max-parents=0 HEAD)..$$TAG"; \
-	fi; \
-	COMMITS="$$(git log --pretty=format:'%h %s' "$$RANGE")"; \
-	NOTES="$$(printf '%s' "$$COMMITS" | claude -p \
-		"Generate release notes for Supacode $$TAG. \
-		ONLY include user-facing changes. \
-		EXCLUDE internal changes, refactoring, CI/CD, build configs, linting, developer tooling. \
-		Use markdown with sections: ✨ New Features, 🐛 Bug Fixes, 🌱 Improvements. \
-		Omit empty sections. If no user-facing changes, write: No user-facing changes in this release. \
-		Be concise. Here are the commits:" \
-	)"; \
-	echo "$$NOTES" > /tmp/supacode-release-notes.md; \
-	gh release create "$$TAG" --title "$$TAG" --notes-file /tmp/supacode-release-notes.md; \
-	rm -f /tmp/supacode-release-notes.md

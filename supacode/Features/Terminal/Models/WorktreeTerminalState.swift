@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import GhosttyKit
@@ -178,13 +179,20 @@ final class WorktreeTerminalState {
 
   func syncFocus(windowIsKey: Bool) {
     let selectedTabId = tabManager.selectedTabId
+    var surfaceToFocus: GhosttySurfaceView?
     for (tabId, tree) in trees {
       let focusedId = focusedSurfaceIdByTab[tabId]
       let shouldFocusTab = windowIsKey && tabId == selectedTabId
       for surface in tree.leaves() {
         let isFocused = shouldFocusTab && surface.id == focusedId
         surface.focusDidChange(isFocused)
+        if isFocused {
+          surfaceToFocus = surface
+        }
       }
+    }
+    if let surfaceToFocus, surfaceToFocus.window?.firstResponder is GhosttySurfaceView {
+      surfaceToFocus.window?.makeFirstResponder(surfaceToFocus)
     }
   }
 

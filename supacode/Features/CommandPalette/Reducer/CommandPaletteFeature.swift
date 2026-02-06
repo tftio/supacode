@@ -354,12 +354,6 @@ private func pullRequestItems(
         subtitle: "Simulates a success toast",
         kind: .debugTestToast(.success("Pull request merged"))
       ),
-      CommandPaletteItem(
-        id: "debug.toast.notification",
-        title: "[Debug] Toast: Notification",
-        subtitle: "Simulates a notification toast",
-        kind: .debugTestToast(.notification("Build completed – All checks passed", worktreeID: "debug"))
-      ),
     ]
   }
 #endif

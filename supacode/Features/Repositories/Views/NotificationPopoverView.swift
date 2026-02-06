@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NotificationPopoverView: View {
   let notifications: [WorktreeTerminalNotification]
-  let onFocusSurface: (UUID) -> Void
+  let onFocusNotification: (WorktreeTerminalNotification) -> Void
 
   var body: some View {
     let count = notifications.count
@@ -17,20 +17,21 @@ struct NotificationPopoverView: View {
         Divider()
         ForEach(notifications) { notification in
           Button {
-            onFocusSurface(notification.surfaceId)
+            onFocusNotification(notification)
           } label: {
             HStack(alignment: .top) {
               Image(systemName: "bell")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(notification.isRead ? Color.secondary : Color.orange)
                 .accessibilityHidden(true)
               Text(notification.content)
+                .foregroundStyle(notification.isRead ? Color.secondary : Color.primary)
                 .lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
           }
           .buttonStyle(.plain)
           .font(.caption)
-          .help("Focus pane")
+          .help(notification.content.isEmpty ? "Focus pane" : notification.content)
         }
       }
       .padding()

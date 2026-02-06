@@ -20,7 +20,6 @@ struct TerminalClient {
     case endSearch(Worktree)
     case prune(Set<Worktree.ID>)
     case setNotificationsEnabled(Bool)
-    case clearNotificationIndicator(Worktree)
     case setSelectedWorktreeID(Worktree.ID?)
   }
 

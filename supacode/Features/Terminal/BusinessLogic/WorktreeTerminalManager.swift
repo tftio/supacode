@@ -75,8 +75,6 @@ final class WorktreeTerminalManager {
       prune(keeping: ids)
     case .setNotificationsEnabled(let enabled):
       setNotificationsEnabled(enabled)
-    case .clearNotificationIndicator(let worktree):
-      clearNotificationIndicator(for: worktree)
     case .setSelectedWorktreeID(let id):
       selectedWorktreeID = id
     default:
@@ -217,10 +215,6 @@ final class WorktreeTerminalManager {
 
   func hasUnseenNotifications(for worktreeID: Worktree.ID) -> Bool {
     states[worktreeID]?.hasUnseenNotification == true
-  }
-
-  func clearNotificationIndicator(for worktree: Worktree) {
-    states[worktree.id]?.clearNotificationIndicator()
   }
 
   private func emit(_ event: TerminalClient.Event) {

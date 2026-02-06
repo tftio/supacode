@@ -159,7 +159,6 @@ struct AppFeature {
           },
           .run { _ in
             await terminalClient.send(.setSelectedWorktreeID(worktree.id))
-            await terminalClient.send(.clearNotificationIndicator(worktree))
           },
           .run { _ in
             await worktreeInfoWatcher.send(.setSelectedWorktreeID(worktree.id))
@@ -568,9 +567,9 @@ struct AppFeature {
       case .commandPalette:
         return .none
 
-      case .terminalEvent(.notificationReceived(let worktreeID, let title, let body)):
+      case .terminalEvent(.notificationReceived(let worktreeID, _, _)):
         var effects: [Effect<Action>] = [
-          .send(.repositories(.worktreeNotificationReceived(worktreeID, title: title, body: body)))
+          .send(.repositories(.worktreeNotificationReceived(worktreeID)))
         ]
         if state.settings.notificationSoundEnabled {
           effects.append(

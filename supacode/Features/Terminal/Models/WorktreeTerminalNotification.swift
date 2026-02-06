@@ -5,12 +5,14 @@ struct WorktreeTerminalNotification: Identifiable, Equatable, Sendable {
   let surfaceId: UUID
   let title: String
   let body: String
+  var isRead: Bool
 
-  init(id: UUID = UUID(), surfaceId: UUID, title: String, body: String) {
+  init(id: UUID = UUID(), surfaceId: UUID, title: String, body: String, isRead: Bool = false) {
     self.id = id
     self.surfaceId = surfaceId
     self.title = title
     self.body = body
+    self.isRead = isRead
   }
 
   var content: String {

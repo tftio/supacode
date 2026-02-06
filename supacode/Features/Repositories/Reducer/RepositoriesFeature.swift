@@ -103,8 +103,7 @@ struct RepositoriesFeature {
     case unpinWorktree(Worktree.ID)
     case presentAlert(title: String, message: String)
     case worktreeInfoEvent(WorktreeInfoWatcherClient.Event)
-    case worktreeNotificationReceived(Worktree.ID, title: String, body: String)
-    case notificationToastTapped
+    case worktreeNotificationReceived(Worktree.ID)
     case worktreeBranchNameLoaded(worktreeID: Worktree.ID, name: String)
     case worktreeLineChangesLoaded(worktreeID: Worktree.ID, added: Int, removed: Int)
     case worktreePullRequestLoaded(worktreeID: Worktree.ID, pullRequest: GithubPullRequest?)
@@ -139,7 +138,6 @@ struct RepositoriesFeature {
   enum StatusToast: Equatable {
     case inProgress(String)
     case success(String)
-    case notification(String, worktreeID: Worktree.ID)
   }
 
   enum Alert: Equatable {
@@ -1204,7 +1202,7 @@ struct RepositoriesFeature {
       case .showToast(let toast):
         state.statusToast = toast
         switch toast {
-        case .inProgress, .notification:
+        case .inProgress:
           return .cancel(id: CancelID.toastAutoDismiss)
         case .success:
           return .run { send in
@@ -1240,7 +1238,7 @@ struct RepositoriesFeature {
         }
         .cancellable(id: CancelID.delayedPRRefresh(worktreeID), cancelInFlight: true)
 
-      case .worktreeNotificationReceived(let worktreeID, let title, let body):
+      case .worktreeNotificationReceived(let worktreeID):
         guard let repositoryID = state.repositoryID(containing: worktreeID),
           let repository = state.repositories[id: repositoryID],
           let worktree = repository.worktrees[id: worktreeID]
@@ -1252,15 +1250,6 @@ struct RepositoriesFeature {
         }
 
         var effects: [Effect<Action>] = []
-
-        if case .inProgress = state.statusToast {
-          // don't interrupt in-progress toasts
-        } else {
-          let content = [title, body].filter { !$0.isEmpty }.joined(separator: " – ")
-          if !content.isEmpty {
-            effects.append(.send(.showToast(.notification(content, worktreeID: worktreeID))))
-          }
-        }
 
         if !state.isMainWorktree(worktree), !state.isWorktreePinned(worktree) {
           let reordered = reorderedUnpinnedWorktreeIDs(
@@ -1281,14 +1270,10 @@ struct RepositoriesFeature {
           }
         }
 
-        return .merge(effects)
-
-      case .notificationToastTapped:
-        guard case .notification(_, let worktreeID) = state.statusToast else {
+        if effects.isEmpty {
           return .none
         }
-        state.statusToast = nil
-        return .send(.selectWorktree(worktreeID))
+        return .merge(effects)
 
       case .worktreeInfoEvent(let event):
         switch event {

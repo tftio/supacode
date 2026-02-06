@@ -222,6 +222,39 @@ struct RepositoriesFeatureTests {
     }
   }
 
+  @Test func worktreeNotificationReceivedDoesNotShowStatusToast() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let featureWorktree = makeWorktree(id: "/tmp/repo/feature", name: "feature", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureWorktree])
+    var state = makeState(repositories: [repository])
+    state.worktreeOrderByRepository[repoRoot] = [featureWorktree.id]
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.worktreeNotificationReceived(featureWorktree.id))
+    #expect(store.state.statusToast == nil)
+  }
+
+  @Test func worktreeNotificationReceivedReordersUnpinnedWorktrees() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let featureA = makeWorktree(id: "/tmp/repo/a", name: "a", repoRoot: repoRoot)
+    let featureB = makeWorktree(id: "/tmp/repo/b", name: "b", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureA, featureB])
+    var state = makeState(repositories: [repository])
+    state.worktreeOrderByRepository[repoRoot] = [featureA.id, featureB.id]
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.worktreeNotificationReceived(featureB.id)) {
+      $0.worktreeOrderByRepository[repoRoot] = [featureB.id, featureA.id]
+    }
+    #expect(store.state.statusToast == nil)
+  }
+
   @Test func worktreeBranchNameLoadedPreservesCreatedAt() async {
     let createdAt = Date(timeIntervalSince1970: 1_737_303_600)
     let worktree = makeWorktree(id: "/tmp/wt", name: "eagle", createdAt: createdAt)

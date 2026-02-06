@@ -4,10 +4,33 @@ import SwiftUI
 struct ArchivedWorktreesDetailView: View {
   @Bindable var store: StoreOf<RepositoriesFeature>
   @State private var collapsedRepositoryIDs: Set<Repository.ID> = []
+  @State private var selectedArchivedWorktreeID: Worktree.ID?
 
   var body: some View {
     let groups = store.state.archivedWorktreesByRepository()
     let groupIDs = Set(groups.map(\.repository.id))
+    let archivedWorktreeIDs = Set(groups.flatMap(\.worktrees).map(\.id))
+    let repositoryByWorktreeID = Dictionary(
+      uniqueKeysWithValues: groups.flatMap { group in
+        group.worktrees.map { worktree in
+          (worktree.id, group.repository.id)
+        }
+      }
+    )
+    let deleteWorktreeAction: (() -> Void)? = {
+      guard let selectedArchivedWorktreeID,
+        let repositoryID = repositoryByWorktreeID[selectedArchivedWorktreeID]
+      else { return nil }
+      return {
+        store.send(.requestDeleteWorktree(selectedArchivedWorktreeID, repositoryID))
+      }
+    }()
+    let confirmWorktreeAction: (() -> Void)? = {
+      guard let alert = store.state.confirmWorktreeAlert else { return nil }
+      return {
+        store.send(.alert(.presented(alert)))
+      }
+    }()
     if groups.isEmpty {
       ContentUnavailableView(
         "Archived Worktrees",
@@ -15,7 +38,7 @@ struct ArchivedWorktreesDetailView: View {
         description: Text("Archive worktrees to keep them out of the main list.")
       )
     } else {
-      List {
+      List(selection: $selectedArchivedWorktreeID) {
         ForEach(groups, id: \.repository.id) { group in
           Section {
             if !collapsedRepositoryIDs.contains(group.repository.id) {
@@ -30,6 +53,8 @@ struct ArchivedWorktreesDetailView: View {
                     store.send(.requestDeleteWorktree(worktree.id, group.repository.id))
                   }
                 )
+                .tag(worktree.id)
+                .typeSelectEquivalent("")
               }
             }
           } header: {
@@ -46,6 +71,15 @@ struct ArchivedWorktreesDetailView: View {
       .onChange(of: groupIDs) { _, newValue in
         collapsedRepositoryIDs = collapsedRepositoryIDs.intersection(newValue)
       }
+      .onChange(of: archivedWorktreeIDs) { _, newValue in
+        if let selectedArchivedWorktreeID,
+          !newValue.contains(selectedArchivedWorktreeID)
+        {
+          self.selectedArchivedWorktreeID = nil
+        }
+      }
+      .focusedSceneValue(\.deleteWorktreeAction, deleteWorktreeAction)
+      .focusedSceneValue(\.confirmWorktreeAction, confirmWorktreeAction)
     }
   }
 

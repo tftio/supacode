@@ -44,8 +44,9 @@ private struct MotivationalStatusView: View {
           .foregroundStyle(style.color)
           .font(.callout)
           .accessibilityHidden(true)
-        Text(message(for: context.date))
+        Text("\(context.date, format: .dateTime.hour().minute()) – \(message(for: context.date))")
           .font(.footnote)
+          .monospaced()
           .foregroundStyle(.secondary)
       }
     }

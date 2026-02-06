@@ -103,7 +103,6 @@ struct WorktreeRowsView: View {
         return
       }
       _ = terminalState.focusSurface(id: notification.surfaceId)
-      terminalState.dismissNotification(notification.id)
     }
     let config = WorktreeRowViewConfig(
       displayName: displayName,

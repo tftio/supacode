@@ -153,7 +153,6 @@ struct WorktreeDetailView: View {
     store.send(.repositories(.selectWorktree(worktreeID)))
     if let terminalState = terminalManager.stateIfExists(for: worktreeID) {
       _ = terminalState.focusSurface(id: notification.surfaceId)
-      terminalState.dismissNotification(notification.id)
     }
   }
 

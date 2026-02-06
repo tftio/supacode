@@ -49,9 +49,23 @@ struct WorktreeTerminalManagerTests {
     let worktree = makeWorktree()
     let state = manager.state(for: worktree)
 
-    state.hasUnseenNotification = true
+    state.notifications = [
+      WorktreeTerminalNotification(
+        surfaceId: UUID(),
+        title: "Unread",
+        body: "body",
+        isRead: false
+      ),
+    ]
     state.onNotificationIndicatorChanged?()
-    state.hasUnseenNotification = false
+    state.notifications = [
+      WorktreeTerminalNotification(
+        surfaceId: UUID(),
+        title: "Read",
+        body: "body",
+        isRead: true
+      ),
+    ]
 
     let stream = manager.eventStream()
     var iterator = stream.makeAsyncIterator()

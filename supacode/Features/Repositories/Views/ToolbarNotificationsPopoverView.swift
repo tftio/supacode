@@ -54,10 +54,11 @@ struct ToolbarNotificationsPopoverView: View {
                   } label: {
                     HStack(alignment: .top, spacing: 8) {
                       Image(systemName: "bell")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(notification.isRead ? Color.secondary : Color.orange)
                         .accessibilityHidden(true)
                       Text(notification.content)
                         .font(.caption)
+                        .foregroundStyle(notification.isRead ? Color.secondary : Color.primary)
                         .lineLimit(2)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

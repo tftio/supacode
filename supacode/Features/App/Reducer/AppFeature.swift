@@ -159,7 +159,6 @@ struct AppFeature {
           },
           .run { _ in
             await terminalClient.send(.setSelectedWorktreeID(worktree.id))
-            await terminalClient.send(.clearNotificationIndicator(worktree))
           },
           .run { _ in
             await worktreeInfoWatcher.send(.setSelectedWorktreeID(worktree.id))

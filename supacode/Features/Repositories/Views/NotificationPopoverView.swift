@@ -21,9 +21,10 @@ struct NotificationPopoverView: View {
           } label: {
             HStack(alignment: .top) {
               Image(systemName: "bell")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(notification.isRead ? Color.secondary : Color.orange)
                 .accessibilityHidden(true)
               Text(notification.content)
+                .foregroundStyle(notification.isRead ? Color.secondary : Color.primary)
                 .lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

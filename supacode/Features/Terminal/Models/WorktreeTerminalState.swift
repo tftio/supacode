@@ -23,7 +23,9 @@ final class WorktreeTerminalState {
   private var lastEmittedFocusSurfaceId: UUID?
   var notifications: [WorktreeTerminalNotification] = []
   var notificationsEnabled = true
-  var hasUnseenNotification = false
+  var hasUnseenNotification: Bool {
+    notifications.contains { !$0.isRead }
+  }
   var isSelected: () -> Bool = { false }
   var onNotificationReceived: ((String, String) -> Void)?
   var onNotificationIndicatorChanged: (() -> Void)?
@@ -399,29 +401,40 @@ final class WorktreeTerminalState {
   func setNotificationsEnabled(_ enabled: Bool) {
     notificationsEnabled = enabled
     if !enabled {
-      let wasUnseen = hasUnseenNotification
-      hasUnseenNotification = false
-      if wasUnseen {
-        onNotificationIndicatorChanged?()
-      }
+      markAllNotificationsRead()
     }
   }
 
   func clearNotificationIndicator() {
-    if hasUnseenNotification {
-      hasUnseenNotification = false
-      onNotificationIndicatorChanged?()
+    markAllNotificationsRead()
+  }
+
+  func markAllNotificationsRead() {
+    let previousHasUnseen = hasUnseenNotification
+    for index in notifications.indices {
+      notifications[index].isRead = true
     }
+    emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
+  }
+
+  func markNotificationsRead(forSurfaceID surfaceID: UUID) {
+    let previousHasUnseen = hasUnseenNotification
+    for index in notifications.indices where notifications[index].surfaceId == surfaceID {
+      notifications[index].isRead = true
+    }
+    emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
   }
 
   func dismissNotification(_ notificationID: WorktreeTerminalNotification.ID) {
+    let previousHasUnseen = hasUnseenNotification
     notifications.removeAll { $0.id == notificationID }
-    clearNotificationIndicator()
+    emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
   }
 
   func dismissAllNotifications() {
+    let previousHasUnseen = hasUnseenNotification
     notifications.removeAll()
-    clearNotificationIndicator()
+    emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
   }
 
   func needsSetupScript() -> Bool {
@@ -518,6 +531,7 @@ final class WorktreeTerminalState {
     view.onFocusChange = { [weak self, weak view] focused in
       guard let self, let view, focused else { return }
       self.focusedSurfaceIdByTab[tabId] = view.id
+      self.markNotificationsRead(forSurfaceID: view.id)
       self.updateTabTitle(for: tabId)
       self.emitFocusChangedIfNeeded(view.id)
       self.emitTaskStatusIfChanged()
@@ -548,6 +562,7 @@ final class WorktreeTerminalState {
   private func focusSurface(_ surface: GhosttySurfaceView, in tabId: TerminalTabID) {
     let previousSurface = focusedSurfaceIdByTab[tabId].flatMap { surfaces[$0] }
     focusedSurfaceIdByTab[tabId] = surface.id
+    markNotificationsRead(forSurfaceID: surface.id)
     updateTabTitle(for: tabId)
     guard tabId == tabManager.selectedTabId else { return }
     let fromSurface = (previousSurface === surface) ? nil : previousSurface
@@ -560,19 +575,16 @@ final class WorktreeTerminalState {
     let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
     let trimmedBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !(trimmedTitle.isEmpty && trimmedBody.isEmpty) else { return }
+    let previousHasUnseen = hasUnseenNotification
+    let isRead = isSelected() && isFocusedSurface(surfaceId)
     notifications.append(
       WorktreeTerminalNotification(
         surfaceId: surfaceId,
         title: trimmedTitle,
-        body: trimmedBody
+        body: trimmedBody,
+        isRead: isRead
       ))
-    let wasUnseen = hasUnseenNotification
-    if !isSelected() {
-      hasUnseenNotification = true
-    }
-    if hasUnseenNotification != wasUnseen {
-      onNotificationIndicatorChanged?()
-    }
+    emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
     onNotificationReceived?(trimmedTitle, trimmedBody)
   }
 
@@ -591,6 +603,13 @@ final class WorktreeTerminalState {
       return tabId
     }
     return nil
+  }
+
+  private func isFocusedSurface(_ surfaceId: UUID) -> Bool {
+    guard let selectedTabId = tabManager.selectedTabId else {
+      return false
+    }
+    return focusedSurfaceIdByTab[selectedTabId] == surfaceId
   }
 
   private func updateRunningState(for tabId: TerminalTabID) {
@@ -615,6 +634,12 @@ final class WorktreeTerminalState {
     guard surfaceId != lastEmittedFocusSurfaceId else { return }
     lastEmittedFocusSurfaceId = surfaceId
     onFocusChanged?(surfaceId)
+  }
+
+  private func emitNotificationIndicatorIfNeeded(previousHasUnseen: Bool) {
+    if previousHasUnseen != hasUnseenNotification {
+      onNotificationIndicatorChanged?()
+    }
   }
 
   private func isRunningProgressState(_ state: ghostty_action_progress_report_state_e?) -> Bool {

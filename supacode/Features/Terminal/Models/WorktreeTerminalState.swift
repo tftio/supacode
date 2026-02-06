@@ -577,13 +577,15 @@ final class WorktreeTerminalState {
     guard !(trimmedTitle.isEmpty && trimmedBody.isEmpty) else { return }
     let previousHasUnseen = hasUnseenNotification
     let isRead = isSelected() && isFocusedSurface(surfaceId)
-    notifications.append(
+    notifications.insert(
       WorktreeTerminalNotification(
         surfaceId: surfaceId,
         title: trimmedTitle,
         body: trimmedBody,
         isRead: isRead
-      ))
+      ),
+      at: 0
+    )
     emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
     onNotificationReceived?(trimmedTitle, trimmedBody)
   }

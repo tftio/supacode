@@ -7,6 +7,7 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
   }
 
   case alacritty
+  case antigravity
   case editor
   case finder
   case cursor
@@ -21,6 +22,8 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
   case sublimeMerge
   case terminal
   case vscode
+  case vscodeInsiders
+  case warp
   case wezterm
   case windsurf
   case xcode
@@ -33,6 +36,7 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     case .finder: "Open Finder"
     case .editor: "$EDITOR"
     case .alacritty: "Alacritty"
+    case .antigravity: "Antigravity"
     case .cursor: "Cursor"
     case .githubDesktop: "GitHub Desktop"
     case .gitkraken: "GitKraken"
@@ -44,6 +48,8 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     case .sublimeMerge: "Sublime Merge"
     case .terminal: "Terminal"
     case .vscode: "VS Code"
+    case .vscodeInsiders: "VS Code Insiders"
+    case .warp: "Warp"
     case .wezterm: "WezTerm"
     case .windsurf: "Windsurf"
     case .xcode: "Xcode"
@@ -56,8 +62,9 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     switch self {
     case .finder: "Finder"
     case .editor: "$EDITOR"
-    case .alacritty, .cursor, .fork, .githubDesktop, .gitkraken, .gitup, .ghostty, .kitty,
-      .smartgit, .sourcetree, .sublimeMerge, .terminal, .vscode, .wezterm, .windsurf, .xcode, .zed:
+    case .alacritty, .antigravity, .cursor, .fork, .githubDesktop, .gitkraken, .gitup, .ghostty,
+      .kitty, .smartgit, .sourcetree, .sublimeMerge, .terminal, .vscode, .vscodeInsiders, .warp,
+      .wezterm, .windsurf, .xcode, .zed:
       title
     }
   }
@@ -77,8 +84,9 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     switch self {
     case .finder, .editor:
       return true
-    case .alacritty, .cursor, .fork, .githubDesktop, .gitkraken, .gitup, .ghostty, .kitty,
-      .smartgit, .sourcetree, .sublimeMerge, .terminal, .vscode, .wezterm, .windsurf, .xcode, .zed:
+    case .alacritty, .antigravity, .cursor, .fork, .githubDesktop, .gitkraken, .gitup, .ghostty,
+      .kitty, .smartgit, .sourcetree, .sublimeMerge, .terminal, .vscode, .vscodeInsiders, .warp,
+      .wezterm, .windsurf, .xcode, .zed:
       return NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
     }
   }
@@ -88,6 +96,7 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     case .finder: "finder"
     case .editor: "editor"
     case .alacritty: "alacritty"
+    case .antigravity: "antigravity"
     case .cursor: "cursor"
     case .fork: "fork"
     case .githubDesktop: "github-desktop"
@@ -100,6 +109,8 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     case .sublimeMerge: "sublime-merge"
     case .terminal: "terminal"
     case .vscode: "vscode"
+    case .vscodeInsiders: "vscode-insiders"
+    case .warp: "warp"
     case .wezterm: "wezterm"
     case .windsurf: "windsurf"
     case .xcode: "xcode"
@@ -112,6 +123,7 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     case .finder: "com.apple.finder"
     case .editor: ""
     case .alacritty: "org.alacritty"
+    case .antigravity: "com.google.antigravity"
     case .cursor: "com.todesktop.230313mzl4w4u92"
     case .fork: "com.DanPristupov.Fork"
     case .githubDesktop: "com.github.GitHubClient"
@@ -124,6 +136,8 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
     case .sublimeMerge: "com.sublimemerge"
     case .terminal: "com.apple.Terminal"
     case .vscode: "com.microsoft.VSCode"
+    case .vscodeInsiders: "com.microsoft.VSCodeInsiders"
+    case .warp: "dev.warp.Warp-Stable"
     case .wezterm: "com.github.wez.wezterm"
     case .windsurf: "com.exafunction.windsurf"
     case .xcode: "com.apple.dt.Xcode"
@@ -133,12 +147,20 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
 
   nonisolated static let automaticSettingsID = "auto"
 
-  static let editorPriority: [OpenWorktreeAction] = [.cursor, .zed, .vscode, .windsurf]
+  static let editorPriority: [OpenWorktreeAction] = [
+    .cursor,
+    .zed,
+    .vscode,
+    .windsurf,
+    .vscodeInsiders,
+    .antigravity,
+  ]
   static let terminalPriority: [OpenWorktreeAction] = [
     .ghostty,
     .wezterm,
     .alacritty,
     .kitty,
+    .warp,
     .terminal,
   ]
   static let gitClientPriority: [OpenWorktreeAction] = [
@@ -203,8 +225,9 @@ enum OpenWorktreeAction: CaseIterable, Identifiable {
       return
     case .finder:
       NSWorkspace.shared.activateFileViewerSelecting([worktree.workingDirectory])
-    case .alacritty, .cursor, .fork, .githubDesktop, .gitkraken, .gitup, .ghostty, .kitty,
-      .smartgit, .sourcetree, .sublimeMerge, .terminal, .vscode, .wezterm, .windsurf, .xcode, .zed:
+    case .alacritty, .antigravity, .cursor, .fork, .githubDesktop, .gitkraken, .gitup, .ghostty,
+      .kitty, .smartgit, .sourcetree, .sublimeMerge, .terminal, .vscode, .vscodeInsiders, .warp,
+      .wezterm, .windsurf, .xcode, .zed:
       guard
         let appURL = NSWorkspace.shared.urlForApplication(
           withBundleIdentifier: bundleIdentifier

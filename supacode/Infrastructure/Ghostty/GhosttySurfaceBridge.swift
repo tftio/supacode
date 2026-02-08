@@ -168,6 +168,9 @@ final class GhosttySurfaceBridge {
       if let title = string(from: action.action.set_title.title) {
         state.title = title
         onTitleChange?(title)
+        if let surfaceView {
+          NSAccessibility.post(element: surfaceView, notification: .titleChanged)
+        }
       }
       return true
 
@@ -177,6 +180,9 @@ final class GhosttySurfaceBridge {
 
     case GHOSTTY_ACTION_PWD:
       state.pwd = string(from: action.action.pwd.pwd)
+      if let surfaceView {
+        NSAccessibility.post(element: surfaceView, notification: .valueChanged)
+      }
       return true
 
     case GHOSTTY_ACTION_DESKTOP_NOTIFICATION:

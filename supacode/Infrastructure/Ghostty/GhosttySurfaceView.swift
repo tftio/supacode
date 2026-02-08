@@ -53,6 +53,8 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
   var onFocusChange: ((Bool) -> Void)?
 
+  private var accessibilityPaneIndexHelp: String?
+
   private static let mouseCursorMap: [ghostty_action_mouse_shape_e: NSCursor] = [
     GHOSTTY_MOUSE_SHAPE_DEFAULT: .arrow,
     GHOSTTY_MOUSE_SHAPE_TEXT: .iBeam,
@@ -195,9 +197,49 @@ final class GhosttySurfaceView: NSView, Identifiable {
     self.focused = focused
     setSurfaceFocus(focused)
     onFocusChange?(focused)
+    if focused {
+      NSAccessibility.post(element: self, notification: .focusedUIElementChanged)
+    }
     if passwordInput {
       SecureInput.shared.setScoped(ObjectIdentifier(self), focused: focused)
     }
+  }
+
+  func setAccessibilityPaneIndex(index: Int, total: Int) {
+    guard total > 0, index > 0 else {
+      accessibilityPaneIndexHelp = nil
+      return
+    }
+    accessibilityPaneIndexHelp = "Pane \(index) of \(total)"
+  }
+
+  override func isAccessibilityElement() -> Bool {
+    true
+  }
+
+  override func accessibilityRole() -> NSAccessibility.Role? {
+    // Use raw value to avoid SDK availability issues while still exposing the correct AX role.
+    NSAccessibility.Role(rawValue: "AXTerminal")
+  }
+
+  override func accessibilityLabel() -> String? {
+    let title = bridge.state.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !title.isEmpty {
+      return title
+    }
+    let pwd = bridge.state.pwd?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !pwd.isEmpty {
+      return pwd
+    }
+    return "Terminal pane"
+  }
+
+  override func accessibilityValue() -> Any? {
+    bridge.state.pwd
+  }
+
+  override func accessibilityHelp() -> String? {
+    accessibilityPaneIndexHelp
   }
 
   override func becomeFirstResponder() -> Bool {

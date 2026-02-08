@@ -197,14 +197,6 @@ final class GhosttySurfaceView: NSView, Identifiable {
     self.focused = focused
     setSurfaceFocus(focused)
     onFocusChange?(focused)
-    if focused {
-      // Post on the window so assistive tech can query the focused element from it.
-      if let window {
-        NSAccessibility.post(element: window, notification: .focusedUIElementChanged)
-      } else {
-        NSAccessibility.post(element: self, notification: .focusedUIElementChanged)
-      }
-    }
     if passwordInput {
       SecureInput.shared.setScoped(ObjectIdentifier(self), focused: focused)
     }
@@ -252,6 +244,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     let result = super.becomeFirstResponder()
     if result {
       focusDidChange(true)
+      postAccessibilityFocusChanged()
     }
     return result
   }
@@ -262,6 +255,16 @@ final class GhosttySurfaceView: NSView, Identifiable {
       focusDidChange(false)
     }
     return result
+  }
+
+  private func postAccessibilityFocusChanged() {
+    guard surface != nil else { return }
+    // Post on the window so assistive tech can query the focused element from it.
+    if let window {
+      NSAccessibility.post(element: window, notification: .focusedUIElementChanged)
+    } else {
+      NSAccessibility.post(element: self, notification: .focusedUIElementChanged)
+    }
   }
 
   override func keyDown(with event: NSEvent) {

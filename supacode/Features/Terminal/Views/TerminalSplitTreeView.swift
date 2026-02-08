@@ -321,12 +321,6 @@ final class TerminalSplitAXContainerView: NSView {
     }
 
     let newPaneIDs = panes.map(\.id)
-    if newPaneIDs != lastPaneIDs {
-      lastPaneIDs = newPaneIDs
-      // Assistive tech may cache the AX tree; nudge it to re-query when pane membership/order changes.
-      NSAccessibility.post(element: self, notification: .layoutChanged)
-    }
-
     self.panes = panes
     panesLabel = "Terminal split: \(panes.count) pane" + (panes.count == 1 ? "" : "s")
 
@@ -334,6 +328,12 @@ final class TerminalSplitAXContainerView: NSView {
       pane.setAccessibilityPaneIndex(index: index + 1, total: panes.count)
       // Expose panes as direct children of this split group for predictable navigation.
       pane.setAccessibilityParent(self)
+    }
+
+    if newPaneIDs != lastPaneIDs {
+      lastPaneIDs = newPaneIDs
+      // Assistive tech may cache the AX tree; nudge it to re-query when pane membership/order changes.
+      NSAccessibility.post(element: self, notification: .layoutChanged)
     }
   }
 

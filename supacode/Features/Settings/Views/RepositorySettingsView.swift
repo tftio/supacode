@@ -166,7 +166,9 @@ private struct BranchPickerPopover: View {
         .padding(8)
       Divider()
       List {
-        Button { onSelect(nil) } label: {
+        Button {
+          onSelect(nil)
+        } label: {
           HStack {
             Text(automaticLabel)
             Spacer()
@@ -181,7 +183,9 @@ private struct BranchPickerPopover: View {
         }
         .buttonStyle(.plain)
         ForEach(filteredOptions, id: \.self) { ref in
-          Button { onSelect(ref) } label: {
+          Button {
+            onSelect(ref)
+          } label: {
             HStack {
               Text(ref)
               Spacer()

@@ -2,6 +2,7 @@ import AppKit
 import ComposableArchitecture
 import Foundation
 import IdentifiedCollections
+import OSLog
 import PostHog
 import SwiftUI
 
@@ -15,6 +16,11 @@ private enum CancelID {
 
 @Reducer
 struct RepositoriesFeature {
+  private static let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "supacode",
+    category: String(describing: RepositoriesFeature.self)
+  )
+
   @ObservableState
   struct State: Equatable {
     var repositories: IdentifiedArrayOf<Repository> = []
@@ -1327,30 +1333,35 @@ struct RepositoriesFeature {
           let githubCLI = githubCLI
           let githubIntegration = githubIntegration
           return .run { send in
+            let logger = Self.logger
             guard await githubIntegration.isAvailable() else {
+              logger.debug("pull request refresh skipped reason=integration_unavailable")
               return
             }
             guard let remoteInfo = await gitClient.remoteInfo(repositoryRootURL) else {
+              logger.debug("pull request refresh skipped reason=remote_info_unavailable")
               return
             }
-            let result = await Result {
-              try await githubCLI.batchPullRequests(
+            logger.debug(
+              "pull request refresh start host=\(remoteInfo.host) owner=\(remoteInfo.owner) repo=\(remoteInfo.repo)"
+            )
+            logger.debug("pull request refresh start branches=\(branches.count)")
+            do {
+              let prsByBranch = try await githubCLI.batchPullRequests(
                 remoteInfo.host,
                 remoteInfo.owner,
                 remoteInfo.repo,
                 branches
               )
-            }
-            switch result {
-            case .success(let prsByBranch):
+              logger.debug("pull request refresh ok prs=\(prsByBranch.count)")
               for worktree in worktrees {
                 let pullRequest = prsByBranch[worktree.name]
                 await send(
                   .worktreePullRequestLoaded(worktreeID: worktree.id, pullRequest: pullRequest)
                 )
               }
-            case .failure:
-              return
+            } catch {
+              logger.warning("pull request refresh failed error=\(String(describing: error))")
             }
           }
         }

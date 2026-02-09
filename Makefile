@@ -124,3 +124,15 @@ bump-version: # Bump app version (usage: make bump-version [VERSION=x.x.x] [BUIL
 
 bump-and-release: bump-version # Bump version and push tags to trigger release
 	git push --follow-tags
+	@tag="$$(git describe --tags --abbrev=0)"; \
+	repo="$$(gh repo view --json nameWithOwner -q .nameWithOwner)"; \
+	prev="$$(gh release view --json tagName -q .tagName 2>/dev/null || echo '')"; \
+	tmp=$$(mktemp); \
+	if [ -n "$$prev" ]; then \
+		gh api "repos/$$repo/releases/generate-notes" -f tag_name="$$tag" -f previous_tag_name="$$prev" --jq '.body' > "$$tmp"; \
+	else \
+		gh api "repos/$$repo/releases/generate-notes" -f tag_name="$$tag" --jq '.body' > "$$tmp"; \
+	fi; \
+	$${EDITOR:-vim} "$$tmp"; \
+	gh release create "$$tag" --notes-file "$$tmp"; \
+	rm -f "$$tmp"

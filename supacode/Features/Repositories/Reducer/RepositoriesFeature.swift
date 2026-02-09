@@ -1333,23 +1333,20 @@ struct RepositoriesFeature {
             guard let remoteInfo = await gitClient.remoteInfo(repositoryRootURL) else {
               return
             }
-            let result = await Result {
-              try await githubCLI.batchPullRequests(
+            do {
+              let prsByBranch = try await githubCLI.batchPullRequests(
                 remoteInfo.host,
                 remoteInfo.owner,
                 remoteInfo.repo,
                 branches
               )
-            }
-            switch result {
-            case .success(let prsByBranch):
               for worktree in worktrees {
                 let pullRequest = prsByBranch[worktree.name]
                 await send(
                   .worktreePullRequestLoaded(worktreeID: worktree.id, pullRequest: pullRequest)
                 )
               }
-            case .failure:
+            } catch {
               return
             }
           }

@@ -6,7 +6,6 @@ struct ArchivedWorktreeRowView: View {
   let info: WorktreeInfoEntry?
   let onUnarchive: () -> Void
   let onDelete: () -> Void
-  let showsBottomDivider: Bool
 
   var body: some View {
     let display = WorktreePullRequestDisplay(
@@ -61,14 +60,6 @@ struct ArchivedWorktreeRowView: View {
       .padding(.leading, 24)
     }
     .frame(height: rowHeight, alignment: .center)
-    .overlay(alignment: .bottomLeading) {
-      if showsBottomDivider {
-        Rectangle()
-          .fill(.separator)
-          .frame(height: 0.5)
-          .padding(.leading, 24)
-      }
-    }
   }
 
   private var bodyFont: NSFont {

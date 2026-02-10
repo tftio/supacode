@@ -1,4 +1,3 @@
-import AppKit
 import ComposableArchitecture
 import SwiftUI
 
@@ -9,39 +8,10 @@ struct SidebarListView: View {
   @State private var isDragActive = false
 
   var body: some View {
-    let selection = Binding<SidebarSelection?>(
-      get: {
-        if store.isShowingArchivedWorktrees {
-          return .archivedWorktrees
-        }
-        return store.selectedWorktreeID.map(SidebarSelection.worktree)
-      },
-      set: { newValue in
-        switch newValue {
-        case .archivedWorktrees:
-          store.send(.selectArchivedWorktrees)
-        case .worktree(let id):
-          store.send(.selectWorktree(id))
-        case .repository(let id):
-          guard let repo = store.state.repositories[id: id],
-            !store.state.isRemovingRepository(repo)
-          else { return }
-          withAnimation(.easeOut(duration: 0.2)) {
-            if expandedRepoIDs.contains(id) {
-              expandedRepoIDs.remove(id)
-            } else {
-              expandedRepoIDs.insert(id)
-            }
-          }
-        case nil:
-          store.send(.selectWorktree(nil))
-        }
-      }
-    )
     let state = store.state
     let orderedRoots = state.orderedRepositoryRoots()
     let repositoriesByID = Dictionary(uniqueKeysWithValues: store.repositories.map { ($0.id, $0) })
-    List(selection: selection) {
+    List {
       if orderedRoots.isEmpty {
         let repositories = store.repositories
         ForEach(Array(repositories.enumerated()), id: \.element.id) { index, repository in
@@ -111,9 +81,6 @@ struct SidebarListView: View {
     }
     .listStyle(.sidebar)
     .frame(minWidth: 220)
-    .onAppear {
-      disableSidebarSelectionHighlight()
-    }
     .onDragSessionUpdated { session in
       if case .ended = session.phase {
         if isDragActive {
@@ -138,12 +105,10 @@ struct SidebarListView: View {
       let current = Set(newValue.map(\.id))
       expandedRepoIDs.formUnion(current)
       expandedRepoIDs = expandedRepoIDs.intersection(current)
-      disableSidebarSelectionHighlight()
     }
     .onChange(of: store.pendingWorktrees) { _, newValue in
       let repositoryIDs = Set(newValue.map(\.repositoryID))
       expandedRepoIDs.formUnion(repositoryIDs)
-      disableSidebarSelectionHighlight()
     }
     .dropDestination(for: URL.self) { urls, _ in
       let fileURLs = urls.filter(\.isFileURL)
@@ -171,29 +136,5 @@ struct SidebarListView: View {
       terminalState.focusAndInsertText(keyPress.characters)
       return .handled
     }
-  }
-
-  private func disableSidebarSelectionHighlight() {
-    DispatchQueue.main.async {
-      guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
-        let contentView = window.contentView,
-        let tableView = self.findTableView(in: contentView)
-      else { return }
-      if tableView.selectionHighlightStyle != .none {
-        tableView.selectionHighlightStyle = .none
-      }
-    }
-  }
-
-  private func findTableView(in view: NSView) -> NSTableView? {
-    if let tableView = view as? NSTableView {
-      return tableView
-    }
-    for subview in view.subviews {
-      if let tableView = findTableView(in: subview) {
-        return tableView
-      }
-    }
-    return nil
   }
 }

@@ -49,7 +49,7 @@ struct ArchivedWorktreesDetailView: View {
         ForEach(Array(groups.enumerated()), id: \.element.repository.id) { index, group in
           Section {
             if !collapsedRepositoryIDs.contains(group.repository.id) {
-              ForEach(Array(group.worktrees.enumerated()), id: \.element.id) { index, worktree in
+              ForEach(group.worktrees, id: \.id) { worktree in
                 ArchivedWorktreeRowView(
                   worktree: worktree,
                   info: store.state.worktreeInfo(for: worktree.id),
@@ -58,8 +58,7 @@ struct ArchivedWorktreesDetailView: View {
                   },
                   onDelete: {
                     store.send(.requestDeleteWorktree(worktree.id, group.repository.id))
-                  },
-                  showsBottomDivider: index < group.worktrees.count - 1
+                  }
                 )
                 .tag(worktree.id)
                 .typeSelectEquivalent("")

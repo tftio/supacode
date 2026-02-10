@@ -28,13 +28,11 @@ struct WorktreeRowsView: View {
       uniqueKeysWithValues: allRows.enumerated().map { ($0.element.id, $0.offset) }
     )
     let rowIDs = sections.allRows.map(\.id)
-    let lastRowID = sections.allRows.last?.id
     return rowsGroup(
       sections: sections,
       isRepositoryRemoving: isRepositoryRemoving,
       showShortcutHints: showShortcutHints,
-      shortcutIndexByID: shortcutIndexByID,
-      lastRowID: lastRowID
+      shortcutIndexByID: shortcutIndexByID
     )
     .animation(.easeOut(duration: 0.2), value: rowIDs)
   }
@@ -44,16 +42,14 @@ struct WorktreeRowsView: View {
     sections: WorktreeRowSections,
     isRepositoryRemoving: Bool,
     showShortcutHints: Bool,
-    shortcutIndexByID: [Worktree.ID: Int],
-    lastRowID: Worktree.ID?
+    shortcutIndexByID: [Worktree.ID: Int]
   ) -> some View {
     if let row = sections.main {
       rowView(
         row,
         isRepositoryRemoving: isRepositoryRemoving,
         moveDisabled: true,
-        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil,
-        showsDivider: row.id != lastRowID
+        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil
       )
     }
     ForEach(sections.pinned) { row in
@@ -61,8 +57,7 @@ struct WorktreeRowsView: View {
         row,
         isRepositoryRemoving: isRepositoryRemoving,
         moveDisabled: isRepositoryRemoving || row.isDeleting,
-        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil,
-        showsDivider: row.id != lastRowID
+        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil
       )
     }
     .onMove { offsets, destination in
@@ -73,8 +68,7 @@ struct WorktreeRowsView: View {
         row,
         isRepositoryRemoving: isRepositoryRemoving,
         moveDisabled: true,
-        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil,
-        showsDivider: row.id != lastRowID
+        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil
       )
     }
     ForEach(sections.unpinned) { row in
@@ -82,8 +76,7 @@ struct WorktreeRowsView: View {
         row,
         isRepositoryRemoving: isRepositoryRemoving,
         moveDisabled: isRepositoryRemoving || row.isDeleting,
-        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil,
-        showsDivider: row.id != lastRowID
+        shortcutHint: showShortcutHints ? worktreeShortcutHint(for: shortcutIndexByID[row.id]) : nil
       )
     }
     .onMove { offsets, destination in
@@ -96,8 +89,7 @@ struct WorktreeRowsView: View {
     _ row: WorktreeRowModel,
     isRepositoryRemoving: Bool,
     moveDisabled: Bool,
-    shortcutHint: String?,
-    showsDivider: Bool
+    shortcutHint: String?
   ) -> some View {
     let isSelected = row.id == store.state.selectedWorktreeID
     let showsNotificationIndicator = !isSelected && terminalManager.hasUnseenNotifications(for: row.id)
@@ -128,8 +120,7 @@ struct WorktreeRowsView: View {
       shortcutHint: shortcutHint,
       pinAction: pinAction,
       archiveAction: archiveAction,
-      moveDisabled: moveDisabled,
-      showsDivider: showsDivider
+      moveDisabled: moveDisabled
     )
     let baseRow = worktreeRowView(row, config: config)
     Group {
@@ -142,6 +133,10 @@ struct WorktreeRowsView: View {
       }
     }
     .contentShape(.dragPreview, .rect)
+    .contentShape(.interaction, .rect)
+    .onTapGesture {
+      store.send(.selectWorktree(row.id))
+    }
     .environment(\.colorScheme, colorScheme)
     .preferredColorScheme(colorScheme)
     .onHover { hovering in
@@ -182,7 +177,6 @@ struct WorktreeRowsView: View {
     let pinAction: (() -> Void)?
     let archiveAction: (() -> Void)?
     let moveDisabled: Bool
-    let showsDivider: Bool
   }
 
   private func worktreeRowView(_ row: WorktreeRowModel, config: WorktreeRowViewConfig) -> some View {
@@ -194,7 +188,6 @@ struct WorktreeRowsView: View {
       worktreeName: config.worktreeName,
       info: row.info,
       showsPullRequestInfo: !draggingWorktreeIDs.contains(row.id),
-      isSelected: isSelected,
       isHovered: config.isHovered,
       isPinned: row.isPinned,
       isMainWorktree: row.isMainWorktree,
@@ -206,13 +199,20 @@ struct WorktreeRowsView: View {
       onFocusNotification: config.onFocusNotification,
       shortcutHint: config.shortcutHint,
       pinAction: config.pinAction,
-      archiveAction: config.archiveAction,
-      showsBottomDivider: config.showsDivider
+      archiveAction: config.archiveAction
     )
-    .tag(SidebarSelection.worktree(row.id))
     .typeSelectEquivalent("")
     .listRowInsets(EdgeInsets())
     .listRowSeparator(.hidden)
+    .listRowBackground(
+      Group {
+        if isSelected {
+          RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(Color.gray.opacity(0.2))
+            .padding(.horizontal, 8)
+        }
+      }
+    )
     .transition(.opacity)
     .moveDisabled(config.moveDisabled)
   }

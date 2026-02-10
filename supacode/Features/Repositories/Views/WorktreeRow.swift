@@ -6,7 +6,6 @@ struct WorktreeRow: View {
   let worktreeName: String
   let info: WorktreeInfoEntry?
   let showsPullRequestInfo: Bool
-  let isSelected: Bool
   let isHovered: Bool
   let isPinned: Bool
   let isMainWorktree: Bool
@@ -19,7 +18,6 @@ struct WorktreeRow: View {
   let shortcutHint: String?
   let pinAction: (() -> Void)?
   let archiveAction: (() -> Void)?
-  let showsBottomDivider: Bool
   @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
@@ -118,20 +116,6 @@ struct WorktreeRow: View {
     .padding(.horizontal, 2)
     .padding(.vertical, 4)
     .frame(maxWidth: .infinity, minHeight: worktreeRowHeight, alignment: .center)
-    .background {
-      if isSelected {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-          .fill(Color.gray.opacity(0.2))
-      }
-    }
-    .overlay(alignment: .bottomLeading) {
-      if showsBottomDivider {
-        Rectangle()
-          .fill(.separator)
-          .frame(height: 0.5)
-          .padding(.leading, 26)
-      }
-    }
   }
 
   private func pullRequestMergeReadiness(

@@ -167,12 +167,14 @@ struct WorktreeRowsView: View {
   }
 
   private func worktreeRowView(_ row: WorktreeRowModel, config: WorktreeRowViewConfig) -> some View {
+    let isSelected = row.id == store.state.selectedWorktreeID
     let taskStatus = terminalManager.focusedTaskStatus(for: row.id)
     let isRunScriptRunning = terminalManager.isRunScriptRunning(for: row.id)
     return WorktreeRow(
       name: config.displayName,
       info: row.info,
       showsPullRequestInfo: !draggingWorktreeIDs.contains(row.id),
+      isSelected: isSelected,
       isPinned: row.isPinned,
       isMainWorktree: row.isMainWorktree,
       isLoading: row.isPending || row.isDeleting,

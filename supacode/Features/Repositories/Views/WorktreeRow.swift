@@ -5,6 +5,7 @@ struct WorktreeRow: View {
   let name: String
   let info: WorktreeInfoEntry?
   let showsPullRequestInfo: Bool
+  let isSelected: Bool
   let isPinned: Bool
   let isMainWorktree: Bool
   let isLoading: Bool
@@ -102,13 +103,21 @@ struct WorktreeRow: View {
       )
       .padding(.leading, 24)
     }
-    .frame(height: worktreeRowHeight, alignment: .center)
+    .padding(.horizontal, 8)
+    .padding(.vertical, 4)
+    .frame(maxWidth: .infinity, minHeight: worktreeRowHeight, alignment: .center)
+    .background {
+      if isSelected {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+          .fill(Color.gray.opacity(0.2))
+      }
+    }
     .overlay(alignment: .bottomLeading) {
       if showsBottomDivider {
         Rectangle()
           .fill(.separator)
           .frame(height: 0.5)
-          .padding(.leading, 24)
+          .padding(.leading, 32)
       }
     }
   }

@@ -1,3 +1,4 @@
+import AppKit
 import ComposableArchitecture
 import SwiftUI
 
@@ -110,6 +111,9 @@ struct SidebarListView: View {
     }
     .listStyle(.sidebar)
     .frame(minWidth: 220)
+    .onAppear {
+      disableSidebarSelectionHighlight()
+    }
     .onDragSessionUpdated { session in
       if case .ended = session.phase {
         if isDragActive {
@@ -134,10 +138,12 @@ struct SidebarListView: View {
       let current = Set(newValue.map(\.id))
       expandedRepoIDs.formUnion(current)
       expandedRepoIDs = expandedRepoIDs.intersection(current)
+      disableSidebarSelectionHighlight()
     }
     .onChange(of: store.pendingWorktrees) { _, newValue in
       let repositoryIDs = Set(newValue.map(\.repositoryID))
       expandedRepoIDs.formUnion(repositoryIDs)
+      disableSidebarSelectionHighlight()
     }
     .dropDestination(for: URL.self) { urls, _ in
       let fileURLs = urls.filter(\.isFileURL)
@@ -165,5 +171,29 @@ struct SidebarListView: View {
       terminalState.focusAndInsertText(keyPress.characters)
       return .handled
     }
+  }
+
+  private func disableSidebarSelectionHighlight() {
+    DispatchQueue.main.async {
+      guard let window = NSApp.keyWindow ?? NSApp.mainWindow,
+        let contentView = window.contentView,
+        let tableView = self.findTableView(in: contentView)
+      else { return }
+      if tableView.selectionHighlightStyle != .none {
+        tableView.selectionHighlightStyle = .none
+      }
+    }
+  }
+
+  private func findTableView(in view: NSView) -> NSTableView? {
+    if let tableView = view as? NSTableView {
+      return tableView
+    }
+    for subview in view.subviews {
+      if let tableView = findTableView(in: subview) {
+        return tableView
+      }
+    }
+    return nil
   }
 }

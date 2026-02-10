@@ -16,8 +16,9 @@ GHOSTTY_BUILD_OUTPUTS := $(GHOSTTY_XCFRAMEWORK_PATH) $(GHOSTTY_RESOURCE_PATH) $(
 SPM_CACHE_DIR := /tmp/supacode-spm-cache/SourcePackages
 VERSION ?=
 BUILD ?=
+XCODEBUILD_FLAGS ?=
 .DEFAULT_GOAL := help
-.PHONY: build-ghostty-xcframework build-app run-app install-dev-build format lint check test update-wt bump-version bump-and-release
+.PHONY: build-ghostty-xcframework build-app run-app install-dev-build archive export-archive format lint check test update-wt bump-version bump-and-release
 
 help:  # Display this help.
 	@-+echo "Run make with one of the following targets:"
@@ -62,6 +63,12 @@ install-dev-build: build-app # install dev build to /Applications
 	rm -rf "$$dst"; \
 	ditto "$$src" "$$dst"; \
 	echo "installed $$dst"
+
+archive: build-ghostty-xcframework # Archive Release build for distribution
+	bash -o pipefail -c 'xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Release -archivePath build/supacode.xcarchive archive CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$$APPLE_TEAM_ID" CODE_SIGN_IDENTITY="$$DEVELOPER_ID_IDENTITY_SHA" OTHER_CODE_SIGN_FLAGS="--timestamp" -skipMacroValidation -clonedSourcePackagesDirPath $(SPM_CACHE_DIR) $(XCODEBUILD_FLAGS) 2>&1 | mise exec -- xcsift -qw --format toon'
+
+export-archive: # Export xarchive
+	bash -o pipefail -c 'xcodebuild -exportArchive -archivePath build/supacode.xcarchive -exportPath build/export -exportOptionsPlist build/ExportOptions.plist 2>&1 | mise exec -- xcsift -qw --format toon'
 
 test: build-ghostty-xcframework
 	xcodebuild test -project supacode.xcodeproj -scheme supacode -destination "platform=macOS" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -skipMacroValidation -clonedSourcePackagesDirPath $(SPM_CACHE_DIR) 2>&1

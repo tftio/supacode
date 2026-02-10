@@ -3,6 +3,7 @@ import SwiftUI
 
 struct WorktreeRow: View {
   let name: String
+  let worktreeName: String
   let info: WorktreeInfoEntry?
   let showsPullRequestInfo: Bool
   let isSelected: Bool
@@ -36,8 +37,9 @@ struct WorktreeRow: View {
       && display.pullRequest != nil
       && display.pullRequestBadgeStyle != nil
     let nameColor = colorScheme == .dark ? Color.white : Color.primary
+    let detailText = worktreeName.isEmpty ? name : worktreeName
     VStack(alignment: .leading, spacing: 2) {
-      HStack(alignment: .firstTextBaseline, spacing: 8) {
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
         ZStack {
           if showsNotificationIndicator {
             NotificationPopoverButton(
@@ -70,7 +72,7 @@ struct WorktreeRow: View {
           .font(.body)
           .foregroundStyle(nameColor)
           .lineLimit(1)
-        Spacer(minLength: 8)
+        Spacer(minLength: 4)
         if isRunScriptRunning {
           Image(systemName: "play.fill")
             .font(.caption)
@@ -96,14 +98,15 @@ struct WorktreeRow: View {
         }
       }
       WorktreeRowInfoView(
-        display: display,
+        worktreeName: detailText,
         showsPullRequestTag: showsPullRequestTag,
+        pullRequestNumber: display.pullRequest?.number,
         mergeReadiness: mergeReadiness,
         shortcutHint: shortcutHint
       )
       .padding(.leading, 24)
     }
-    .padding(.horizontal, 8)
+    .padding(.horizontal, 2)
     .padding(.vertical, 4)
     .frame(maxWidth: .infinity, minHeight: worktreeRowHeight, alignment: .center)
     .background {
@@ -117,7 +120,7 @@ struct WorktreeRow: View {
         Rectangle()
           .fill(.separator)
           .frame(height: 0.5)
-          .padding(.leading, 32)
+          .padding(.leading, 26)
       }
     }
   }
@@ -141,36 +144,40 @@ struct WorktreeRow: View {
 }
 
 private struct WorktreeRowInfoView: View {
-  let display: WorktreePullRequestDisplay
+  let worktreeName: String
   let showsPullRequestTag: Bool
+  let pullRequestNumber: Int?
   let mergeReadiness: PullRequestMergeReadiness?
   let shortcutHint: String?
 
   var body: some View {
-    HStack(spacing: 6) {
-      HStack(spacing: 6) {
-        if showsPullRequestTag {
-          WorktreePullRequestAccessoryView(display: display)
-        }
-        if showsPullRequestTag {
-          if mergeReadiness != nil {
-            Text("•")
-              .foregroundStyle(.secondary)
-          }
-        }
-        if let mergeReadiness {
-          Text(mergeReadiness.label)
-            .foregroundStyle(mergeReadiness.isBlocking ? .red : .green)
-        }
-      }
+    let summary = summaryText
+    HStack(spacing: 4) {
+      Text(summary)
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+        .multilineTextAlignment(.leading)
       Spacer(minLength: 0)
       if let shortcutHint {
         ShortcutHintView(text: shortcutHint, color: .secondary)
       }
     }
     .font(.caption)
-    .lineLimit(1)
     .frame(minHeight: 14)
+  }
+
+  private var summaryText: String {
+    var segments: [String] = []
+    if !worktreeName.isEmpty {
+      segments.append(worktreeName)
+    }
+    if showsPullRequestTag, let pullRequestNumber {
+      segments.append("PR #\(pullRequestNumber)")
+    }
+    if let mergeReadiness {
+      segments.append(mergeReadiness.label)
+    }
+    return segments.joined(separator: " • ")
   }
 }
 
@@ -187,7 +194,7 @@ private struct WorktreeRowChangeCountView: View {
     }
     .font(.caption)
     .lineLimit(1)
-    .padding(.horizontal, 6)
+    .padding(.horizontal, 4)
     .padding(.vertical, 2)
     .overlay {
       RoundedRectangle(cornerRadius: 4, style: .continuous)

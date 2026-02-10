@@ -114,6 +114,7 @@ struct WorktreeRowsView: View {
     }
     let config = WorktreeRowViewConfig(
       displayName: displayName,
+      worktreeName: worktreeName(for: row),
       showsNotificationIndicator: showsNotificationIndicator,
       notifications: notifications,
       onFocusNotification: onFocusNotification,
@@ -157,6 +158,7 @@ struct WorktreeRowsView: View {
 
   private struct WorktreeRowViewConfig {
     let displayName: String
+    let worktreeName: String
     let showsNotificationIndicator: Bool
     let notifications: [WorktreeTerminalNotification]
     let onFocusNotification: (WorktreeTerminalNotification) -> Void
@@ -172,6 +174,7 @@ struct WorktreeRowsView: View {
     let isRunScriptRunning = terminalManager.isRunScriptRunning(for: row.id)
     return WorktreeRow(
       name: config.displayName,
+      worktreeName: config.worktreeName,
       info: row.info,
       showsPullRequestInfo: !draggingWorktreeIDs.contains(row.id),
       isSelected: isSelected,
@@ -234,5 +237,21 @@ struct WorktreeRowsView: View {
   private func worktreeShortcutHint(for index: Int?) -> String? {
     guard let index, AppShortcuts.worktreeSelection.indices.contains(index) else { return nil }
     return AppShortcuts.worktreeSelection[index].display
+  }
+
+  private func worktreeName(for row: WorktreeRowModel) -> String {
+    if row.id.contains("/") {
+      let pathName = URL(fileURLWithPath: row.id).lastPathComponent
+      if !pathName.isEmpty {
+        return pathName
+      }
+    }
+    if !row.detail.isEmpty, row.detail != "." {
+      let detailName = URL(fileURLWithPath: row.detail).lastPathComponent
+      if !detailName.isEmpty, detailName != "." {
+        return detailName
+      }
+    }
+    return row.name
   }
 }

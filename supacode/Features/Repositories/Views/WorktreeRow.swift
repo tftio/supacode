@@ -112,7 +112,7 @@ struct WorktreeRow: View {
         mergeReadiness: mergeReadiness,
         shortcutHint: shortcutHint
       )
-      .padding(.leading, 24)
+      .padding(.leading, 22)
     }
     .padding(.horizontal, 2)
     .padding(.vertical, 4)

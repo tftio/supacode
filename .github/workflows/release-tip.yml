@@ -139,20 +139,6 @@ jobs:
             --key-id "$APPLE_NOTARIZATION_KEY_ID" \
             --issuer "$APPLE_NOTARIZATION_ISSUER"
           rm notarization_key.p8
-      - name: Notarize and staple
-        run: |
-          APP_PATH="$(find build/export -name "supacode.app" -maxdepth 3 -print -quit)"
-          NOTARY_ZIP=build/supacode.notary.zip
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$NOTARY_ZIP"
-
-          for attempt in 1 2 3; do
-            echo "Notarization attempt $attempt..."
-            xcrun notarytool submit "$NOTARY_ZIP" --keychain-profile "notarytool-profile" --wait && break
-            echo "Attempt $attempt failed, retrying in 30s..."
-            sleep 30
-          done
-
-          xcrun stapler staple "$APP_PATH"
       - name: Build DMG
         run: |
           APP_PATH="$(find build/export -name "supacode.app" -maxdepth 3 -print -quit)"
@@ -166,16 +152,19 @@ jobs:
           if [ "$DMG_OUTPUT" != "build/supacode.dmg" ]; then
             mv "$DMG_OUTPUT" build/supacode.dmg
           fi
-          DMG_PATH=build/supacode.dmg
+      - name: Notarize and staple
+        run: |
+          APP_PATH="$(find build/export -name "supacode.app" -maxdepth 3 -print -quit)"
 
           for attempt in 1 2 3; do
-            echo "DMG notarization attempt $attempt..."
-            xcrun notarytool submit "$DMG_PATH" --keychain-profile "notarytool-profile" --wait && break
+            echo "Notarization attempt $attempt..."
+            xcrun notarytool submit build/supacode.dmg --keychain-profile "notarytool-profile" --wait && break
             echo "Attempt $attempt failed, retrying in 30s..."
             sleep 30
           done
 
-          xcrun stapler staple "$DMG_PATH"
+          xcrun stapler staple build/supacode.dmg
+          xcrun stapler staple "$APP_PATH"
       - uses: actions/upload-artifact@v6
         with:
           name: build-artifacts

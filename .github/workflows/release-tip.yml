@@ -222,11 +222,9 @@ jobs:
           name: build-artifacts
           path: build
       - name: Update tip release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-        with:
-          name: 'Supacode Tip ("Nightly")'
-          prerelease: true
-          tag_name: tip
-          target_commitish: ${{ github.sha }}
-          files: build/supacode.dmg
-          token: ${{ github.token }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create tip --prerelease --title 'Supacode Tip ("Nightly")' --target "${{ github.sha }}" --notes "" -R "${{ github.repository }}" 2>/dev/null ||
+          gh release edit tip --prerelease --title 'Supacode Tip ("Nightly")' --target "${{ github.sha }}" -R "${{ github.repository }}"
+          gh release upload tip build/supacode.dmg --clobber -R "${{ github.repository }}"

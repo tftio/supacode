@@ -2188,8 +2188,13 @@ extension RepositoriesFeature.State {
   }
 
   func orderedWorktreeRows() -> [WorktreeRowModel] {
+    orderedWorktreeRows(includingRepositoryIDs: Set(repositories.map(\.id)))
+  }
+
+  func orderedWorktreeRows(includingRepositoryIDs: Set<Repository.ID>) -> [WorktreeRowModel] {
     let repositoriesByID = Dictionary(uniqueKeysWithValues: repositories.map { ($0.id, $0) })
     return orderedRepositoryIDs()
+      .filter { includingRepositoryIDs.contains($0) }
       .compactMap { repositoriesByID[$0] }
       .flatMap { worktreeRows(in: $0) }
   }

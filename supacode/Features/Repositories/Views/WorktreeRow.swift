@@ -186,9 +186,8 @@ private struct WorktreeRowInfoView: View {
     }
     if let mergeReadiness {
       appendSeparator()
-      let isMergeable = mergeReadiness.blockingReason == nil
       var segment = AttributedString(mergeReadiness.label)
-      segment.foregroundColor = isMergeable ? (isSelected ? Color.primary : .green) : .secondary
+      segment.foregroundColor = isSelected ? .secondary : (mergeReadiness.isBlocking ? .red : .green)
       result.append(segment)
     }
     return Text(result)
@@ -203,9 +202,9 @@ private struct WorktreeRowChangeCountView: View {
   var body: some View {
     HStack(spacing: 4) {
       Text("+\(addedLines)")
-        .foregroundStyle(isSelected ? Color.primary : Color.green)
+        .foregroundStyle(isSelected ? Color.secondary : Color.green)
       Text("-\(removedLines)")
-        .foregroundStyle(isSelected ? Color.primary : Color.red)
+        .foregroundStyle(isSelected ? Color.secondary : Color.red)
     }
     .font(.caption)
     .lineLimit(1)
@@ -213,7 +212,7 @@ private struct WorktreeRowChangeCountView: View {
     .padding(.vertical, 2)
     .overlay {
       RoundedRectangle(cornerRadius: 4, style: .continuous)
-        .stroke(isSelected ? AnyShapeStyle(.primary.opacity(0.3)) : AnyShapeStyle(.tertiary), lineWidth: 1)
+        .stroke(isSelected ? AnyShapeStyle(.secondary.opacity(0.3)) : AnyShapeStyle(.tertiary), lineWidth: 1)
     }
     .monospacedDigit()
   }

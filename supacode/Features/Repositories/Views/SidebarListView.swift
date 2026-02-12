@@ -38,6 +38,7 @@ struct SidebarListView: View {
       }
     )
     let state = store.state
+    let hotkeyRows = state.orderedWorktreeRows(includingRepositoryIDs: expandedRepoIDs)
     let orderedRoots = state.orderedRepositoryRoots()
     let repositoriesByID = Dictionary(uniqueKeysWithValues: store.repositories.map { ($0.id, $0) })
     List(selection: selection) {
@@ -48,6 +49,7 @@ struct SidebarListView: View {
             repository: repository,
             showsTopSeparator: index > 0,
             isDragActive: isDragActive,
+            hotkeyRows: hotkeyRows,
             expandedRepoIDs: $expandedRepoIDs,
             store: store,
             terminalManager: terminalManager
@@ -96,6 +98,7 @@ struct SidebarListView: View {
               repository: repository,
               showsTopSeparator: index > 0,
               isDragActive: isDragActive,
+              hotkeyRows: hotkeyRows,
               expandedRepoIDs: $expandedRepoIDs,
               store: store,
               terminalManager: terminalManager
@@ -129,15 +132,6 @@ struct SidebarListView: View {
     }
     .safeAreaInset(edge: .bottom) {
       SidebarFooterView(store: store)
-    }
-    .onChange(of: store.repositories) { _, newValue in
-      let current = Set(newValue.map(\.id))
-      expandedRepoIDs.formUnion(current)
-      expandedRepoIDs = expandedRepoIDs.intersection(current)
-    }
-    .onChange(of: store.pendingWorktrees) { _, newValue in
-      let repositoryIDs = Set(newValue.map(\.repositoryID))
-      expandedRepoIDs.formUnion(repositoryIDs)
     }
     .dropDestination(for: URL.self) { urls, _ in
       let fileURLs = urls.filter(\.isFileURL)

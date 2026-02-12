@@ -5,6 +5,7 @@ struct RepositorySectionView: View {
   let repository: Repository
   let showsTopSeparator: Bool
   let isDragActive: Bool
+  let hotkeyRows: [WorktreeRowModel]
   @Binding var expandedRepoIDs: Set<Repository.ID>
   @Bindable var store: StoreOf<RepositoriesFeature>
   let terminalManager: WorktreeTerminalManager
@@ -122,6 +123,7 @@ struct RepositorySectionView: View {
         WorktreeRowsView(
           repository: repository,
           isExpanded: isExpanded,
+          hotkeyRows: hotkeyRows,
           store: store,
           terminalManager: terminalManager
         )

@@ -385,6 +385,30 @@ struct RepositoriesFeatureTests {
     )
   }
 
+  @Test func orderedWorktreeRowsCanFilterCollapsedRepositoriesForHotkeys() {
+    let repoA = makeRepository(
+      id: "/tmp/repo-a",
+      worktrees: [
+        makeWorktree(id: "/tmp/repo-a/wt1", name: "wt1", repoRoot: "/tmp/repo-a")
+      ]
+    )
+    let repoB = makeRepository(
+      id: "/tmp/repo-b",
+      worktrees: [
+        makeWorktree(id: "/tmp/repo-b/wt2", name: "wt2", repoRoot: "/tmp/repo-b")
+      ]
+    )
+    var state = makeState(repositories: [repoA, repoB])
+    state.repositoryOrderIDs = [repoA.id, repoB.id]
+
+    expectNoDifference(
+      state.orderedWorktreeRows(includingRepositoryIDs: [repoB.id]).map(\.id),
+      [
+        "/tmp/repo-b/wt2"
+      ]
+    )
+  }
+
   @Test func orderedRepositoryRootsAppendMissing() {
     let repoA = makeRepository(id: "/tmp/repo-a", worktrees: [])
     let repoB = makeRepository(id: "/tmp/repo-b", worktrees: [])

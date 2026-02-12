@@ -186,9 +186,8 @@ private struct WorktreeRowInfoView: View {
     }
     if let mergeReadiness {
       appendSeparator()
-      let isMergeable = mergeReadiness.blockingReason == nil
       var segment = AttributedString(mergeReadiness.label)
-      segment.foregroundColor = isMergeable ? (isSelected ? Color.primary : .green) : .secondary
+      segment.foregroundColor = isSelected ? Color.primary : (mergeReadiness.isBlocking ? .red : .green)
       result.append(segment)
     }
     return Text(result)

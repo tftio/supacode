@@ -63,6 +63,8 @@ struct RepositoriesFeature {
       roots: [URL]
     )
     case selectWorktree(Worktree.ID?)
+    case selectNextWorktree
+    case selectPreviousWorktree
     case requestRenameBranch(Worktree.ID, String)
     case createRandomWorktree
     case createRandomWorktreeInRepository(Repository.ID)
@@ -420,6 +422,14 @@ struct RepositoriesFeature {
         state.selection = worktreeID.map(SidebarSelection.worktree)
         let selectedWorktree = state.worktree(for: worktreeID)
         return .send(.delegate(.selectedWorktreeChanged(selectedWorktree)))
+
+      case .selectNextWorktree:
+        guard let id = state.worktreeID(byOffset: 1) else { return .none }
+        return .send(.selectWorktree(id))
+
+      case .selectPreviousWorktree:
+        guard let id = state.worktreeID(byOffset: -1) else { return .none }
+        return .send(.selectWorktree(id))
 
       case .requestRenameBranch(let worktreeID, let branchName):
         guard let worktree = state.worktree(for: worktreeID) else { return .none }
@@ -1851,6 +1861,17 @@ struct RepositoriesFeature {
 extension RepositoriesFeature.State {
   var selectedWorktreeID: Worktree.ID? {
     selection?.worktreeID
+  }
+
+  func worktreeID(byOffset offset: Int) -> Worktree.ID? {
+    let rows = orderedWorktreeRows()
+    guard !rows.isEmpty else { return nil }
+    if let currentID = selectedWorktreeID,
+      let currentIndex = rows.firstIndex(where: { $0.id == currentID })
+    {
+      return rows[(currentIndex + offset + rows.count) % rows.count].id
+    }
+    return rows[offset > 0 ? 0 : rows.count - 1].id
   }
 
   var isShowingArchivedWorktrees: Bool {

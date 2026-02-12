@@ -820,6 +820,94 @@ struct RepositoriesFeatureTests {
     expectNoDifference(store.state.archivedWorktreeIDs, [])
   }
 
+  // MARK: - Select Next/Previous Worktree
+
+  @Test func selectNextWorktreeWrapsForward() async {
+    let wt1 = makeWorktree(id: "/tmp/wt1", name: "alpha")
+    let wt2 = makeWorktree(id: "/tmp/wt2", name: "beta")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [wt1, wt2])
+    var state = makeState(repositories: [repository])
+    state.selection = .worktree(wt2.id)
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectNextWorktree)
+    await store.receive(\.selectWorktree) {
+      $0.selection = .worktree(wt1.id)
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
+  @Test func selectPreviousWorktreeWrapsBackward() async {
+    let wt1 = makeWorktree(id: "/tmp/wt1", name: "alpha")
+    let wt2 = makeWorktree(id: "/tmp/wt2", name: "beta")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [wt1, wt2])
+    var state = makeState(repositories: [repository])
+    state.selection = .worktree(wt1.id)
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectPreviousWorktree)
+    await store.receive(\.selectWorktree) {
+      $0.selection = .worktree(wt2.id)
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
+  @Test func selectNextWorktreeWithNoSelectionSelectsFirst() async {
+    let wt1 = makeWorktree(id: "/tmp/wt1", name: "alpha")
+    let wt2 = makeWorktree(id: "/tmp/wt2", name: "beta")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [wt1, wt2])
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectNextWorktree)
+    await store.receive(\.selectWorktree) {
+      $0.selection = .worktree(wt1.id)
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
+  @Test func selectPreviousWorktreeWithNoSelectionSelectsLast() async {
+    let wt1 = makeWorktree(id: "/tmp/wt1", name: "alpha")
+    let wt2 = makeWorktree(id: "/tmp/wt2", name: "beta")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [wt1, wt2])
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectPreviousWorktree)
+    await store.receive(\.selectWorktree) {
+      $0.selection = .worktree(wt2.id)
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
+  @Test func selectNextWorktreeWithEmptyRowsIsNoOp() async {
+    let store = TestStore(initialState: RepositoriesFeature.State()) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectNextWorktree)
+  }
+
+  @Test func selectNextWorktreeSingleWorktreeReturnsSame() async {
+    let worktree = makeWorktree(id: "/tmp/wt", name: "solo")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [worktree])
+    var state = makeState(repositories: [repository])
+    state.selection = .worktree(worktree.id)
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectNextWorktree)
+    await store.receive(\.selectWorktree)
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
   private func makeWorktree(
     id: String,
     name: String,

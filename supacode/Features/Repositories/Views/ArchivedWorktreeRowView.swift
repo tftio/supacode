@@ -67,6 +67,6 @@ struct ArchivedWorktreeRowView: View {
   }
 
   private var rowHeight: CGFloat {
-    56
+    50
   }
 }

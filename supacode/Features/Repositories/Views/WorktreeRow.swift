@@ -119,7 +119,6 @@ struct WorktreeRow: View {
       .padding(.leading, 22)
     }
     .padding(.horizontal, 2)
-    .padding(.vertical, 4)
     .frame(maxWidth: .infinity, minHeight: worktreeRowHeight, alignment: .center)
   }
 
@@ -137,7 +136,7 @@ struct WorktreeRow: View {
   }
 
   private var worktreeRowHeight: CGFloat {
-    56
+    50
   }
 }
 
@@ -216,7 +215,7 @@ private struct WorktreeRowChangeCountView: View {
     .font(.caption)
     .lineLimit(1)
     .padding(.horizontal, 4)
-    .padding(.vertical, 2)
+    .padding(.vertical, 0)
     .overlay {
       RoundedRectangle(cornerRadius: 4, style: .continuous)
         .stroke(isSelected ? AnyShapeStyle(.secondary.opacity(0.3)) : AnyShapeStyle(.tertiary), lineWidth: 1)

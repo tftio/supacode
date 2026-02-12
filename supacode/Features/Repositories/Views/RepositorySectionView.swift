@@ -132,6 +132,6 @@ struct RepositorySectionView: View {
   }
 
   private var headerCellHeight: CGFloat {
-    46
+    34
   }
 }

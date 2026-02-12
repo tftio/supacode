@@ -58,7 +58,7 @@ struct SidebarFooterView: View {
     }
     .buttonStyle(.plain)
     .font(.callout)
-    .padding()
+    .padding(.horizontal, 12)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(.bar)
   }

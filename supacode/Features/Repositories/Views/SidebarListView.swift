@@ -133,15 +133,6 @@ struct SidebarListView: View {
     .safeAreaInset(edge: .bottom) {
       SidebarFooterView(store: store)
     }
-    .onChange(of: store.repositories) { _, newValue in
-      let current = Set(newValue.map(\.id))
-      expandedRepoIDs.formUnion(current)
-      expandedRepoIDs = expandedRepoIDs.intersection(current)
-    }
-    .onChange(of: store.pendingWorktrees) { _, newValue in
-      let repositoryIDs = Set(newValue.map(\.repositoryID))
-      expandedRepoIDs.formUnion(repositoryIDs)
-    }
     .dropDestination(for: URL.self) { urls, _ in
       let fileURLs = urls.filter(\.isFileURL)
       guard !fileURLs.isEmpty else { return false }

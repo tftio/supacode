@@ -16,7 +16,7 @@ final class WorktreeTerminalState {
   private var trees: [TerminalTabID: SplitTree<GhosttySurfaceView>] = [:]
   private var surfaces: [UUID: GhosttySurfaceView] = [:]
   private var focusedSurfaceIdByTab: [TerminalTabID: UUID] = [:]
-  private var tabIsRunningById: [TerminalTabID: Bool] = [:]
+  var tabIsRunningById: [TerminalTabID: Bool] = [:]
   private var runScriptTabId: TerminalTabID?
   private var pendingSetupScript: Bool
   private var isEnsuringInitialTab = false
@@ -49,12 +49,8 @@ final class WorktreeTerminalState {
     )
   }
 
-  var focusedTaskStatus: WorktreeTaskStatus {
-    guard let tabId = tabManager.selectedTabId else { return .idle }
-    if tabIsRunningById[tabId] == true {
-      return .running
-    }
-    return .idle
+  var taskStatus: WorktreeTaskStatus {
+    tabIsRunningById.values.contains(true) ? .running : .idle
   }
 
   var isRunScriptRunning: Bool {
@@ -726,7 +722,7 @@ final class WorktreeTerminalState {
   }
 
   private func emitTaskStatusIfChanged() {
-    let newStatus = focusedTaskStatus
+    let newStatus = taskStatus
     if newStatus != lastReportedTaskStatus {
       lastReportedTaskStatus = newStatus
       onTaskStatusChanged?(newStatus)

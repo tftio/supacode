@@ -206,8 +206,8 @@ final class WorktreeTerminalManager {
     states[worktreeID]
   }
 
-  func focusedTaskStatus(for worktreeID: Worktree.ID) -> WorktreeTaskStatus? {
-    states[worktreeID]?.focusedTaskStatus
+  func taskStatus(for worktreeID: Worktree.ID) -> WorktreeTaskStatus? {
+    states[worktreeID]?.taskStatus
   }
 
   func isRunScriptRunning(for worktreeID: Worktree.ID) -> Bool {

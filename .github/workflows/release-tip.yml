@@ -63,7 +63,7 @@ jobs:
       - uses: ./.github/actions/setup-macos
       - name: Override build number to timestamp
         run: |
-          BUILD_NUMBER=$(date -u +%Y%m%d%H%M)
+          BUILD_NUMBER=$(date -u +%Y%m%d%H%M%S)
           sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/g" supacode.xcodeproj/project.pbxproj
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
       - name: Setup keychain

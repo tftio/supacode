@@ -251,8 +251,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create tip --prerelease --title 'Supacode Tip ("Nightly")' --target "${{ github.sha }}" --notes "" -R "${{ github.repository }}" 2>/dev/null ||
-          gh release edit tip --prerelease --title 'Supacode Tip ("Nightly")' --target "${{ github.sha }}" -R "${{ github.repository }}"
+          PREV_TAG=$(gh release list --exclude-drafts --exclude-pre-releases -R "${{ github.repository }}" --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+          NOTES=""
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(gh api "repos/${{ github.repository }}/releases/generate-notes" -f tag_name="tip" -f target_commitish="${{ github.sha }}" -f previous_tag_name="$PREV_TAG" --jq '.body' 2>/dev/null || echo "")
+          fi
+          gh release create tip --prerelease --title 'Supacode Tip ("Nightly")' --target "${{ github.sha }}" --notes "$NOTES" -R "${{ github.repository }}" 2>/dev/null ||
+          gh release edit tip --prerelease --title 'Supacode Tip ("Nightly")' --target "${{ github.sha }}" --notes "$NOTES" -R "${{ github.repository }}"
           gh release upload tip build/supacode.dmg build/supacode.app.zip build/appcast.xml --clobber -R "${{ github.repository }}"
       - name: Merge tip item into production appcast
         env:

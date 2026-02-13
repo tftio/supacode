@@ -1,12 +1,11 @@
 import Carbon
 import Cocoa
-import OSLog
 
 @MainActor
 final class SecureInput: Observable {
   static let shared = SecureInput()
 
-  private static let logger = Logger.supacode("SecureInput")
+  private static let logger = SupaLogger("SecureInput")
 
   var global: Bool = false {
     didSet { apply() }

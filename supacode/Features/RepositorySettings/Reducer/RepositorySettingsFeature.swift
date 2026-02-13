@@ -1,6 +1,5 @@
 import ComposableArchitecture
 import Foundation
-import OSLog
 
 @Reducer
 struct RepositorySettingsFeature {
@@ -46,16 +45,9 @@ struct RepositorySettingsFeature {
             branches = try await gitClient.branchRefs(rootURL)
           } catch {
             let rootPath = rootURL.path(percentEncoded: false)
-            #if DEBUG
-              print(
-                "Repository settings branch refs failed for \(rootPath): "
-                  + error.localizedDescription
-              )
-            #else
-              Logger.supacode("Settings").warning(
-                "Branch refs failed for \(rootPath): \(error.localizedDescription)"
-              )
-            #endif
+            SupaLogger("Settings").warning(
+              "Branch refs failed for \(rootPath): \(error.localizedDescription)"
+            )
             branches = []
           }
           let defaultBaseRef = await gitClient.automaticWorktreeBaseRef(rootURL) ?? "HEAD"

@@ -49,13 +49,15 @@ struct WorktreeTerminalTabsView: View {
     .background(
       WindowFocusObserverView(
         onWindowKeyChanged: { isKey in
-          guard windowIsKey != isKey else { return }
-          windowIsKey = isKey
+          if windowIsKey != isKey {
+            windowIsKey = isKey
+          }
           applyWindowState()
         },
         onWindowOcclusionChanged: { isVisible in
-          guard windowIsVisible != isVisible else { return }
-          windowIsVisible = isVisible
+          if windowIsVisible != isVisible {
+            windowIsVisible = isVisible
+          }
           applyWindowState()
         }
       )
@@ -65,14 +67,6 @@ struct WorktreeTerminalTabsView: View {
       if shouldAutoFocusTerminal {
         state.focusSelectedTab()
       }
-      if let window = NSApp.keyWindow {
-        windowIsKey = window.isKeyWindow
-        windowIsVisible = window.occlusionState.contains(.visible)
-      } else {
-        windowIsKey = false
-        windowIsVisible = false
-      }
-      applyWindowState()
     }
     .onChange(of: state.tabManager.selectedTabId) { oldTabId, _ in
       if shouldAutoFocusTerminal {

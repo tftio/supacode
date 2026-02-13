@@ -17,7 +17,7 @@ nonisolated struct SupaLogger: Sendable {
     #if DEBUG
       print("[\(category)] \(message)")
     #else
-      logger.debug("\(message, privacy: .public)")
+      logger.notice("\(message, privacy: .public)")
     #endif
   }
 
@@ -25,7 +25,7 @@ nonisolated struct SupaLogger: Sendable {
     #if DEBUG
       print("[\(category)] \(message)")
     #else
-      logger.info("\(message, privacy: .public)")
+      logger.notice("\(message, privacy: .public)")
     #endif
   }
 

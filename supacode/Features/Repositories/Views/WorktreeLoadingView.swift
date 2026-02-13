@@ -5,6 +5,14 @@ struct WorktreeLoadingView: View {
 
   var body: some View {
     let actionLabel = info.state == .creating ? "Creating" : "Removing"
+    let statusTitle =
+      info.statusTitle
+      ?? {
+        if let repositoryName = info.repositoryName {
+          return "\(actionLabel) worktree in \(repositoryName)"
+        }
+        return "\(actionLabel) worktree..."
+      }()
     let followup =
       info.state == .creating
       ? "We will open the terminal when it's ready."
@@ -13,12 +21,11 @@ struct WorktreeLoadingView: View {
       ProgressView()
       Text(info.name)
         .font(.headline)
-      if let repositoryName = info.repositoryName {
-        Text("\(actionLabel) worktree in \(repositoryName)")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      } else {
-        Text("\(actionLabel) worktree...")
+      Text(statusTitle)
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+      if let statusDetail = info.statusDetail, !statusDetail.isEmpty {
+        Text(statusDetail)
           .font(.subheadline)
           .foregroundStyle(.secondary)
       }

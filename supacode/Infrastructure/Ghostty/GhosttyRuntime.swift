@@ -242,13 +242,10 @@ final class GhosttyRuntime {
     if Thread.isMainThread {
       return bridge.handleAction(target: target, action: action)
     }
-    let willHandle = DispatchQueue.main.sync {
-      bridge.willHandleAction(action)
-    }
     DispatchQueue.main.async {
       _ = bridge.handleAction(target: target, action: action)
     }
-    return willHandle
+    return false
   }
 
   private static func readClipboard(

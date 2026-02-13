@@ -653,7 +653,7 @@ struct GitClient {
 
 }
 
-private let gitLogger = SupaLogger("Git")
+private nonisolated let gitLogger = SupaLogger("Git")
 
 nonisolated private func wrapShellError(
   _ error: Error,

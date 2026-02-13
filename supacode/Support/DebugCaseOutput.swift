@@ -13,11 +13,11 @@ extension Reducer where State: Equatable {
 struct LogActionsReducer<Base: Reducer>: Reducer where Base.State: Equatable {
   let base: Base
 
-  private static let logger = SupaLogger("TCA")
+  private let logger = SupaLogger("TCA")
 
   func reduce(into state: inout Base.State, action: Base.Action) -> Effect<Base.Action> {
     let actionLabel = debugCaseOutput(action)
-    Self.logger.debug("Action: \(actionLabel)")
+    logger.debug("Action: \(actionLabel)")
     #if DEBUG
       let previousState = state
       let effects = base.reduce(into: &state, action: action)

@@ -12,6 +12,24 @@ struct RepositorySettingsView: View {
     let settings = $store.settings
     Form {
       Section {
+        TextField(
+          "",
+          text: Binding(
+            get: { store.settings.displayName ?? "" },
+            set: { newValue in
+              store.settings.displayName = newValue.isEmpty ? nil : newValue
+            }
+          ),
+          prompt: Text(Repository.name(for: store.rootURL))
+        )
+      } header: {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Display Name")
+          Text("Custom name shown in the sidebar and settings")
+            .foregroundStyle(.secondary)
+        }
+      }
+      Section {
         if store.isBranchDataLoaded {
           Button {
             branchSearchText = ""

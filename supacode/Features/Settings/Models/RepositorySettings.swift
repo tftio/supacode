@@ -1,6 +1,7 @@
 import Foundation
 
 nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
+  var displayName: String?
   var setupScript: String
   var runScript: String
   var openActionID: String
@@ -10,6 +11,7 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
   var pullRequestMergeStrategy: PullRequestMergeStrategy
 
   private enum CodingKeys: String, CodingKey {
+    case displayName
     case setupScript
     case runScript
     case openActionID
@@ -20,6 +22,7 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
   }
 
   static let `default` = RepositorySettings(
+    displayName: nil,
     setupScript: "",
     runScript: "",
     openActionID: OpenWorktreeAction.automaticSettingsID,
@@ -30,6 +33,7 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
   )
 
   init(
+    displayName: String? = nil,
     setupScript: String,
     runScript: String,
     openActionID: String,
@@ -38,6 +42,7 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     copyUntrackedOnWorktreeCreate: Bool,
     pullRequestMergeStrategy: PullRequestMergeStrategy
   ) {
+    self.displayName = displayName
     self.setupScript = setupScript
     self.runScript = runScript
     self.openActionID = openActionID
@@ -49,6 +54,8 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
 
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    displayName =
+      try container.decodeIfPresent(String.self, forKey: .displayName)
     setupScript =
       try container.decodeIfPresent(String.self, forKey: .setupScript)
       ?? Self.default.setupScript

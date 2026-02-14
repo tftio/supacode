@@ -4,7 +4,7 @@ import IdentifiedCollections
 struct Repository: Identifiable, Hashable, Sendable {
   let id: String
   let rootURL: URL
-  let name: String
+  var name: String
   let worktrees: IdentifiedArrayOf<Worktree>
 
   var initials: String {

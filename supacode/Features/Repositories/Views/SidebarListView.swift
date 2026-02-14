@@ -69,7 +69,12 @@ struct SidebarListView: View {
           let rootURL = row.rootURL
           let repositoryID = row.repositoryID
           if let failureMessage = state.loadFailuresByID[repositoryID] {
-            let name = Repository.name(for: rootURL.standardizedFileURL)
+            @Shared(.repositorySettings(rootURL.standardizedFileURL)) var repositorySettings
+            let displayName = repositorySettings.displayName
+            let name =
+              displayName?.isEmpty == false
+              ? displayName!
+              : Repository.name(for: rootURL.standardizedFileURL)
             let path = rootURL.standardizedFileURL.path(percentEncoded: false)
             FailedRepositoryRow(
               name: name,

@@ -489,13 +489,22 @@ struct AppFeature {
         }
 
       case .settings(.repositorySettings(.delegate(.settingsChanged(let rootURL)))):
+        @Shared(.repositorySettings(rootURL)) var repositorySettings
+        let repositoryID = rootURL.standardizedFileURL.path(percentEncoded: false)
+        if let index = state.repositories.repositories.index(id: repositoryID) {
+          let displayName = repositorySettings.displayName
+          let name =
+            displayName?.isEmpty == false
+            ? displayName!
+            : Repository.name(for: rootURL)
+          state.repositories.repositories[index].name = name
+        }
         guard let selectedWorktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID),
           selectedWorktree.repositoryRootURL == rootURL
         else {
           return .none
         }
         let worktreeID = selectedWorktree.id
-        @Shared(.repositorySettings(rootURL)) var repositorySettings
         return .send(.worktreeSettingsLoaded(repositorySettings, worktreeID: worktreeID))
 
       case .worktreeSettingsLoaded(let settings, let worktreeID):

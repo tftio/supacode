@@ -1949,7 +1949,12 @@ struct RepositoriesFeature {
       let rootID = normalizedRoot.path(percentEncoded: false)
       do {
         let worktrees = try await gitClient.worktrees(root)
-        let name = Repository.name(for: normalizedRoot)
+        @Shared(.repositorySettings(normalizedRoot)) var repositorySettings
+        let displayName = repositorySettings.displayName
+        let name =
+          displayName?.isEmpty == false
+          ? displayName!
+          : Repository.name(for: normalizedRoot)
         let repository = Repository(
           id: rootID,
           rootURL: normalizedRoot,

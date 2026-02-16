@@ -26,6 +26,7 @@ struct LogActionsReducer<Base: Reducer>: Reducer where Base.State: Equatable {
       }
       return effects
     #else
+      SentrySDK.logger.info("received action: \(actionLabel)")
       let breadcrumb = Breadcrumb(level: .debug, category: "action")
       breadcrumb.message = actionLabel
       SentrySDK.addBreadcrumb(breadcrumb)

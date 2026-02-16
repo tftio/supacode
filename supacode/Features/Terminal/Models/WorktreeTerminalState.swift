@@ -288,6 +288,18 @@ final class WorktreeTerminalState {
     return true
   }
 
+  @discardableResult
+  func navigateSearchOnFocusedSurface(_ direction: GhosttySearchDirection) -> Bool {
+    guard let tabId = tabManager.selectedTabId,
+      let focusedId = focusedSurfaceIdByTab[tabId],
+      let surface = surfaces[focusedId]
+    else {
+      return false
+    }
+    surface.navigateSearch(direction)
+    return true
+  }
+
   func closeTab(_ tabId: TerminalTabID) {
     let wasRunScriptTab = tabId == runScriptTabId
     removeTree(for: tabId)

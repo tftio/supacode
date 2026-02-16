@@ -60,9 +60,9 @@ final class WorktreeTerminalManager {
     case .searchSelection(let worktree):
       state(for: worktree).performBindingActionOnFocusedSurface("search_selection")
     case .navigateSearchNext(let worktree):
-      state(for: worktree).performBindingActionOnFocusedSurface("navigate_search:next")
+      state(for: worktree).navigateSearchOnFocusedSurface(.next)
     case .navigateSearchPrevious(let worktree):
-      state(for: worktree).performBindingActionOnFocusedSurface("navigate_search:previous")
+      state(for: worktree).navigateSearchOnFocusedSurface(.previous)
     case .endSearch(let worktree):
       state(for: worktree).performBindingActionOnFocusedSurface("end_search")
     default:

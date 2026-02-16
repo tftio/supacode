@@ -42,13 +42,22 @@ nonisolated struct WorktreeCreationProgress: Hashable, Sendable {
       return "Checking repository mode"
     case .resolvingBaseReference:
       return "Resolving base reference (\(baseRefDisplay))"
-    case .creatingWorktree:
-      let ignoredCount = copyIgnored == true ? (ignoredFilesToCopyCount ?? 0) : 0
-      let untrackedCount = copyUntracked == true ? (untrackedFilesToCopyCount ?? 0) : 0
-      let copySummary =
-        "Copying \(ignoredCount) ignored files and copying \(untrackedCount) untracked files"
-      return
+  case .creatingWorktree:
+      var copyDetails: [String] = []
+      if copyIgnored == true {
+        let ignoredCount = ignoredFilesToCopyCount ?? 0
+        copyDetails.append("Copying \(ignoredCount) ignored files")
+      }
+      if copyUntracked == true {
+        let untrackedCount = untrackedFilesToCopyCount ?? 0
+        copyDetails.append("copying \(untrackedCount) untracked files")
+      }
+      let copySummary = copyDetails.joined(separator: " and ")
+      return if copySummary.isEmpty {
+        "Creating from \(baseRefBranchDisplay)."
+      } else {
         "Creating from \(baseRefBranchDisplay). \(copySummary)"
+      }
     }
   }
 

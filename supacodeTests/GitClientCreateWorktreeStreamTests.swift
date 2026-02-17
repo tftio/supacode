@@ -166,6 +166,41 @@ struct GitClientCreateWorktreeStreamTests {
     #expect(finishedWorktree?.workingDirectory == URL(fileURLWithPath: "/tmp/repo/new-wt"))
   }
 
+  @Test func createWorktreeStreamUsesFinishedOutputWhenNoLineEventsAreEmitted() async throws {
+    let shell = ShellClient(
+      run: { _, _, _ in ShellOutput(stdout: "", stderr: "", exitCode: 0) },
+      runLoginImpl: { _, _, _, _ in
+        ShellOutput(
+          stdout: "creating worktree\n/tmp/repo/new-wt\n",
+          stderr: "",
+          exitCode: 0
+        )
+      }
+    )
+    let client = GitClient(shell: shell)
+    let repoRoot = URL(fileURLWithPath: "/tmp/repo")
+    var outputLines: [ShellStreamLine] = []
+    var finishedWorktree: Worktree?
+    for try await event in client.createWorktreeStream(
+      named: "new-wt",
+      in: repoRoot,
+      copyIgnored: false,
+      copyUntracked: false,
+      baseRef: ""
+    ) {
+      switch event {
+      case .outputLine(let line):
+        outputLines.append(line)
+      case .finished(let worktree):
+        finishedWorktree = worktree
+      }
+    }
+
+    #expect(outputLines.isEmpty)
+    #expect(finishedWorktree?.id == "/tmp/repo/new-wt")
+    #expect(finishedWorktree?.workingDirectory == URL(fileURLWithPath: "/tmp/repo/new-wt"))
+  }
+
   @Test func createWorktreeStreamThrowsWhenNoPathLineIsEmitted() async throws {
     let shell = ShellClient(
       run: { _, _, _ in ShellOutput(stdout: "", stderr: "", exitCode: 0) },
@@ -259,6 +294,33 @@ struct GitClientCreateWorktreeStreamTests {
           continuation.yield(.finished(ShellOutput(stdout: "/tmp/repo/new-wt", stderr: "", exitCode: 0)))
           continuation.finish()
         }
+      }
+    )
+    let client = GitClient(shell: shell)
+    let repoRoot = URL(fileURLWithPath: "/tmp/repo")
+
+    let worktree = try await client.createWorktree(
+      named: "new-wt",
+      in: repoRoot,
+      copyIgnored: false,
+      copyUntracked: false,
+      baseRef: ""
+    )
+
+    #expect(worktree.id == "/tmp/repo/new-wt")
+    #expect(worktree.name == "new-wt")
+    #expect(worktree.repositoryRootURL == repoRoot)
+  }
+
+  @Test func createWorktreeUsesFinishedOutputWhenNoLineEventsAreEmitted() async throws {
+    let shell = ShellClient(
+      run: { _, _, _ in ShellOutput(stdout: "", stderr: "", exitCode: 0) },
+      runLoginImpl: { _, _, _, _ in
+        ShellOutput(
+          stdout: "preparing\n/tmp/repo/new-wt\n",
+          stderr: "",
+          exitCode: 0
+        )
       }
     )
     let client = GitClient(shell: shell)

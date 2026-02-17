@@ -86,6 +86,14 @@ nonisolated struct WorktreeCreationProgress: Hashable, Sendable {
     return []
   }
 
+  mutating func appendOutputLine(_ line: String, maxLines: Int) {
+    latestOutputLine = line
+    outputLines.append(line)
+    if outputLines.count > maxLines {
+      outputLines.removeFirst(outputLines.count - maxLines)
+    }
+  }
+
   private var baseRefDisplay: String {
     guard let baseRef, !baseRef.isEmpty else {
       return "HEAD"

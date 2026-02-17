@@ -293,7 +293,10 @@ struct GitClient {
                     pathLine = trimmed
                   }
                 }
-              case .finished:
+              case .finished(let output):
+                if pathLine == nil {
+                  pathLine = lastNonEmptyLine(in: output.stdout)
+                }
                 guard let pathLine else {
                   throw GitClientError.commandFailed(command: command, message: "Empty output")
                 }
@@ -530,6 +533,13 @@ struct GitClient {
       .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
       .filter { !$0.isEmpty }
       .count
+  }
+
+  nonisolated private func lastNonEmptyLine(in output: String) -> String? {
+    output
+      .split(whereSeparator: \.isNewline)
+      .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+      .last { !$0.isEmpty }
   }
 
   nonisolated private func parseLocalRefsWithUpstream(_ output: String) -> [String] {

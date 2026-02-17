@@ -15,7 +15,9 @@ private enum CancelID {
   }
 }
 
-private let githubIntegrationRecoveryInterval: Duration = .seconds(15)
+private nonisolated let githubIntegrationRecoveryInterval: Duration = .seconds(15)
+private nonisolated let worktreeCreationProgressLineLimit = 200
+private nonisolated let worktreeCreationProgressUpdateStride = 20
 
 @Reducer
 struct RepositoriesFeature {
@@ -546,6 +548,7 @@ struct RepositoriesFeature {
         return .run { send in
           var newWorktreeName: String?
           var progress = WorktreeCreationProgress(stage: .loadingLocalBranches)
+          var pendingProgressLineCount = 0
           do {
             await send(
               .pendingWorktreeProgressUpdated(
@@ -634,15 +637,27 @@ struct RepositoriesFeature {
                 guard !line.isEmpty else {
                   continue
                 }
-                progress.latestOutputLine = line
-                progress.outputLines.append(line)
-                await send(
-                  .pendingWorktreeProgressUpdated(
-                    id: pendingID,
-                    progress: progress
+                progress.appendOutputLine(line, maxLines: worktreeCreationProgressLineLimit)
+                pendingProgressLineCount += 1
+                if pendingProgressLineCount == 1 || pendingProgressLineCount >= worktreeCreationProgressUpdateStride {
+                  pendingProgressLineCount = 0
+                  await send(
+                    .pendingWorktreeProgressUpdated(
+                      id: pendingID,
+                      progress: progress
+                    )
                   )
-                )
+                }
               case .finished(let newWorktree):
+                if pendingProgressLineCount > 0 {
+                  pendingProgressLineCount = 0
+                  await send(
+                    .pendingWorktreeProgressUpdated(
+                      id: pendingID,
+                      progress: progress
+                    )
+                  )
+                }
                 await send(
                   .createRandomWorktreeSucceeded(
                     newWorktree,
@@ -658,6 +673,15 @@ struct RepositoriesFeature {
               message: "Worktree creation finished without a result."
             )
           } catch {
+            if pendingProgressLineCount > 0 {
+              pendingProgressLineCount = 0
+              await send(
+                .pendingWorktreeProgressUpdated(
+                  id: pendingID,
+                  progress: progress
+                )
+              )
+            }
             await send(
               .createRandomWorktreeFailed(
                 title: "Unable to create worktree",

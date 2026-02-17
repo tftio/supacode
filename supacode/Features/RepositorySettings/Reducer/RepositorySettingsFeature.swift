@@ -7,6 +7,7 @@ struct RepositorySettingsFeature {
   struct State: Equatable {
     var rootURL: URL
     var settings: RepositorySettings
+    var remoteRepoName: String?
     var isBareRepository = false
     var branchOptions: [String] = []
     var defaultWorktreeBaseRef = "origin/main"

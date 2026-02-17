@@ -63,4 +63,57 @@ struct RepositorySettingsKeyTests {
 
     #expect(reloaded.repositories[rootURL.path(percentEncoded: false)] == settings)
   }
+
+  @Test func resolvedNameReturnsDisplayNameWhenSet() {
+    var settings = RepositorySettings.default
+    settings.displayName = "My Repo"
+    let url = URL(fileURLWithPath: "/tmp/some-directory")
+    #expect(settings.resolvedName(for: url) == "My Repo")
+  }
+
+  @Test func resolvedNameFallsBackWhenDisplayNameIsNil() {
+    let settings = RepositorySettings.default
+    let url = URL(fileURLWithPath: "/tmp/some-directory")
+    #expect(settings.resolvedName(for: url) == "some-directory")
+  }
+
+  @Test func resolvedNameFallsBackWhenDisplayNameIsEmpty() {
+    var settings = RepositorySettings.default
+    settings.displayName = ""
+    let url = URL(fileURLWithPath: "/tmp/some-directory")
+    #expect(settings.resolvedName(for: url) == "some-directory")
+  }
+
+  @Test func displayNameRoundTrips() throws {
+    var settings = RepositorySettings.default
+    settings.displayName = "Custom Label"
+    let data = try JSONEncoder().encode(settings)
+    let decoded = try JSONDecoder().decode(RepositorySettings.self, from: data)
+    #expect(decoded.displayName == "Custom Label")
+  }
+
+  @Test func decodingWithoutDisplayNameDefaultsToNil() throws {
+    let data = try JSONEncoder().encode(RepositorySettings.default)
+    let decoded = try JSONDecoder().decode(RepositorySettings.self, from: data)
+    #expect(decoded.displayName == nil)
+  }
+
+  @Test func resolvedNameUsesRemoteRepoNameForBareRepo() {
+    let settings = RepositorySettings.default
+    let url = URL(fileURLWithPath: "/tmp/repos/.git")
+    #expect(settings.resolvedName(for: url, remoteRepoName: "my-project") == "my-project")
+  }
+
+  @Test func resolvedNamePrefersDisplayNameOverRemote() {
+    var settings = RepositorySettings.default
+    settings.displayName = "Custom Name"
+    let url = URL(fileURLWithPath: "/tmp/repos/.git")
+    #expect(settings.resolvedName(for: url, remoteRepoName: "my-project") == "Custom Name")
+  }
+
+  @Test func resolvedNameFallsBackToDirectoryWhenNoRemote() {
+    let settings = RepositorySettings.default
+    let url = URL(fileURLWithPath: "/tmp/repos/.git")
+    #expect(settings.resolvedName(for: url) == ".git")
+  }
 }

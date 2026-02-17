@@ -39,7 +39,7 @@ struct AppFeatureDefaultEditorTests {
     await store.finish()
   }
 
-  @Test func selectedWorktreeChangedOnlyUpdatesWatcherSelection() async {
+  @Test(.dependencies) func selectedWorktreeChangedOnlyUpdatesWatcherSelection() async {
     let worktree = makeWorktree()
     let repositoriesState = makeRepositoriesState(worktree: worktree)
     let watcherCommands = LockIsolated<[WorktreeInfoWatcherClient.Command]>([])
@@ -58,9 +58,10 @@ struct AppFeatureDefaultEditorTests {
       }
     }
 
+    let expectedDefault = OpenWorktreeAction.preferredDefault()
     await store.send(.repositories(.delegate(.selectedWorktreeChanged(worktree))))
     await store.receive(\.worktreeSettingsLoaded) {
-      $0.openActionSelection = .zed
+      $0.openActionSelection = expectedDefault
     }
     await store.finish()
 

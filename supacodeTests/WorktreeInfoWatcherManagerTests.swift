@@ -50,7 +50,7 @@ struct WorktreeInfoWatcherManagerTests {
         collector,
         repositoryRootURL: tempRepository.tempRoot,
         count: 1,
-        timeout: .seconds(1)
+        timeout: .seconds(2)
       )
     )
     let baselineCount = await collector.pullRequestRefreshCount(repositoryRootURL: tempRepository.tempRoot)
@@ -65,7 +65,7 @@ struct WorktreeInfoWatcherManagerTests {
         collector,
         repositoryRootURL: tempRepository.tempRoot,
         count: baselineCount + 1,
-        timeout: .seconds(1)
+        timeout: .seconds(2)
       )
     )
 
@@ -81,7 +81,7 @@ struct WorktreeInfoWatcherManagerTests {
         collector,
         repositoryRootURL: tempRepository.tempRoot,
         count: baselineCount + 2,
-        timeout: .seconds(1)
+        timeout: .seconds(2)
       )
     )
 

@@ -42,6 +42,8 @@ struct RepositoriesFeature {
     var statusToast: StatusToast?
     var githubIntegrationAvailability: GithubIntegrationAvailability = .unknown
     var pendingPullRequestRefreshByRepositoryID: [Repository.ID: PendingPullRequestRefresh] = [:]
+    var inFlightPullRequestRefreshRepositoryIDs: Set<Repository.ID> = []
+    var queuedPullRequestRefreshByRepositoryID: [Repository.ID: PendingPullRequestRefresh] = [:]
     @Presents var alert: AlertState<Alert>?
   }
 
@@ -127,6 +129,7 @@ struct RepositoriesFeature {
     case worktreeLineChangesLoaded(worktreeID: Worktree.ID, added: Int, removed: Int)
     case refreshGithubIntegrationAvailability
     case githubIntegrationAvailabilityUpdated(Bool)
+    case repositoryPullRequestRefreshCompleted(Repository.ID)
     case repositoryPullRequestsLoaded(
       repositoryID: Repository.ID,
       pullRequestsByWorktreeID: [Worktree.ID: GithubPullRequest?]
@@ -1407,6 +1410,16 @@ struct RepositoriesFeature {
           }
           switch state.githubIntegrationAvailability {
           case .available:
+            if state.inFlightPullRequestRefreshRepositoryIDs.contains(repositoryID) {
+              queuePullRequestRefresh(
+                repositoryID: repositoryID,
+                repositoryRootURL: repositoryRootURL,
+                worktreeIDs: worktreeIDs,
+                refreshesByRepositoryID: &state.queuedPullRequestRefreshByRepositoryID
+              )
+              return .none
+            }
+            state.inFlightPullRequestRefreshRepositoryIDs.insert(repositoryID)
             return refreshRepositoryPullRequests(
               repositoryID: repositoryID,
               repositoryRootURL: repositoryRootURL,
@@ -1414,19 +1427,19 @@ struct RepositoriesFeature {
               branches: branches
             )
           case .unknown:
-            queuePendingPullRequestRefresh(
+            queuePullRequestRefresh(
               repositoryID: repositoryID,
               repositoryRootURL: repositoryRootURL,
               worktreeIDs: worktreeIDs,
-              state: &state
+              refreshesByRepositoryID: &state.pendingPullRequestRefreshByRepositoryID
             )
             return .send(.refreshGithubIntegrationAvailability)
           case .checking:
-            queuePendingPullRequestRefresh(
+            queuePullRequestRefresh(
               repositoryID: repositoryID,
               repositoryRootURL: repositoryRootURL,
               worktreeIDs: worktreeIDs,
-              state: &state
+              refreshesByRepositoryID: &state.pendingPullRequestRefreshByRepositoryID
             )
             return .none
           case .unavailable:
@@ -1450,6 +1463,8 @@ struct RepositoriesFeature {
         state.githubIntegrationAvailability = isAvailable ? .available : .unavailable
         guard isAvailable else {
           state.pendingPullRequestRefreshByRepositoryID.removeAll()
+          state.queuedPullRequestRefreshByRepositoryID.removeAll()
+          state.inFlightPullRequestRefreshRepositoryIDs.removeAll()
           return .none
         }
         let pendingRefreshes = state.pendingPullRequestRefreshByRepositoryID.values.sorted {
@@ -1471,6 +1486,24 @@ struct RepositoriesFeature {
               )
             )
           }
+        )
+
+      case .repositoryPullRequestRefreshCompleted(let repositoryID):
+        state.inFlightPullRequestRefreshRepositoryIDs.remove(repositoryID)
+        guard state.githubIntegrationAvailability == .available,
+          let pending = state.queuedPullRequestRefreshByRepositoryID.removeValue(
+            forKey: repositoryID
+          )
+        else {
+          return .none
+        }
+        return .send(
+          .worktreeInfoEvent(
+            .repositoryPullRequestRefresh(
+              repositoryRootURL: pending.repositoryRootURL,
+              worktreeIDs: pending.worktreeIDs
+            )
+          )
         )
 
       case .worktreeBranchNameLoaded(let worktreeID, let name):
@@ -1496,7 +1529,11 @@ struct RepositoriesFeature {
             continue
           }
           let pullRequest = pullRequestsByWorktreeID[worktreeID] ?? nil
-          let previousMerged = state.worktreeInfoByID[worktreeID]?.pullRequest?.state == "MERGED"
+          let previousPullRequest = state.worktreeInfoByID[worktreeID]?.pullRequest
+          guard previousPullRequest != pullRequest else {
+            continue
+          }
+          let previousMerged = previousPullRequest?.state == "MERGED"
           let nextMerged = pullRequest?.state == "MERGED"
           updateWorktreePullRequest(
             worktreeID: worktreeID,
@@ -1766,10 +1803,15 @@ struct RepositoriesFeature {
       case .setGithubIntegrationEnabled(let isEnabled):
         if isEnabled {
           state.githubIntegrationAvailability = .unknown
+          state.pendingPullRequestRefreshByRepositoryID.removeAll()
+          state.queuedPullRequestRefreshByRepositoryID.removeAll()
+          state.inFlightPullRequestRefreshRepositoryIDs.removeAll()
           return .send(.refreshGithubIntegrationAvailability)
         }
         state.githubIntegrationAvailability = .unavailable
         state.pendingPullRequestRefreshByRepositoryID.removeAll()
+        state.queuedPullRequestRefreshByRepositoryID.removeAll()
+        state.inFlightPullRequestRefreshRepositoryIDs.removeAll()
         let worktreeIDs = Array(state.worktreeInfoByID.keys)
         for worktreeID in worktreeIDs {
           updateWorktreePullRequest(
@@ -1810,6 +1852,7 @@ struct RepositoriesFeature {
     let githubCLI = githubCLI
     return .run { send in
       guard let remoteInfo = await gitClient.remoteInfo(repositoryRootURL) else {
+        await send(.repositoryPullRequestRefreshCompleted(repositoryID))
         return
       }
       do {
@@ -1830,8 +1873,10 @@ struct RepositoriesFeature {
           )
         )
       } catch {
+        await send(.repositoryPullRequestRefreshCompleted(repositoryID))
         return
       }
+      await send(.repositoryPullRequestRefreshCompleted(repositoryID))
     }
   }
 
@@ -2612,20 +2657,20 @@ private func updateWorktreePullRequest(
   }
 }
 
-private func queuePendingPullRequestRefresh(
+private func queuePullRequestRefresh(
   repositoryID: Repository.ID,
   repositoryRootURL: URL,
   worktreeIDs: [Worktree.ID],
-  state: inout RepositoriesFeature.State
+  refreshesByRepositoryID: inout [Repository.ID: RepositoriesFeature.PendingPullRequestRefresh]
 ) {
-  if var pending = state.pendingPullRequestRefreshByRepositoryID[repositoryID] {
+  if var pending = refreshesByRepositoryID[repositoryID] {
     var seenWorktreeIDs = Set(pending.worktreeIDs)
     for worktreeID in worktreeIDs where seenWorktreeIDs.insert(worktreeID).inserted {
       pending.worktreeIDs.append(worktreeID)
     }
-    state.pendingPullRequestRefreshByRepositoryID[repositoryID] = pending
+    refreshesByRepositoryID[repositoryID] = pending
   } else {
-    state.pendingPullRequestRefreshByRepositoryID[repositoryID] = RepositoriesFeature.PendingPullRequestRefresh(
+    refreshesByRepositoryID[repositoryID] = RepositoriesFeature.PendingPullRequestRefresh(
       repositoryRootURL: repositoryRootURL,
       worktreeIDs: worktreeIDs
     )

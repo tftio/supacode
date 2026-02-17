@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import Darwin
 import Foundation
 
 struct GithubAuthStatus: Equatable, Sendable {
@@ -56,17 +57,18 @@ extension GithubCLIClient: DependencyKey {
   static let liveValue = live()
 
   static func live(shell: ShellClient = .liveValue) -> GithubCLIClient {
-    GithubCLIClient(
-      defaultBranch: defaultBranchFetcher(shell: shell),
-      latestRun: latestRunFetcher(shell: shell),
-      batchPullRequests: batchPullRequestsFetcher(shell: shell),
-      mergePullRequest: mergePullRequestFetcher(shell: shell),
-      markPullRequestReady: markPullRequestReadyFetcher(shell: shell),
-      rerunFailedJobs: rerunFailedJobsFetcher(shell: shell),
-      failedRunLogs: failedRunLogsFetcher(shell: shell),
-      runLogs: runLogsFetcher(shell: shell),
-      isAvailable: isAvailableFetcher(shell: shell),
-      authStatus: authStatusFetcher(shell: shell)
+    let resolver = GithubCLIExecutableResolver()
+    return GithubCLIClient(
+      defaultBranch: defaultBranchFetcher(shell: shell, resolver: resolver),
+      latestRun: latestRunFetcher(shell: shell, resolver: resolver),
+      batchPullRequests: batchPullRequestsFetcher(shell: shell, resolver: resolver),
+      mergePullRequest: mergePullRequestFetcher(shell: shell, resolver: resolver),
+      markPullRequestReady: markPullRequestReadyFetcher(shell: shell, resolver: resolver),
+      rerunFailedJobs: rerunFailedJobsFetcher(shell: shell, resolver: resolver),
+      failedRunLogs: failedRunLogsFetcher(shell: shell, resolver: resolver),
+      runLogs: runLogsFetcher(shell: shell, resolver: resolver),
+      isAvailable: isAvailableFetcher(shell: shell, resolver: resolver),
+      authStatus: authStatusFetcher(shell: shell, resolver: resolver)
     )
   }
 
@@ -97,12 +99,90 @@ private struct GithubPullRequestsRequest: Sendable {
   let repo: String
 }
 
+private actor GithubCLIExecutableResolver {
+  private var cachedExecutableURL: URL?
+  private var inFlightResolution: Task<URL, Error>?
+
+  func executableURL(shell: ShellClient) async throws -> URL {
+    if let cachedExecutableURL {
+      return cachedExecutableURL
+    }
+    if let inFlightResolution {
+      return try await inFlightResolution.value
+    }
+    let resolutionTask = Task {
+      try await resolveExecutableURL(shell: shell)
+    }
+    inFlightResolution = resolutionTask
+    do {
+      let executableURL = try await resolutionTask.value
+      cachedExecutableURL = executableURL
+      inFlightResolution = nil
+      return executableURL
+    } catch {
+      inFlightResolution = nil
+      throw error
+    }
+  }
+
+  func invalidate() {
+    cachedExecutableURL = nil
+    inFlightResolution?.cancel()
+    inFlightResolution = nil
+  }
+
+  private func resolveExecutableURL(shell: ShellClient) async throws -> URL {
+    if let executableURL = await locateExecutableURL(
+      shell: shell,
+      useLoginShell: false
+    ) {
+      return executableURL
+    }
+    if let executableURL = await locateExecutableURL(
+      shell: shell,
+      useLoginShell: true
+    ) {
+      return executableURL
+    }
+    throw GithubCLIError.unavailable
+  }
+
+  private func locateExecutableURL(
+    shell: ShellClient,
+    useLoginShell: Bool
+  ) async -> URL? {
+    let whichURL = URL(fileURLWithPath: "/usr/bin/which")
+    do {
+      let output: String
+      if useLoginShell {
+        output = try await shell.runLogin(
+          whichURL,
+          ["gh"],
+          nil,
+          log: false
+        ).stdout
+      } else {
+        output = try await shell.run(whichURL, ["gh"], nil).stdout
+      }
+      let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !trimmed.isEmpty else {
+        return nil
+      }
+      return URL(fileURLWithPath: trimmed)
+    } catch {
+      return nil
+    }
+  }
+}
+
 nonisolated private func defaultBranchFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (URL) async throws -> String {
   { repoRoot in
     let output = try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: ["repo", "view", "--json", "defaultBranchRef"],
       repoRoot: repoRoot
     )
@@ -115,11 +195,13 @@ nonisolated private func defaultBranchFetcher(
 }
 
 nonisolated private func latestRunFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (URL, String) async throws -> GithubWorkflowRun? {
   { repoRoot, branch in
     let output = try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: [
         "run",
         "list",
@@ -144,7 +226,8 @@ nonisolated private func latestRunFetcher(
 }
 
 nonisolated private func batchPullRequestsFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (String, String, String, [String]) async throws -> [String: GithubPullRequest] {
   { host, owner, repo, branches in
     let dedupedBranches = deduplicatedBranches(branches)
@@ -158,6 +241,7 @@ nonisolated private func batchPullRequestsFetcher(
     )
     let chunkResults = try await loadPullRequestChunks(
       shell: shell,
+      resolver: resolver,
       request: request,
       chunks: chunks
     )
@@ -169,11 +253,13 @@ nonisolated private func batchPullRequestsFetcher(
 }
 
 nonisolated private func mergePullRequestFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (URL, Int, PullRequestMergeStrategy) async throws -> Void {
   { repoRoot, pullRequestNumber, strategy in
     _ = try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: [
         "pr",
         "merge",
@@ -186,11 +272,13 @@ nonisolated private func mergePullRequestFetcher(
 }
 
 nonisolated private func markPullRequestReadyFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (URL, Int) async throws -> Void {
   { repoRoot, pullRequestNumber in
     _ = try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: [
         "pr",
         "ready",
@@ -202,11 +290,13 @@ nonisolated private func markPullRequestReadyFetcher(
 }
 
 nonisolated private func rerunFailedJobsFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (URL, Int) async throws -> Void {
   { repoRoot, runID in
     _ = try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: [
         "run",
         "rerun",
@@ -219,11 +309,13 @@ nonisolated private func rerunFailedJobsFetcher(
 }
 
 nonisolated private func failedRunLogsFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (URL, Int) async throws -> String {
   { repoRoot, runID in
     try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: [
         "run",
         "view",
@@ -236,11 +328,13 @@ nonisolated private func failedRunLogsFetcher(
 }
 
 nonisolated private func runLogsFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable (URL, Int) async throws -> String {
   { repoRoot, runID in
     try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: [
         "run",
         "view",
@@ -253,11 +347,17 @@ nonisolated private func runLogsFetcher(
 }
 
 nonisolated private func isAvailableFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable () async -> Bool {
   {
     do {
-      _ = try await runGh(shell: shell, arguments: ["--version"], repoRoot: nil)
+      _ = try await runGh(
+        shell: shell,
+        resolver: resolver,
+        arguments: ["--version"],
+        repoRoot: nil
+      )
       return true
     } catch {
       return false
@@ -266,11 +366,13 @@ nonisolated private func isAvailableFetcher(
 }
 
 nonisolated private func authStatusFetcher(
-  shell: ShellClient
+  shell: ShellClient,
+  resolver: GithubCLIExecutableResolver
 ) -> @Sendable () async throws -> GithubAuthStatus? {
   {
     let output = try await runGh(
       shell: shell,
+      resolver: resolver,
       arguments: ["auth", "status", "--json", "hosts"],
       repoRoot: nil
     )
@@ -314,6 +416,7 @@ nonisolated private func makeBranchChunks(
 
 nonisolated private func loadPullRequestChunks(
   shell: ShellClient,
+  resolver: GithubCLIExecutableResolver,
   request: GithubPullRequestsRequest,
   chunks: [[String]]
 ) async throws -> [Int: [String: GithubPullRequest]] {
@@ -328,6 +431,7 @@ nonisolated private func loadPullRequestChunks(
       group.addTask {
         try await fetchPullRequestsChunk(
           shell: shell,
+          resolver: resolver,
           request: request,
           chunk: chunk,
           chunkIndex: chunkIndex
@@ -345,6 +449,7 @@ nonisolated private func loadPullRequestChunks(
         group.addTask {
           try await fetchPullRequestsChunk(
             shell: shell,
+            resolver: resolver,
             request: request,
             chunk: candidateChunk,
             chunkIndex: candidateIndex
@@ -374,6 +479,7 @@ nonisolated private func mergePullRequestChunkResults(
 
 nonisolated private func fetchPullRequestsChunk(
   shell: ShellClient,
+  resolver: GithubCLIExecutableResolver,
   request: GithubPullRequestsRequest,
   chunk: [String],
   chunkIndex: Int
@@ -381,6 +487,7 @@ nonisolated private func fetchPullRequestsChunk(
   let (query, aliasMap) = makeBatchPullRequestsQuery(branches: chunk)
   let output = try await runGh(
     shell: shell,
+    resolver: resolver,
     arguments: [
       "api",
       "graphql",
@@ -505,14 +612,25 @@ nonisolated private func isOutdatedGitHubCLI(_ error: ShellClientError) -> Bool 
 
 nonisolated private func runGh(
   shell: ShellClient,
+  resolver: GithubCLIExecutableResolver,
   arguments: [String],
   repoRoot: URL?
 ) async throws -> String {
-  let env = URL(fileURLWithPath: "/usr/bin/env")
-  let command = ([env.path(percentEncoded: false)] + ["gh"] + arguments).joined(separator: " ")
+  let command = (["gh"] + arguments).joined(separator: " ")
   do {
-    let shouldLog = !arguments.contains("graphql")
-    return try await shell.runLogin(env, ["gh"] + arguments, repoRoot, log: shouldLog).stdout
+    let executableURL = try await resolver.executableURL(shell: shell)
+    do {
+      return try await shell.run(executableURL, arguments, repoRoot).stdout
+    } catch {
+      guard shouldRetryGhExecution(after: error) else {
+        throw error
+      }
+      await resolver.invalidate()
+      let executableURL = try await resolver.executableURL(shell: shell)
+      return try await shell.run(executableURL, arguments, repoRoot).stdout
+    }
+  } catch let error as GithubCLIError {
+    throw error
   } catch {
     if let shellError = error as? ShellClientError {
       if isOutdatedGitHubCLI(shellError) {
@@ -523,6 +641,26 @@ nonisolated private func runGh(
     }
     throw GithubCLIError.commandFailed(error.localizedDescription)
   }
+}
+
+nonisolated private func shouldRetryGhExecution(after error: Error) -> Bool {
+  if let shellError = error as? ShellClientError {
+    let combined = "\(shellError.stdout)\n\(shellError.stderr)".lowercased()
+    if combined.contains("no such file or directory") || combined.contains("command not found") {
+      return true
+    }
+    if shellError.exitCode == 127 {
+      return true
+    }
+  }
+  let nsError = error as NSError
+  if nsError.domain == NSCocoaErrorDomain && nsError.code == NSFileNoSuchFileError {
+    return true
+  }
+  if nsError.domain == NSPOSIXErrorDomain && nsError.code == Int(ENOENT) {
+    return true
+  }
+  return false
 }
 
 nonisolated private func decodeAuthStatusResponse(from data: Data) throws -> GithubAuthStatusResponse {

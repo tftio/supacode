@@ -904,7 +904,7 @@ struct RepositoriesFeatureTests {
     await store.finish()
   }
 
-  @Test func worktreeInfoEventRepositoryPullRequestRefreshSendsSingleBatchAction() async {
+  @Test func worktreeInfoEventRepositoryPullRequestRefreshMarksInFlightThenCompletes() async {
     let repoRoot = "/tmp/repo"
     let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
     let featureWorktree = makeWorktree(
@@ -913,18 +913,15 @@ struct RepositoriesFeatureTests {
       repoRoot: repoRoot
     )
     let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureWorktree])
-    let featurePullRequest = makePullRequest(state: "OPEN", headRefName: featureWorktree.name)
     var initialState = makeState(repositories: [repository])
     initialState.githubIntegrationAvailability = .available
     let store = TestStore(initialState: initialState) {
       RepositoriesFeature()
     } withDependencies: {
-      $0.gitClient.remoteInfo = { _ in
-        GithubRemoteInfo(host: "github.com", owner: "khoi", repo: "repo")
-      }
-      $0.githubCLI.batchPullRequests = { _, _, _, branches in
-        #expect(branches == [mainWorktree.name, featureWorktree.name])
-        return [featureWorktree.name: featurePullRequest]
+      $0.gitClient.remoteInfo = { _ in nil }
+      $0.githubCLI.batchPullRequests = { _, _, _, _ in
+        Issue.record("batchPullRequests should not run when remoteInfo is unavailable")
+        return [:]
       }
     }
 
@@ -935,13 +932,11 @@ struct RepositoriesFeatureTests {
           worktreeIDs: [mainWorktree.id, featureWorktree.id]
         )
       )
-    )
-    await store.receive(\.repositoryPullRequestsLoaded) {
-      $0.worktreeInfoByID[featureWorktree.id] = WorktreeInfoEntry(
-        addedLines: nil,
-        removedLines: nil,
-        pullRequest: featurePullRequest
-      )
+    ) {
+      $0.inFlightPullRequestRefreshRepositoryIDs = [repository.id]
+    }
+    await store.receive(\.repositoryPullRequestRefreshCompleted) {
+      $0.inFlightPullRequestRefreshRepositoryIDs = []
     }
     await store.finish()
   }
@@ -988,7 +983,81 @@ struct RepositoriesFeatureTests {
     await store.receive(\.githubIntegrationAvailabilityUpdated) {
       $0.githubIntegrationAvailability = .unavailable
       $0.pendingPullRequestRefreshByRepositoryID = [:]
+      $0.queuedPullRequestRefreshByRepositoryID = [:]
+      $0.inFlightPullRequestRefreshRepositoryIDs = []
     }
+    await store.finish()
+  }
+
+  @Test func repositoryPullRequestRefreshCompletedReplaysQueuedRefresh() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let featureWorktree = makeWorktree(
+      id: "\(repoRoot)/feature",
+      name: "feature",
+      repoRoot: repoRoot
+    )
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureWorktree])
+    var state = makeState(repositories: [repository])
+    state.githubIntegrationAvailability = .available
+    state.inFlightPullRequestRefreshRepositoryIDs = [repository.id]
+    state.queuedPullRequestRefreshByRepositoryID[repository.id] =
+      RepositoriesFeature
+      .PendingPullRequestRefresh(
+        repositoryRootURL: URL(fileURLWithPath: repoRoot),
+        worktreeIDs: [mainWorktree.id, featureWorktree.id]
+      )
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.gitClient.remoteInfo = { _ in nil }
+      $0.githubCLI.batchPullRequests = { _, _, _, _ in
+        Issue.record("batchPullRequests should not run when remoteInfo is unavailable")
+        return [:]
+      }
+    }
+
+    await store.send(
+      .repositoryPullRequestRefreshCompleted(repository.id)
+    ) {
+      $0.inFlightPullRequestRefreshRepositoryIDs = []
+      $0.queuedPullRequestRefreshByRepositoryID = [:]
+    }
+    await store.receive(\.worktreeInfoEvent) {
+      $0.inFlightPullRequestRefreshRepositoryIDs = [repository.id]
+    }
+    await store.receive(\.repositoryPullRequestRefreshCompleted) {
+      $0.inFlightPullRequestRefreshRepositoryIDs = []
+    }
+    await store.finish()
+  }
+
+  @Test func repositoryPullRequestsLoadedSkipsNoopPayload() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let featureWorktree = makeWorktree(
+      id: "\(repoRoot)/feature",
+      name: "feature",
+      repoRoot: repoRoot
+    )
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureWorktree])
+    let pullRequest = makePullRequest(state: "OPEN", headRefName: featureWorktree.name)
+    var state = makeState(repositories: [repository])
+    state.worktreeInfoByID[featureWorktree.id] = WorktreeInfoEntry(
+      addedLines: nil,
+      removedLines: nil,
+      pullRequest: pullRequest
+    )
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(
+      .repositoryPullRequestsLoaded(
+        repositoryID: repository.id,
+        pullRequestsByWorktreeID: [featureWorktree.id: pullRequest]
+      )
+    )
     await store.finish()
   }
 
@@ -1137,9 +1206,13 @@ struct RepositoriesFeatureTests {
     )
   }
 
-  private func makePullRequest(state: String, headRefName: String? = nil) -> GithubPullRequest {
+  private func makePullRequest(
+    state: String,
+    headRefName: String? = nil,
+    number: Int = 1
+  ) -> GithubPullRequest {
     GithubPullRequest(
-      number: 1,
+      number: number,
       title: "PR",
       state: state,
       additions: 0,
@@ -1149,7 +1222,7 @@ struct RepositoriesFeatureTests {
       mergeable: nil,
       mergeStateStatus: nil,
       updatedAt: nil,
-      url: "https://example.com/pull/1",
+      url: "https://example.com/pull/\(number)",
       headRefName: headRefName,
       baseRefName: "main",
       commitsCount: 1,

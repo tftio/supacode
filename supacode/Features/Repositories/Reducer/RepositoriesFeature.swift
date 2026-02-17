@@ -542,6 +542,7 @@ struct RepositoriesFeature {
         )
         state.selection = .worktree(pendingID)
         let existingNames = Set(repository.worktrees.map { $0.name.lowercased() })
+        let createWorktreeStream = gitClient.createWorktreeStream
         return .run { send in
           var newWorktreeName: String?
           var progress = WorktreeCreationProgress(stage: .loadingLocalBranches)
@@ -619,19 +620,41 @@ struct RepositoriesFeature {
                 progress: progress
               )
             )
-            let newWorktree = try await gitClient.createWorktree(
+            let stream = createWorktreeStream(
               name,
               repository.rootURL,
               copyIgnored,
               copyUntracked,
               resolvedBaseRef
             )
-            await send(
-              .createRandomWorktreeSucceeded(
-                newWorktree,
-                repositoryID: repository.id,
-                pendingID: pendingID
-              )
+            for try await event in stream {
+              switch event {
+              case .outputLine(let outputLine):
+                let line = outputLine.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !line.isEmpty else {
+                  continue
+                }
+                progress.latestOutputLine = line
+                await send(
+                  .pendingWorktreeProgressUpdated(
+                    id: pendingID,
+                    progress: progress
+                  )
+                )
+              case .finished(let newWorktree):
+                await send(
+                  .createRandomWorktreeSucceeded(
+                    newWorktree,
+                    repositoryID: repository.id,
+                    pendingID: pendingID
+                  )
+                )
+                return
+              }
+            }
+            throw GitClientError.commandFailed(
+              command: "wt sw",
+              message: "Worktree creation finished without a result."
             )
           } catch {
             await send(

@@ -27,7 +27,22 @@ struct WorktreeCreationProgressTests {
     #expect(progress.titleText == "Creating swift-otter")
     #expect(
       progress.detailText
-        == "Creating from main branch. Copying 12 ignored files and copying 0 untracked files"
+        == "Creating from main branch. Copying 12 ignored files"
     )
+  }
+
+  @Test func creatingWorktreePrefersLatestOutputLineWhenAvailable() {
+    let progress = WorktreeCreationProgress(
+      stage: .creatingWorktree,
+      worktreeName: "swift-otter",
+      baseRef: "origin/main",
+      copyIgnored: true,
+      copyUntracked: true,
+      ignoredFilesToCopyCount: 12,
+      untrackedFilesToCopyCount: 5,
+      latestOutputLine: "[23/100] copy dist/bundle.js"
+    )
+
+    #expect(progress.detailText == "[23/100] copy dist/bundle.js")
   }
 }

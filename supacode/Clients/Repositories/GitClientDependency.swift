@@ -20,6 +20,14 @@ struct GitClientDependency {
       _ baseRef: String
     ) async throws
       -> Worktree
+  var createWorktreeStream:
+    @Sendable (
+      _ name: String,
+      _ repoRoot: URL,
+      _ copyIgnored: Bool,
+      _ copyUntracked: Bool,
+      _ baseRef: String
+    ) -> AsyncThrowingStream<GitWorktreeCreateEvent, Error>
   var removeWorktree: @Sendable (_ worktree: Worktree, _ deleteBranch: Bool) async throws -> URL
   var isBareRepository: @Sendable (_ repoRoot: URL) async throws -> Bool
   var branchName: @Sendable (URL) async -> String?
@@ -47,6 +55,30 @@ extension GitClientDependency: DependencyKey {
         copyUntracked: copyUntracked,
         baseRef: baseRef
       )
+    },
+    createWorktreeStream: { name, repoRoot, copyIgnored, copyUntracked, baseRef in
+      AsyncThrowingStream { continuation in
+        let task = Task {
+          let stream = await GitClient().createWorktreeStream(
+            named: name,
+            in: repoRoot,
+            copyIgnored: copyIgnored,
+            copyUntracked: copyUntracked,
+            baseRef: baseRef
+          )
+          do {
+            for try await event in stream {
+              continuation.yield(event)
+            }
+            continuation.finish()
+          } catch {
+            continuation.finish(throwing: error)
+          }
+        }
+        continuation.onTermination = { _ in
+          task.cancel()
+        }
+      }
     },
     removeWorktree: { worktree, deleteBranch in
       try await GitClient().removeWorktree(worktree, deleteBranch: deleteBranch)

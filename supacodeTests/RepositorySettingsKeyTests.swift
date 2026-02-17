@@ -97,4 +97,23 @@ struct RepositorySettingsKeyTests {
     let decoded = try JSONDecoder().decode(RepositorySettings.self, from: data)
     #expect(decoded.displayName == nil)
   }
+
+  @Test func resolvedNameUsesRemoteRepoNameForBareRepo() {
+    let settings = RepositorySettings.default
+    let url = URL(fileURLWithPath: "/tmp/repos/.git")
+    #expect(settings.resolvedName(for: url, remoteRepoName: "my-project") == "my-project")
+  }
+
+  @Test func resolvedNamePrefersDisplayNameOverRemote() {
+    var settings = RepositorySettings.default
+    settings.displayName = "Custom Name"
+    let url = URL(fileURLWithPath: "/tmp/repos/.git")
+    #expect(settings.resolvedName(for: url, remoteRepoName: "my-project") == "Custom Name")
+  }
+
+  @Test func resolvedNameFallsBackToDirectoryWhenNoRemote() {
+    let settings = RepositorySettings.default
+    let url = URL(fileURLWithPath: "/tmp/repos/.git")
+    #expect(settings.resolvedName(for: url) == ".git")
+  }
 }

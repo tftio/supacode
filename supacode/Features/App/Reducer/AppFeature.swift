@@ -240,7 +240,8 @@ struct AppFeature {
           @Shared(.repositorySettings(repository.rootURL)) var repositorySettings
           state.settings.repositorySettings = RepositorySettingsFeature.State(
             rootURL: repository.rootURL,
-            settings: repositorySettings
+            settings: repositorySettings,
+            remoteRepoName: repository.remoteRepoName
           )
         case .general, .notifications, .worktree, .updates, .advanced, .github:
           state.settings.repositorySettings = nil
@@ -492,7 +493,11 @@ struct AppFeature {
         @Shared(.repositorySettings(rootURL)) var repositorySettings
         let repositoryID = rootURL.standardizedFileURL.path(percentEncoded: false)
         if let index = state.repositories.repositories.index(id: repositoryID) {
-          state.repositories.repositories[index].name = repositorySettings.resolvedName(for: rootURL)
+          let remoteRepoName = state.repositories.repositories[index].remoteRepoName
+          state.repositories.repositories[index].name = repositorySettings.resolvedName(
+            for: rootURL,
+            remoteRepoName: remoteRepoName
+          )
         }
         guard let selectedWorktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID),
           selectedWorktree.repositoryRootURL == rootURL

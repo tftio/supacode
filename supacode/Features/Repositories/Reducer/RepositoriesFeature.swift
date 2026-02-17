@@ -1949,12 +1949,17 @@ struct RepositoriesFeature {
       let rootID = normalizedRoot.path(percentEncoded: false)
       do {
         let worktrees = try await gitClient.worktrees(root)
+        let remoteInfo = await gitClient.remoteInfo(normalizedRoot)
         @Shared(.repositorySettings(normalizedRoot)) var repositorySettings
-        let name = repositorySettings.resolvedName(for: normalizedRoot)
+        let name = repositorySettings.resolvedName(
+          for: normalizedRoot,
+          remoteRepoName: remoteInfo?.repo
+        )
         let repository = Repository(
           id: rootID,
           rootURL: normalizedRoot,
           name: name,
+          remoteRepoName: remoteInfo?.repo,
           worktrees: IdentifiedArray(uniqueElements: worktrees)
         )
         loaded.append(repository)

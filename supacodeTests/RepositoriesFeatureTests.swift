@@ -1343,6 +1343,7 @@ struct RepositoriesFeatureTests {
         RepositoriesFeature()
       } withDependencies: {
         $0.gitClient.worktrees = { _ in [worktree] }
+        $0.gitClient.remoteInfo = { _ in nil }
         $0.settingsFileStorage = storage.storage
       }
     }
@@ -1354,6 +1355,46 @@ struct RepositoriesFeatureTests {
           id: rootURL.standardizedFileURL.path(percentEncoded: false),
           rootURL: rootURL.standardizedFileURL,
           name: "Custom Name",
+          worktrees: [worktree]
+        ),
+      ]
+      $0.isInitialLoadComplete = true
+    }
+    await store.receive(\.delegate.repositoriesChanged)
+  }
+
+  @Test(.dependencies) func repositoriesLoadedUsesRemoteNameForBareRepo() async {
+    let rootURL = URL(fileURLWithPath: "/tmp/repos/.git")
+    let worktree = makeWorktree(
+      id: "/tmp/repos/.git/worktrees/main",
+      name: "main",
+      repoRoot: "/tmp/repos/.git"
+    )
+    let storage = SettingsTestStorage()
+    let remoteInfo = GithubRemoteInfo(host: "github.com", owner: "user", repo: "my-project")
+
+    let store = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      var state = makeState(repositories: [])
+      state.repositoryRoots = [rootURL]
+      return TestStore(initialState: state) {
+        RepositoriesFeature()
+      } withDependencies: {
+        $0.gitClient.worktrees = { _ in [worktree] }
+        $0.gitClient.remoteInfo = { _ in remoteInfo }
+        $0.settingsFileStorage = storage.storage
+      }
+    }
+
+    await store.send(.reloadRepositories(animated: false))
+    await store.receive(\.repositoriesLoaded) {
+      $0.repositories = [
+        Repository(
+          id: rootURL.standardizedFileURL.path(percentEncoded: false),
+          rootURL: rootURL.standardizedFileURL,
+          name: "my-project",
+          remoteRepoName: "my-project",
           worktrees: [worktree]
         ),
       ]

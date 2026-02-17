@@ -5,18 +5,24 @@ struct Repository: Identifiable, Hashable, Sendable {
   let id: String
   let rootURL: URL
   var name: String
+  var remoteRepoName: String?
   let worktrees: IdentifiedArrayOf<Worktree>
 
   var initials: String {
     Self.initials(from: name)
   }
 
-  static func name(for rootURL: URL) -> String {
-    let name = rootURL.lastPathComponent
-    if name.isEmpty {
+  static func name(for rootURL: URL, remoteRepoName: String? = nil) -> String {
+    let directoryName = rootURL.lastPathComponent
+    if directoryName == ".git" || directoryName.isEmpty {
+      if let remoteRepoName, !remoteRepoName.isEmpty {
+        return remoteRepoName
+      }
+    }
+    if directoryName.isEmpty {
       return rootURL.path(percentEncoded: false)
     }
-    return name
+    return directoryName
   }
 
   static func initials(from name: String) -> String {

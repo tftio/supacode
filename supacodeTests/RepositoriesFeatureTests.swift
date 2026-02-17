@@ -1,7 +1,9 @@
 import ComposableArchitecture
 import CustomDump
+import DependenciesTestSupport
 import Foundation
 import IdentifiedCollections
+import Sharing
 import Testing
 
 @testable import supacode
@@ -1318,6 +1320,46 @@ struct RepositoriesFeatureTests {
     await store.send(.selectNextWorktree)
     await store.receive(\.selectWorktree)
     await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
+  @Test(.dependencies) func repositoriesLoadedUsesDisplayNameWhenSet() async {
+    let rootURL = URL(fileURLWithPath: "/tmp/display-name-test-repo")
+    let worktree = makeWorktree(
+      id: "/tmp/display-name-test-repo/main",
+      name: "main",
+      repoRoot: "/tmp/display-name-test-repo"
+    )
+    let storage = SettingsTestStorage()
+
+    let store = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.repositorySettings(rootURL)) var repositorySettings
+      $repositorySettings.withLock { $0.displayName = "Custom Name" }
+
+      var state = makeState(repositories: [])
+      state.repositoryRoots = [rootURL]
+      return TestStore(initialState: state) {
+        RepositoriesFeature()
+      } withDependencies: {
+        $0.gitClient.worktrees = { _ in [worktree] }
+        $0.settingsFileStorage = storage.storage
+      }
+    }
+
+    await store.send(.reloadRepositories(animated: false))
+    await store.receive(\.repositoriesLoaded) {
+      $0.repositories = [
+        Repository(
+          id: rootURL.standardizedFileURL.path(percentEncoded: false),
+          rootURL: rootURL.standardizedFileURL,
+          name: "Custom Name",
+          worktrees: [worktree]
+        ),
+      ]
+      $0.isInitialLoadComplete = true
+    }
+    await store.receive(\.delegate.repositoriesChanged)
   }
 
   private func makeWorktree(

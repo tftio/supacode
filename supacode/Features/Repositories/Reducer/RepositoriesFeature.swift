@@ -1950,11 +1950,7 @@ struct RepositoriesFeature {
       do {
         let worktrees = try await gitClient.worktrees(root)
         @Shared(.repositorySettings(normalizedRoot)) var repositorySettings
-        let displayName = repositorySettings.displayName
-        let name =
-          displayName?.isEmpty == false
-          ? displayName!
-          : Repository.name(for: normalizedRoot)
+        let name = repositorySettings.resolvedName(for: normalizedRoot)
         let repository = Repository(
           id: rootID,
           rootURL: normalizedRoot,

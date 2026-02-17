@@ -52,6 +52,13 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     self.pullRequestMergeStrategy = pullRequestMergeStrategy
   }
 
+  func resolvedName(for rootURL: URL) -> String {
+    guard let displayName, !displayName.isEmpty else {
+      return Repository.name(for: rootURL)
+    }
+    return displayName
+  }
+
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     displayName =

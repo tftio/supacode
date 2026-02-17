@@ -7,6 +7,7 @@ nonisolated struct WorktreeCreationProgress: Hashable, Sendable {
   var ignoredFilesToCopyCount: Int?
   var untrackedFilesToCopyCount: Int?
   var latestOutputLine: String?
+  var outputLines: [String]
 
   init(
     stage: WorktreeCreationStage,
@@ -16,7 +17,8 @@ nonisolated struct WorktreeCreationProgress: Hashable, Sendable {
     copyUntracked: Bool? = nil,
     ignoredFilesToCopyCount: Int? = nil,
     untrackedFilesToCopyCount: Int? = nil,
-    latestOutputLine: String? = nil
+    latestOutputLine: String? = nil,
+    outputLines: [String] = []
   ) {
     self.stage = stage
     self.worktreeName = worktreeName
@@ -26,6 +28,7 @@ nonisolated struct WorktreeCreationProgress: Hashable, Sendable {
     self.ignoredFilesToCopyCount = ignoredFilesToCopyCount
     self.untrackedFilesToCopyCount = untrackedFilesToCopyCount
     self.latestOutputLine = latestOutputLine
+    self.outputLines = outputLines
   }
 
   var titleText: String {
@@ -46,6 +49,9 @@ nonisolated struct WorktreeCreationProgress: Hashable, Sendable {
     case .resolvingBaseReference:
       return "Resolving base reference (\(baseRefDisplay))"
     case .creatingWorktree:
+      if let outputLine = outputLines.last, !outputLine.isEmpty {
+        return outputLine
+      }
       if let latestOutputLine, !latestOutputLine.isEmpty {
         return latestOutputLine
       }
@@ -65,6 +71,19 @@ nonisolated struct WorktreeCreationProgress: Hashable, Sendable {
         "Creating from \(baseRefBranchDisplay). \(copySummary)"
       }
     }
+  }
+
+  var liveOutputLines: [String] {
+    guard stage == .creatingWorktree else {
+      return []
+    }
+    if !outputLines.isEmpty {
+      return outputLines
+    }
+    if let latestOutputLine, !latestOutputLine.isEmpty {
+      return [latestOutputLine]
+    }
+    return []
   }
 
   private var baseRefDisplay: String {

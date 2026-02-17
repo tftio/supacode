@@ -45,4 +45,24 @@ struct WorktreeCreationProgressTests {
 
     #expect(progress.detailText == "[23/100] copy dist/bundle.js")
   }
+
+  @Test func creatingWorktreePrefersLatestBufferedOutputLineWhenAvailable() {
+    let progress = WorktreeCreationProgress(
+      stage: .creatingWorktree,
+      worktreeName: "swift-otter",
+      baseRef: "origin/main",
+      copyIgnored: true,
+      copyUntracked: true,
+      ignoredFilesToCopyCount: 12,
+      untrackedFilesToCopyCount: 5,
+      latestOutputLine: "[23/100] copy dist/bundle.js",
+      outputLines: [
+        "[22/100] copy src/app.js",
+        "[23/100] copy dist/bundle.js",
+      ]
+    )
+
+    #expect(progress.detailText == "[23/100] copy dist/bundle.js")
+    #expect(progress.liveOutputLines == ["[22/100] copy src/app.js", "[23/100] copy dist/bundle.js"])
+  }
 }

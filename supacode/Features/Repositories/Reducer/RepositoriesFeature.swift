@@ -635,6 +635,7 @@ struct RepositoriesFeature {
                   continue
                 }
                 progress.latestOutputLine = line
+                progress.outputLines.append(line)
                 await send(
                   .pendingWorktreeProgressUpdated(
                     id: pendingID,

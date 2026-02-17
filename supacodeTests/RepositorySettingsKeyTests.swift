@@ -116,4 +116,22 @@ struct RepositorySettingsKeyTests {
     let url = URL(fileURLWithPath: "/tmp/repos/.git")
     #expect(settings.resolvedName(for: url) == ".git")
   }
+
+  @Test func resolvedNameUsesRemoteNameWhenPreferred() {
+    let settings = RepositorySettings.default
+    let url = URL(fileURLWithPath: "/tmp/my-project")
+    #expect(
+      settings.resolvedName(for: url, remoteRepoName: "cool-project", preferRemoteName: true)
+        == "cool-project"
+    )
+  }
+
+  @Test func resolvedNameIgnoresRemoteWhenNotPreferred() {
+    let settings = RepositorySettings.default
+    let url = URL(fileURLWithPath: "/tmp/my-project")
+    #expect(
+      settings.resolvedName(for: url, remoteRepoName: "cool-project", preferRemoteName: false)
+        == "my-project"
+    )
+  }
 }

@@ -12,6 +12,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var githubIntegrationEnabled: Bool
   var deleteBranchOnDeleteWorktree: Bool
   var automaticallyArchiveMergedWorktrees: Bool
+  var preferRemoteName: Bool
 
   static let `default` = GlobalSettings(
     appearanceMode: .dark,
@@ -26,7 +27,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     crashReportsEnabled: true,
     githubIntegrationEnabled: true,
     deleteBranchOnDeleteWorktree: true,
-    automaticallyArchiveMergedWorktrees: false
+    automaticallyArchiveMergedWorktrees: false,
+    preferRemoteName: false
   )
 
   init(
@@ -42,7 +44,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     crashReportsEnabled: Bool,
     githubIntegrationEnabled: Bool,
     deleteBranchOnDeleteWorktree: Bool,
-    automaticallyArchiveMergedWorktrees: Bool
+    automaticallyArchiveMergedWorktrees: Bool,
+    preferRemoteName: Bool
   ) {
     self.appearanceMode = appearanceMode
     self.defaultEditorID = defaultEditorID
@@ -57,6 +60,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.githubIntegrationEnabled = githubIntegrationEnabled
     self.deleteBranchOnDeleteWorktree = deleteBranchOnDeleteWorktree
     self.automaticallyArchiveMergedWorktrees = automaticallyArchiveMergedWorktrees
+    self.preferRemoteName = preferRemoteName
   }
 
   init(from decoder: any Decoder) throws {
@@ -94,5 +98,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     automaticallyArchiveMergedWorktrees =
       try container.decodeIfPresent(Bool.self, forKey: .automaticallyArchiveMergedWorktrees)
       ?? Self.default.automaticallyArchiveMergedWorktrees
+    preferRemoteName =
+      try container.decodeIfPresent(Bool.self, forKey: .preferRemoteName)
+      ?? Self.default.preferRemoteName
   }
 }

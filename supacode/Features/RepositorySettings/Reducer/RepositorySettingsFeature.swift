@@ -8,6 +8,7 @@ struct RepositorySettingsFeature {
     var rootURL: URL
     var settings: RepositorySettings
     var remoteRepoName: String?
+    var preferRemoteName = false
     var isBareRepository = false
     var branchOptions: [String] = []
     var defaultWorktreeBaseRef = "origin/main"

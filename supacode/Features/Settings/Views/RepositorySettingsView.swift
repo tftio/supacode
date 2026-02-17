@@ -20,7 +20,13 @@ struct RepositorySettingsView: View {
               store.settings.displayName = newValue.isEmpty ? nil : newValue
             }
           ),
-          prompt: Text(Repository.name(for: store.rootURL, remoteRepoName: store.remoteRepoName))
+          prompt: Text(
+            Repository.name(
+              for: store.rootURL,
+              remoteRepoName: store.remoteRepoName,
+              preferRemoteName: store.preferRemoteName
+            )
+          )
         )
       } header: {
         VStack(alignment: .leading, spacing: 4) {

@@ -35,6 +35,13 @@ struct AppearanceSettingsView: View {
           }
           .help("Applies to worktrees without repository overrides.")
         }
+        Section("Repository Names") {
+          Toggle(
+            "Use repository name from git remote",
+            isOn: $store.preferRemoteName
+          )
+          .help("Show the git remote repository name in the sidebar instead of the directory name")
+        }
         Section("Quit") {
           Toggle(
             "Confirm before quitting",

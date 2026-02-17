@@ -68,12 +68,14 @@ struct AppFeatureDefaultEditorTests {
   }
 
   private func makeWorktree() -> Worktree {
-    Worktree(
-      id: "/tmp/repo/wt-1",
+    let repositoryRootURL = URL(fileURLWithPath: "/tmp/repo-\(UUID().uuidString)")
+    let worktreeURL = repositoryRootURL.appending(path: "wt-1")
+    return Worktree(
+      id: worktreeURL.path(percentEncoded: false),
       name: "wt-1",
       detail: "detail",
-      workingDirectory: URL(fileURLWithPath: "/tmp/repo/wt-1"),
-      repositoryRootURL: URL(fileURLWithPath: "/tmp/repo")
+      workingDirectory: worktreeURL,
+      repositoryRootURL: repositoryRootURL
     )
   }
 

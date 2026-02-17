@@ -40,7 +40,7 @@ struct WorktreeInfoWatcherManagerTests {
     let manager = WorktreeInfoWatcherManager(
       focusedInterval: .seconds(3_600),
       unfocusedInterval: .seconds(3_600),
-      pullRequestSelectionRefreshCooldown: .milliseconds(200)
+      pullRequestSelectionRefreshCooldown: .milliseconds(500)
     )
     let (collector, task) = startCollecting(manager.eventStream())
 
@@ -58,30 +58,29 @@ struct WorktreeInfoWatcherManagerTests {
     let secondWorktree = try #require(tempRepository.worktrees.dropFirst().first)
 
     manager.handleCommand(.setSelectedWorktreeID(firstWorktree.id))
-    try? await Task.sleep(for: .milliseconds(20))
     manager.handleCommand(.setSelectedWorktreeID(secondWorktree.id))
     #expect(
       await waitForPullRequestRefreshCount(
         collector,
         repositoryRootURL: tempRepository.tempRoot,
         count: baselineCount + 1,
-        timeout: .seconds(2)
+        timeout: .seconds(3)
       )
     )
 
-    try? await Task.sleep(for: .milliseconds(80))
+    try? await Task.sleep(for: .milliseconds(150))
     #expect(
       await collector.pullRequestRefreshCount(repositoryRootURL: tempRepository.tempRoot) == baselineCount + 1
     )
 
-    try? await Task.sleep(for: .milliseconds(220))
+    try? await Task.sleep(for: .milliseconds(450))
     manager.handleCommand(.setSelectedWorktreeID(firstWorktree.id))
     #expect(
       await waitForPullRequestRefreshCount(
         collector,
         repositoryRootURL: tempRepository.tempRoot,
         count: baselineCount + 2,
-        timeout: .seconds(2)
+        timeout: .seconds(3)
       )
     )
 

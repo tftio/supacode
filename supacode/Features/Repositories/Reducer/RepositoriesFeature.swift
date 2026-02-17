@@ -1951,9 +1951,11 @@ struct RepositoriesFeature {
         let worktrees = try await gitClient.worktrees(root)
         let remoteInfo = await gitClient.remoteInfo(normalizedRoot)
         @Shared(.repositorySettings(normalizedRoot)) var repositorySettings
+        @Shared(.settingsFile) var settingsFile
         let name = repositorySettings.resolvedName(
           for: normalizedRoot,
-          remoteRepoName: remoteInfo?.repo
+          remoteRepoName: remoteInfo?.repo,
+          preferRemoteName: settingsFile.global.preferRemoteName
         )
         let repository = Repository(
           id: rootID,

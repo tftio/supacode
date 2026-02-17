@@ -23,7 +23,8 @@ struct SettingsFeatureTests {
       crashReportsEnabled: true,
       githubIntegrationEnabled: true,
       deleteBranchOnDeleteWorktree: false,
-      automaticallyArchiveMergedWorktrees: true
+      automaticallyArchiveMergedWorktrees: true,
+      preferRemoteName: false
     )
     @Shared(.settingsFile) var settingsFile
     $settingsFile.withLock { $0.global = loaded }
@@ -65,7 +66,8 @@ struct SettingsFeatureTests {
       crashReportsEnabled: false,
       githubIntegrationEnabled: true,
       deleteBranchOnDeleteWorktree: true,
-      automaticallyArchiveMergedWorktrees: false
+      automaticallyArchiveMergedWorktrees: false,
+      preferRemoteName: false
     )
     @Shared(.settingsFile) var settingsFile
     $settingsFile.withLock { $0.global = initialSettings }
@@ -90,7 +92,8 @@ struct SettingsFeatureTests {
       crashReportsEnabled: initialSettings.crashReportsEnabled,
       githubIntegrationEnabled: initialSettings.githubIntegrationEnabled,
       deleteBranchOnDeleteWorktree: initialSettings.deleteBranchOnDeleteWorktree,
-      automaticallyArchiveMergedWorktrees: initialSettings.automaticallyArchiveMergedWorktrees
+      automaticallyArchiveMergedWorktrees: initialSettings.automaticallyArchiveMergedWorktrees,
+      preferRemoteName: initialSettings.preferRemoteName
     )
     await store.receive(\.delegate.settingsChanged)
 
@@ -138,7 +141,8 @@ struct SettingsFeatureTests {
       crashReportsEnabled: false,
       githubIntegrationEnabled: true,
       deleteBranchOnDeleteWorktree: true,
-      automaticallyArchiveMergedWorktrees: true
+      automaticallyArchiveMergedWorktrees: true,
+      preferRemoteName: false
     )
 
     await store.send(.settingsLoaded(loaded)) {

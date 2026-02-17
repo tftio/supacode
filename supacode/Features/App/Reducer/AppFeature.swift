@@ -241,7 +241,8 @@ struct AppFeature {
           state.settings.repositorySettings = RepositorySettingsFeature.State(
             rootURL: repository.rootURL,
             settings: repositorySettings,
-            remoteRepoName: repository.remoteRepoName
+            remoteRepoName: repository.remoteRepoName,
+            preferRemoteName: state.settings.preferRemoteName
           )
         case .general, .notifications, .worktree, .updates, .advanced, .github:
           state.settings.repositorySettings = nil
@@ -249,6 +250,15 @@ struct AppFeature {
         return .none
 
       case .settings(.delegate(.settingsChanged(let settings))):
+        for index in state.repositories.repositories.indices {
+          let repo = state.repositories.repositories[index]
+          @Shared(.repositorySettings(repo.rootURL)) var repositorySettings
+          state.repositories.repositories[index].name = repositorySettings.resolvedName(
+            for: repo.rootURL,
+            remoteRepoName: repo.remoteRepoName,
+            preferRemoteName: settings.preferRemoteName
+          )
+        }
         if let selectedWorktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID) {
           let rootURL = selectedWorktree.repositoryRootURL
           @Shared(.repositorySettings(rootURL)) var repositorySettings
@@ -496,7 +506,8 @@ struct AppFeature {
           let remoteRepoName = state.repositories.repositories[index].remoteRepoName
           state.repositories.repositories[index].name = repositorySettings.resolvedName(
             for: rootURL,
-            remoteRepoName: remoteRepoName
+            remoteRepoName: remoteRepoName,
+            preferRemoteName: state.settings.preferRemoteName
           )
         }
         guard let selectedWorktree = state.repositories.worktree(for: state.repositories.selectedWorktreeID),

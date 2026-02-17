@@ -12,8 +12,15 @@ struct Repository: Identifiable, Hashable, Sendable {
     Self.initials(from: name)
   }
 
-  static func name(for rootURL: URL, remoteRepoName: String? = nil) -> String {
+  static func name(
+    for rootURL: URL,
+    remoteRepoName: String? = nil,
+    preferRemoteName: Bool = false
+  ) -> String {
     let directoryName = rootURL.lastPathComponent
+    if preferRemoteName, let remoteRepoName, !remoteRepoName.isEmpty {
+      return remoteRepoName
+    }
     if directoryName == ".git" || directoryName.isEmpty {
       if let remoteRepoName, !remoteRepoName.isEmpty {
         return remoteRepoName

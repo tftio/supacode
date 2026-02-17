@@ -52,9 +52,17 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     self.pullRequestMergeStrategy = pullRequestMergeStrategy
   }
 
-  func resolvedName(for rootURL: URL, remoteRepoName: String? = nil) -> String {
+  func resolvedName(
+    for rootURL: URL,
+    remoteRepoName: String? = nil,
+    preferRemoteName: Bool = false
+  ) -> String {
     guard let displayName, !displayName.isEmpty else {
-      return Repository.name(for: rootURL, remoteRepoName: remoteRepoName)
+      return Repository.name(
+        for: rootURL,
+        remoteRepoName: remoteRepoName,
+        preferRemoteName: preferRemoteName
+      )
     }
     return displayName
   }

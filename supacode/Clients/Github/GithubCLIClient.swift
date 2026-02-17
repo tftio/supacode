@@ -620,14 +620,14 @@ nonisolated private func runGh(
   do {
     let executableURL = try await resolver.executableURL(shell: shell)
     do {
-      return try await shell.run(executableURL, arguments, repoRoot).stdout
+      return try await shell.runLogin(executableURL, arguments, repoRoot, log: false).stdout
     } catch {
       guard shouldRetryGhExecution(after: error) else {
         throw error
       }
       await resolver.invalidate()
       let executableURL = try await resolver.executableURL(shell: shell)
-      return try await shell.run(executableURL, arguments, repoRoot).stdout
+      return try await shell.runLogin(executableURL, arguments, repoRoot, log: false).stdout
     }
   } catch let error as GithubCLIError {
     throw error

@@ -57,9 +57,14 @@ struct GithubCLIClientTests {
           await probe.recordWhichCall()
           return ShellOutput(stdout: "/usr/bin/gh", stderr: "", exitCode: 0)
         }
+        _ = arguments
+        return ShellOutput(stdout: "", stderr: "", exitCode: 0)
+      },
+      runLoginImpl: { executableURL, arguments, _, _ in
         guard executableURL.lastPathComponent == "gh" else {
           return ShellOutput(stdout: "", stderr: "", exitCode: 0)
         }
+        await probe.recordLoginCall()
         _ = await probe.beginGhCall()
         do {
           try await Task.sleep(for: .milliseconds(80))
@@ -70,10 +75,6 @@ struct GithubCLIClientTests {
           await probe.endGhCall()
           throw error
         }
-      },
-      runLoginImpl: { _, _, _, _ in
-        await probe.recordLoginCall()
-        return ShellOutput(stdout: "", stderr: "", exitCode: 0)
       }
     )
     let client = GithubCLIClient.live(shell: shell)
@@ -85,7 +86,7 @@ struct GithubCLIClientTests {
     #expect(snapshot.ghCallCount == 4)
     #expect(snapshot.maxInFlight == 3)
     #expect(snapshot.whichCallCount == 1)
-    #expect(snapshot.loginCallCount == 0)
+    #expect(snapshot.loginCallCount == 4)
   }
 
   @Test func batchPullRequestsThrowsWhenAnyChunkFails() async {
@@ -96,9 +97,14 @@ struct GithubCLIClientTests {
           await probe.recordWhichCall()
           return ShellOutput(stdout: "/usr/bin/gh", stderr: "", exitCode: 0)
         }
+        _ = arguments
+        return ShellOutput(stdout: "", stderr: "", exitCode: 0)
+      },
+      runLoginImpl: { executableURL, arguments, _, _ in
         guard executableURL.lastPathComponent == "gh" else {
           return ShellOutput(stdout: "", stderr: "", exitCode: 0)
         }
+        await probe.recordLoginCall()
         let callIndex = await probe.beginGhCall()
         if callIndex == 2 {
           await probe.endGhCall()
@@ -118,10 +124,6 @@ struct GithubCLIClientTests {
           await probe.endGhCall()
           throw error
         }
-      },
-      runLoginImpl: { _, _, _, _ in
-        await probe.recordLoginCall()
-        return ShellOutput(stdout: "", stderr: "", exitCode: 0)
       }
     )
     let client = GithubCLIClient.live(shell: shell)
@@ -150,17 +152,18 @@ struct GithubCLIClientTests {
           await probe.recordWhichCall()
           return ShellOutput(stdout: "/usr/bin/gh", stderr: "", exitCode: 0)
         }
+        _ = arguments
+        return ShellOutput(stdout: "", stderr: "", exitCode: 0)
+      },
+      runLoginImpl: { executableURL, arguments, _, _ in
         guard executableURL.lastPathComponent == "gh" else {
           return ShellOutput(stdout: "", stderr: "", exitCode: 0)
         }
+        await probe.recordLoginCall()
         _ = await probe.beginGhCall()
         let stdout = graphQLResponse(for: arguments)
         await probe.endGhCall()
         return ShellOutput(stdout: stdout, stderr: "", exitCode: 0)
-      },
-      runLoginImpl: { _, _, _, _ in
-        await probe.recordLoginCall()
-        return ShellOutput(stdout: "", stderr: "", exitCode: 0)
       }
     )
     let client = GithubCLIClient.live(shell: shell)
@@ -173,7 +176,7 @@ struct GithubCLIClientTests {
     let snapshot = await probe.snapshot()
     #expect(snapshot.ghCallCount == 2)
     #expect(snapshot.whichCallCount == 1)
-    #expect(snapshot.loginCallCount == 0)
+    #expect(snapshot.loginCallCount == 2)
   }
 
   @Test func executableResolutionIsSingleFlightAndReused() async {
@@ -184,16 +187,16 @@ struct GithubCLIClientTests {
           await probe.recordWhichCall()
           return ShellOutput(stdout: "/usr/bin/gh", stderr: "", exitCode: 0)
         }
-        if executableURL.lastPathComponent == "gh" {
-          _ = await probe.beginGhCall()
-          await probe.endGhCall()
-          return ShellOutput(stdout: "gh version 2.79.0", stderr: "", exitCode: 0)
-        }
         return ShellOutput(stdout: "", stderr: "", exitCode: 0)
       },
-      runLoginImpl: { _, _, _, _ in
+      runLoginImpl: { executableURL, _, _, _ in
+        guard executableURL.lastPathComponent == "gh" else {
+          return ShellOutput(stdout: "", stderr: "", exitCode: 0)
+        }
         await probe.recordLoginCall()
-        return ShellOutput(stdout: "/opt/homebrew/bin/gh", stderr: "", exitCode: 0)
+        _ = await probe.beginGhCall()
+        await probe.endGhCall()
+        return ShellOutput(stdout: "gh version 2.79.0", stderr: "", exitCode: 0)
       }
     )
     let client = GithubCLIClient.live(shell: shell)
@@ -206,7 +209,7 @@ struct GithubCLIClientTests {
     let snapshot = await probe.snapshot()
     #expect(snapshot.whichCallCount == 1)
     #expect(snapshot.ghCallCount == 2)
-    #expect(snapshot.loginCallCount == 0)
+    #expect(snapshot.loginCallCount == 2)
   }
 }
 

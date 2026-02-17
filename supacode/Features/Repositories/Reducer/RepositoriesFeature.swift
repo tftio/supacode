@@ -195,11 +195,11 @@ struct RepositoriesFeature {
     case worktreeCreated(Worktree)
   }
 
-  @Dependency(\.analyticsClient) private var analyticsClient
-  @Dependency(\.gitClient) private var gitClient
-  @Dependency(\.githubCLI) private var githubCLI
-  @Dependency(\.githubIntegration) private var githubIntegration
-  @Dependency(\.repositoryPersistence) private var repositoryPersistence
+  @Dependency(AnalyticsClient.self) private var analyticsClient
+  @Dependency(GitClientDependency.self) private var gitClient
+  @Dependency(GithubCLIClient.self) private var githubCLI
+  @Dependency(GithubIntegrationClient.self) private var githubIntegration
+  @Dependency(RepositoryPersistenceClient.self) private var repositoryPersistence
   @Dependency(\.uuid) private var uuid
 
   var body: some Reducer<State, Action> {

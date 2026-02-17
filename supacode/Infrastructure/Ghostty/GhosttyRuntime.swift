@@ -91,7 +91,7 @@ final class GhosttyRuntime {
       })
   }
 
-  deinit {
+  isolated deinit {
     let center = NotificationCenter.default
     for observer in observers {
       center.removeObserver(observer)

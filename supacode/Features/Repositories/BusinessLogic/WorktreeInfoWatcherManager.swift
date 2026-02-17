@@ -174,14 +174,14 @@ final class WorktreeInfoWatcherManager {
       eventMask: [.write, .rename, .delete, .attrib],
       queue: queue
     )
-    source.setEventHandler { [weak self, weak source] in
+    source.setEventHandler { @Sendable [weak self, weak source] in
       guard let source else { return }
       let event = source.data
       Task { @MainActor in
         self?.handleEvent(worktreeID: worktreeID, event: event)
       }
     }
-    source.setCancelHandler {
+    source.setCancelHandler { @Sendable in
       close(fileDescriptor)
     }
     source.resume()

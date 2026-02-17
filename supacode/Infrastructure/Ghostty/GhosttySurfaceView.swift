@@ -134,7 +134,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     fatalError("init(coder:) is not supported")
   }
 
-  deinit {
+  isolated deinit {
     if let eventMonitor {
       NSEvent.removeMonitor(eventMonitor)
     }
@@ -1445,7 +1445,7 @@ final class GhosttySurfaceScrollView: NSView {
     fatalError("init(coder:) is not supported")
   }
 
-  deinit {
+  isolated deinit {
     observers.forEach { NotificationCenter.default.removeObserver($0) }
   }
 

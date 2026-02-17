@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import Foundation
 
-struct GitClientDependency {
+struct GitClientDependency: Sendable {
   var repoRoot: @Sendable (URL) async throws -> URL
   var worktrees: @Sendable (URL) async throws -> [Worktree]
   var pruneWorktrees: @Sendable (URL) async throws -> Void

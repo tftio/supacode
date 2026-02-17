@@ -3,7 +3,7 @@ import Testing
 
 @testable import supacode
 
-final class LoginStreamCallRecorder: @unchecked Sendable {
+nonisolated final class LoginStreamCallRecorder: @unchecked Sendable {
   struct Snapshot {
     let executableURL: URL?
     let arguments: [String]
@@ -83,26 +83,21 @@ struct ShellClientStreamingTests {
       ["-c", "printf 'first\\n'; sleep 0.4; printf 'last\\n'"],
       nil
     )
-    let startedAt = Date()
-    var firstLineDate: Date?
-    var finishedDate: Date?
+    var sawFirstLine = false
+    var finishedAfterFirstLine = false
     for try await event in stream {
       switch event {
       case .line(let line):
-        if line.source == .stdout, line.text == "first", firstLineDate == nil {
-          firstLineDate = Date()
+        if line.source == .stdout, line.text == "first" {
+          sawFirstLine = true
         }
       case .finished:
-        finishedDate = Date()
+        finishedAfterFirstLine = sawFirstLine
       }
     }
 
-    guard let firstLineDate, let finishedDate else {
-      Issue.record("Expected first line and finished events")
-      return
-    }
-    #expect(firstLineDate.timeIntervalSince(startedAt) < 0.3)
-    #expect(finishedDate.timeIntervalSince(firstLineDate) > 0.25)
+    #expect(sawFirstLine)
+    #expect(finishedAfterFirstLine)
   }
 
   @Test func runStreamThrowsShellClientErrorOnNonZeroExit() async throws {

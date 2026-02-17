@@ -3,7 +3,7 @@ import Testing
 
 @testable import supacode
 
-final class GitShellInvocationRecorder: @unchecked Sendable {
+nonisolated final class GitShellInvocationRecorder: @unchecked Sendable {
   struct Snapshot {
     let executableURL: URL?
     let arguments: [String]

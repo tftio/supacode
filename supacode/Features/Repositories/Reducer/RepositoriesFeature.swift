@@ -8,10 +8,14 @@ import SwiftUI
 private enum CancelID {
   static let load = "repositories.load"
   static let toastAutoDismiss = "repositories.toastAutoDismiss"
+  static let githubIntegrationAvailability = "repositories.githubIntegrationAvailability"
+  static let githubIntegrationRecovery = "repositories.githubIntegrationRecovery"
   static func delayedPRRefresh(_ worktreeID: Worktree.ID) -> String {
     "repositories.delayedPRRefresh.\(worktreeID)"
   }
 }
+
+private let githubIntegrationRecoveryInterval: Duration = .seconds(15)
 
 @Reducer
 struct RepositoriesFeature {
@@ -39,7 +43,24 @@ struct RepositoriesFeature {
     var shouldSelectFirstAfterReload = false
     var isRefreshingWorktrees = false
     var statusToast: StatusToast?
+    var githubIntegrationAvailability: GithubIntegrationAvailability = .unknown
+    var pendingPullRequestRefreshByRepositoryID: [Repository.ID: PendingPullRequestRefresh] = [:]
+    var inFlightPullRequestRefreshRepositoryIDs: Set<Repository.ID> = []
+    var queuedPullRequestRefreshByRepositoryID: [Repository.ID: PendingPullRequestRefresh] = [:]
     @Presents var alert: AlertState<Alert>?
+  }
+
+  enum GithubIntegrationAvailability: Equatable {
+    case unknown
+    case checking
+    case available
+    case unavailable
+    case disabled
+  }
+
+  struct PendingPullRequestRefresh: Equatable {
+    var repositoryRootURL: URL
+    var worktreeIDs: [Worktree.ID]
   }
 
   enum Action {
@@ -110,7 +131,13 @@ struct RepositoriesFeature {
     case worktreeNotificationReceived(Worktree.ID)
     case worktreeBranchNameLoaded(worktreeID: Worktree.ID, name: String)
     case worktreeLineChangesLoaded(worktreeID: Worktree.ID, added: Int, removed: Int)
-    case worktreePullRequestLoaded(worktreeID: Worktree.ID, pullRequest: GithubPullRequest?)
+    case refreshGithubIntegrationAvailability
+    case githubIntegrationAvailabilityUpdated(Bool)
+    case repositoryPullRequestRefreshCompleted(Repository.ID)
+    case repositoryPullRequestsLoaded(
+      repositoryID: Repository.ID,
+      pullRequestsByWorktreeID: [Worktree.ID: GithubPullRequest?]
+    )
     case setGithubIntegrationEnabled(Bool)
     case setAutomaticallyArchiveMergedWorktrees(Bool)
     case pullRequestAction(Worktree.ID, PullRequestAction)
@@ -1372,6 +1399,11 @@ struct RepositoriesFeature {
           }
         case .repositoryPullRequestRefresh(let repositoryRootURL, let worktreeIDs):
           let worktrees = worktreeIDs.compactMap { state.worktree(for: $0) }
+          guard let firstWorktree = worktrees.first,
+            let repositoryID = state.repositoryID(containing: firstWorktree.id)
+          else {
+            return .none
+          }
           var seen = Set<String>()
           let branches =
             worktrees
@@ -1380,34 +1412,132 @@ struct RepositoriesFeature {
           guard !branches.isEmpty else {
             return .none
           }
-          let gitClient = gitClient
-          let githubCLI = githubCLI
-          let githubIntegration = githubIntegration
-          return .run { send in
-            guard await githubIntegration.isAvailable() else {
-              return
-            }
-            guard let remoteInfo = await gitClient.remoteInfo(repositoryRootURL) else {
-              return
-            }
-            do {
-              let prsByBranch = try await githubCLI.batchPullRequests(
-                remoteInfo.host,
-                remoteInfo.owner,
-                remoteInfo.repo,
-                branches
+          switch state.githubIntegrationAvailability {
+          case .available:
+            if state.inFlightPullRequestRefreshRepositoryIDs.contains(repositoryID) {
+              queuePullRequestRefresh(
+                repositoryID: repositoryID,
+                repositoryRootURL: repositoryRootURL,
+                worktreeIDs: worktreeIDs,
+                refreshesByRepositoryID: &state.queuedPullRequestRefreshByRepositoryID
               )
-              for worktree in worktrees {
-                let pullRequest = prsByBranch[worktree.name]
-                await send(
-                  .worktreePullRequestLoaded(worktreeID: worktree.id, pullRequest: pullRequest)
-                )
-              }
-            } catch {
-              return
+              return .none
             }
+            state.inFlightPullRequestRefreshRepositoryIDs.insert(repositoryID)
+            return refreshRepositoryPullRequests(
+              repositoryID: repositoryID,
+              repositoryRootURL: repositoryRootURL,
+              worktrees: worktrees,
+              branches: branches
+            )
+          case .unknown:
+            queuePullRequestRefresh(
+              repositoryID: repositoryID,
+              repositoryRootURL: repositoryRootURL,
+              worktreeIDs: worktreeIDs,
+              refreshesByRepositoryID: &state.pendingPullRequestRefreshByRepositoryID
+            )
+            return .send(.refreshGithubIntegrationAvailability)
+          case .checking:
+            queuePullRequestRefresh(
+              repositoryID: repositoryID,
+              repositoryRootURL: repositoryRootURL,
+              worktreeIDs: worktreeIDs,
+              refreshesByRepositoryID: &state.pendingPullRequestRefreshByRepositoryID
+            )
+            return .none
+          case .unavailable:
+            queuePullRequestRefresh(
+              repositoryID: repositoryID,
+              repositoryRootURL: repositoryRootURL,
+              worktreeIDs: worktreeIDs,
+              refreshesByRepositoryID: &state.pendingPullRequestRefreshByRepositoryID
+            )
+            return .none
+          case .disabled:
+            return .none
           }
         }
+
+      case .refreshGithubIntegrationAvailability:
+        guard state.githubIntegrationAvailability != .checking,
+          state.githubIntegrationAvailability != .disabled
+        else {
+          return .none
+        }
+        state.githubIntegrationAvailability = .checking
+        let githubIntegration = githubIntegration
+        return .run { send in
+          let isAvailable = await githubIntegration.isAvailable()
+          await send(.githubIntegrationAvailabilityUpdated(isAvailable))
+        }
+        .cancellable(id: CancelID.githubIntegrationAvailability, cancelInFlight: true)
+
+      case .githubIntegrationAvailabilityUpdated(let isAvailable):
+        guard state.githubIntegrationAvailability != .disabled else {
+          return .none
+        }
+        state.githubIntegrationAvailability = isAvailable ? .available : .unavailable
+        guard isAvailable else {
+          for (repositoryID, queued) in state.queuedPullRequestRefreshByRepositoryID {
+            queuePullRequestRefresh(
+              repositoryID: repositoryID,
+              repositoryRootURL: queued.repositoryRootURL,
+              worktreeIDs: queued.worktreeIDs,
+              refreshesByRepositoryID: &state.pendingPullRequestRefreshByRepositoryID
+            )
+          }
+          state.queuedPullRequestRefreshByRepositoryID.removeAll()
+          state.inFlightPullRequestRefreshRepositoryIDs.removeAll()
+          return .run { send in
+            while !Task.isCancelled {
+              try? await Task.sleep(for: githubIntegrationRecoveryInterval)
+              guard !Task.isCancelled else {
+                return
+              }
+              await send(.refreshGithubIntegrationAvailability)
+            }
+          }
+          .cancellable(id: CancelID.githubIntegrationRecovery, cancelInFlight: true)
+        }
+        let pendingRefreshes = state.pendingPullRequestRefreshByRepositoryID.values.sorted {
+          $0.repositoryRootURL.path(percentEncoded: false)
+            < $1.repositoryRootURL.path(percentEncoded: false)
+        }
+        state.pendingPullRequestRefreshByRepositoryID.removeAll()
+        return .merge(
+          .cancel(id: CancelID.githubIntegrationRecovery),
+          .merge(
+            pendingRefreshes.map { pending in
+              .send(
+                .worktreeInfoEvent(
+                  .repositoryPullRequestRefresh(
+                    repositoryRootURL: pending.repositoryRootURL,
+                    worktreeIDs: pending.worktreeIDs
+                  )
+                )
+              )
+            }
+          )
+        )
+
+      case .repositoryPullRequestRefreshCompleted(let repositoryID):
+        state.inFlightPullRequestRefreshRepositoryIDs.remove(repositoryID)
+        guard state.githubIntegrationAvailability == .available,
+          let pending = state.queuedPullRequestRefreshByRepositoryID.removeValue(
+            forKey: repositoryID
+          )
+        else {
+          return .none
+        }
+        return .send(
+          .worktreeInfoEvent(
+            .repositoryPullRequestRefresh(
+              repositoryRootURL: pending.repositoryRootURL,
+              worktreeIDs: pending.worktreeIDs
+            )
+          )
+        )
 
       case .worktreeBranchNameLoaded(let worktreeID, let name):
         updateWorktreeName(worktreeID, name: name, state: &state)
@@ -1422,28 +1552,45 @@ struct RepositoriesFeature {
         )
         return .none
 
-      case .worktreePullRequestLoaded(let worktreeID, let pullRequest):
-        let previousMerged =
-          state.worktreeInfoByID[worktreeID]?.pullRequest?.state == "MERGED"
-        let nextMerged = pullRequest?.state == "MERGED"
-        updateWorktreePullRequest(
-          worktreeID: worktreeID,
-          pullRequest: pullRequest,
-          state: &state
-        )
-        if state.automaticallyArchiveMergedWorktrees,
-          !previousMerged,
-          nextMerged,
-          let repositoryID = state.repositoryID(containing: worktreeID),
-          let repository = state.repositories[id: repositoryID],
-          let worktree = repository.worktrees[id: worktreeID],
-          !state.isMainWorktree(worktree),
-          !state.isWorktreeArchived(worktreeID),
-          !state.deletingWorktreeIDs.contains(worktreeID)
-        {
-          return .send(.archiveWorktreeConfirmed(worktreeID, repositoryID))
+      case .repositoryPullRequestsLoaded(let repositoryID, let pullRequestsByWorktreeID):
+        guard let repository = state.repositories[id: repositoryID] else {
+          return .none
         }
-        return .none
+        var archiveWorktreeIDs: [Worktree.ID] = []
+        for worktreeID in pullRequestsByWorktreeID.keys.sorted() {
+          guard let worktree = repository.worktrees[id: worktreeID] else {
+            continue
+          }
+          let pullRequest = pullRequestsByWorktreeID[worktreeID] ?? nil
+          let previousPullRequest = state.worktreeInfoByID[worktreeID]?.pullRequest
+          guard previousPullRequest != pullRequest else {
+            continue
+          }
+          let previousMerged = previousPullRequest?.state == "MERGED"
+          let nextMerged = pullRequest?.state == "MERGED"
+          updateWorktreePullRequest(
+            worktreeID: worktreeID,
+            pullRequest: pullRequest,
+            state: &state
+          )
+          if state.automaticallyArchiveMergedWorktrees,
+            !previousMerged,
+            nextMerged,
+            !state.isMainWorktree(worktree),
+            !state.isWorktreeArchived(worktreeID),
+            !state.deletingWorktreeIDs.contains(worktreeID)
+          {
+            archiveWorktreeIDs.append(worktreeID)
+          }
+        }
+        guard !archiveWorktreeIDs.isEmpty else {
+          return .none
+        }
+        return .merge(
+          archiveWorktreeIDs.map { worktreeID in
+            .send(.archiveWorktreeConfirmed(worktreeID, repositoryID))
+          }
+        )
 
       case .pullRequestAction(let worktreeID, let action):
         guard let worktree = state.worktree(for: worktreeID),
@@ -1687,9 +1834,20 @@ struct RepositoriesFeature {
         }
 
       case .setGithubIntegrationEnabled(let isEnabled):
-        guard !isEnabled else {
-          return .none
+        if isEnabled {
+          state.githubIntegrationAvailability = .unknown
+          state.pendingPullRequestRefreshByRepositoryID.removeAll()
+          state.queuedPullRequestRefreshByRepositoryID.removeAll()
+          state.inFlightPullRequestRefreshRepositoryIDs.removeAll()
+          return .merge(
+            .cancel(id: CancelID.githubIntegrationRecovery),
+            .send(.refreshGithubIntegrationAvailability)
+          )
         }
+        state.githubIntegrationAvailability = .disabled
+        state.pendingPullRequestRefreshByRepositoryID.removeAll()
+        state.queuedPullRequestRefreshByRepositoryID.removeAll()
+        state.inFlightPullRequestRefreshRepositoryIDs.removeAll()
         let worktreeIDs = Array(state.worktreeInfoByID.keys)
         for worktreeID in worktreeIDs {
           updateWorktreePullRequest(
@@ -1698,7 +1856,10 @@ struct RepositoriesFeature {
             state: &state
           )
         }
-        return .none
+        return .merge(
+          .cancel(id: CancelID.githubIntegrationAvailability),
+          .cancel(id: CancelID.githubIntegrationRecovery)
+        )
 
       case .setAutomaticallyArchiveMergedWorktrees(let isEnabled):
         state.automaticallyArchiveMergedWorktrees = isEnabled
@@ -1717,6 +1878,44 @@ struct RepositoriesFeature {
       case .delegate:
         return .none
       }
+    }
+  }
+
+  private func refreshRepositoryPullRequests(
+    repositoryID: Repository.ID,
+    repositoryRootURL: URL,
+    worktrees: [Worktree],
+    branches: [String]
+  ) -> Effect<Action> {
+    let gitClient = gitClient
+    let githubCLI = githubCLI
+    return .run { send in
+      guard let remoteInfo = await gitClient.remoteInfo(repositoryRootURL) else {
+        await send(.repositoryPullRequestRefreshCompleted(repositoryID))
+        return
+      }
+      do {
+        let prsByBranch = try await githubCLI.batchPullRequests(
+          remoteInfo.host,
+          remoteInfo.owner,
+          remoteInfo.repo,
+          branches
+        )
+        var pullRequestsByWorktreeID: [Worktree.ID: GithubPullRequest?] = [:]
+        for worktree in worktrees {
+          pullRequestsByWorktreeID[worktree.id] = prsByBranch[worktree.name]
+        }
+        await send(
+          .repositoryPullRequestsLoaded(
+            repositoryID: repositoryID,
+            pullRequestsByWorktreeID: pullRequestsByWorktreeID
+          )
+        )
+      } catch {
+        await send(.repositoryPullRequestRefreshCompleted(repositoryID))
+        return
+      }
+      await send(.repositoryPullRequestRefreshCompleted(repositoryID))
     }
   }
 
@@ -2494,6 +2693,26 @@ private func updateWorktreePullRequest(
     state.worktreeInfoByID.removeValue(forKey: worktreeID)
   } else {
     state.worktreeInfoByID[worktreeID] = entry
+  }
+}
+
+private func queuePullRequestRefresh(
+  repositoryID: Repository.ID,
+  repositoryRootURL: URL,
+  worktreeIDs: [Worktree.ID],
+  refreshesByRepositoryID: inout [Repository.ID: RepositoriesFeature.PendingPullRequestRefresh]
+) {
+  if var pending = refreshesByRepositoryID[repositoryID] {
+    var seenWorktreeIDs = Set(pending.worktreeIDs)
+    for worktreeID in worktreeIDs where seenWorktreeIDs.insert(worktreeID).inserted {
+      pending.worktreeIDs.append(worktreeID)
+    }
+    refreshesByRepositoryID[repositoryID] = pending
+  } else {
+    refreshesByRepositoryID[repositoryID] = RepositoriesFeature.PendingPullRequestRefresh(
+      repositoryRootURL: repositoryRootURL,
+      worktreeIDs: worktreeIDs
+    )
   }
 }
 

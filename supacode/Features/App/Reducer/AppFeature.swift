@@ -128,7 +128,6 @@ struct AppFeature {
       case .repositories(.delegate(.selectedWorktreeChanged(let worktree))):
         let lastFocusedWorktreeID = worktree?.id
         let repositoryPersistence = repositoryPersistence
-        let worktreesForWatcher = state.repositories.worktreesForInfoWatcher()
         guard let worktree else {
           state.openActionSelection = .finder
           state.selectedRunScript = ""
@@ -140,9 +139,6 @@ struct AppFeature {
             },
             .run { _ in
               await worktreeInfoWatcher.send(.setSelectedWorktreeID(nil))
-            },
-            .run { _ in
-              await worktreeInfoWatcher.send(.setWorktrees(worktreesForWatcher))
             },
           ]
           if !state.repositories.isShowingArchivedWorktrees {
@@ -170,9 +166,6 @@ struct AppFeature {
           },
           .run { _ in
             await worktreeInfoWatcher.send(.setSelectedWorktreeID(worktree.id))
-          },
-          .run { _ in
-            await worktreeInfoWatcher.send(.setWorktrees(worktreesForWatcher))
           },
           .send(.worktreeSettingsLoaded(settings, worktreeID: worktreeID))
         )
@@ -247,9 +240,6 @@ struct AppFeature {
         case .general, .notifications, .worktree, .updates, .advanced, .github:
           state.settings.repositorySettings = nil
         }
-        return .none
-
-      case .repositories(.worktreePullRequestLoaded):
         return .none
 
       case .settings(.delegate(.settingsChanged(let settings))):

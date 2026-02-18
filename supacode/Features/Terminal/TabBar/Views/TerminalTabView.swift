@@ -67,9 +67,9 @@ struct TerminalTabView: View {
       isHovering = hovering
     }
     .zIndex(isActive ? 2 : (isDragging ? 3 : 0))
-    .background(
-      TerminalTabMiddleClickOverlay(onMiddleClick: onClose)
-    )
+    .overlay {
+      MiddleClickView(action: onClose)
+    }
   }
 
   private var shortcutHint: String? {
@@ -83,87 +83,36 @@ struct TerminalTabView: View {
   }
 }
 
-private struct TerminalTabMiddleClickOverlay: NSViewRepresentable {
-  let onMiddleClick: () -> Void
+private struct MiddleClickView: NSViewRepresentable {
+  let action: () -> Void
 
-  func makeCoordinator() -> Coordinator {
-    Coordinator(onMiddleClick: onMiddleClick)
+  func makeNSView(context: Context) -> MiddleClickNSView {
+    MiddleClickNSView(action: action)
   }
 
-  func makeNSView(context: Context) -> TerminalTabMiddleClickNSView {
-    let view = TerminalTabMiddleClickNSView()
-    view.coordinator = context.coordinator
-    return view
-  }
-
-  func updateNSView(_ nsView: TerminalTabMiddleClickNSView, context: Context) {
-    context.coordinator.onMiddleClick = onMiddleClick
-    nsView.coordinator = context.coordinator
-    nsView.attachGestureRecognizerIfNeeded()
-  }
-
-  static func dismantleNSView(_ nsView: TerminalTabMiddleClickNSView, coordinator: Coordinator) {
-    nsView.detachGestureRecognizer()
-  }
-
-  final class Coordinator: NSObject {
-    var onMiddleClick: () -> Void
-
-    init(onMiddleClick: @escaping () -> Void) {
-      self.onMiddleClick = onMiddleClick
-    }
-
-    @objc func handleMiddleClick(_ recognizer: NSClickGestureRecognizer) {
-      guard recognizer.state == .ended else { return }
-      onMiddleClick()
-    }
+  func updateNSView(_ nsView: MiddleClickNSView, context: Context) {
+    nsView.action = action
   }
 }
 
-private final class TerminalTabMiddleClickNSView: NSView {
-  weak var coordinator: TerminalTabMiddleClickOverlay.Coordinator?
-  private weak var observedView: NSView?
-  private var middleClickRecognizer: NSClickGestureRecognizer?
+private final class MiddleClickNSView: NSView {
+  var action: () -> Void
 
-  override func viewDidMoveToSuperview() {
-    super.viewDidMoveToSuperview()
-    attachGestureRecognizerIfNeeded()
+  init(action: @escaping () -> Void) {
+    self.action = action
+    super.init(frame: .zero)
   }
 
-  override func viewDidMoveToWindow() {
-    super.viewDidMoveToWindow()
-    attachGestureRecognizerIfNeeded()
-  }
+  @available(*, unavailable)
+  required init?(coder: NSCoder) { fatalError() }
 
-  func attachGestureRecognizerIfNeeded() {
-    guard let superview else {
-      detachGestureRecognizer()
-      return
+  override func otherMouseUp(with event: NSEvent) {
+    if event.buttonNumber == 2 {
+      action()
+    } else {
+      super.otherMouseUp(with: event)
     }
-    if observedView !== superview {
-      detachGestureRecognizer()
-      observedView = superview
-    }
-    guard middleClickRecognizer == nil, let coordinator else { return }
-    let recognizer = NSClickGestureRecognizer(
-      target: coordinator,
-      action: #selector(TerminalTabMiddleClickOverlay.Coordinator.handleMiddleClick(_:))
-    )
-    recognizer.buttonMask = 1 << 2
-    recognizer.numberOfClicksRequired = 1
-    middleClickRecognizer = recognizer
-    superview.addGestureRecognizer(recognizer)
   }
 
-  func detachGestureRecognizer() {
-    if let middleClickRecognizer {
-      observedView?.removeGestureRecognizer(middleClickRecognizer)
-      self.middleClickRecognizer = nil
-    }
-    observedView = nil
-  }
-
-  deinit {
-    detachGestureRecognizer()
-  }
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

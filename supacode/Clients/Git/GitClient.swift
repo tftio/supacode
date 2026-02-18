@@ -276,12 +276,15 @@ struct GitClient {
             copyUntracked: copyUntracked,
             baseRef: baseRef
           )
-          let command = ([wtURL.path(percentEncoded: false)] + arguments).joined(separator: " ")
+          let envURL = URL(fileURLWithPath: "/usr/bin/env")
+          let localeArguments = ["LANG=C", "LC_ALL=C", "LC_MESSAGES=C"]
+          let invocationArguments = localeArguments + [wtURL.path(percentEncoded: false)] + arguments
+          let command = ([envURL.path(percentEncoded: false)] + invocationArguments).joined(separator: " ")
           var pathLine: String?
           do {
             for try await streamEvent in shell.runLoginStream(
-              wtURL,
-              arguments,
+              envURL,
+              invocationArguments,
               repoRoot
             ) {
               switch streamEvent {

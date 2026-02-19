@@ -181,6 +181,163 @@ struct RepositoriesFeatureTests {
     }
   }
 
+  @Test func createRandomWorktreeInRepositoryLatestPromptRequestWins() async {
+    let repoRootA = "/tmp/repo-a"
+    let repoRootB = "/tmp/repo-b"
+    let repoA = makeRepository(
+      id: repoRootA,
+      worktrees: [makeWorktree(id: repoRootA, name: "main", repoRoot: repoRootA)]
+    )
+    let repoB = makeRepository(
+      id: repoRootB,
+      worktrees: [makeWorktree(id: repoRootB, name: "main", repoRoot: repoRootB)]
+    )
+    let store = TestStore(initialState: makeState(repositories: [repoA, repoB])) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.gitClient.automaticWorktreeBaseRef = { root in
+        if root.path(percentEncoded: false) == repoRootA {
+          try? await Task.sleep(for: .milliseconds(300))
+        }
+        return "origin/main"
+      }
+      $0.gitClient.branchRefs = { _ in ["origin/main"] }
+    }
+
+    await store.send(.createRandomWorktreeInRepository(repoA.id))
+    await store.send(.createRandomWorktreeInRepository(repoB.id))
+    await store.receive(\.promptedWorktreeCreationDataLoaded) {
+      $0.worktreeCreationPrompt = WorktreeCreationPromptFeature.State(
+        repositoryID: repoB.id,
+        repositoryName: repoB.name,
+        automaticBaseRefLabel: "Automatic (origin/main)",
+        baseRefOptions: ["origin/main"],
+        branchName: "",
+        selectedBaseRef: nil,
+        validationMessage: nil
+      )
+    }
+    await store.finish()
+  }
+
+  @Test func promptedWorktreeCreationCancelDuringValidationStopsCreation() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree])
+    var state = makeState(repositories: [repository])
+    state.worktreeCreationPrompt = WorktreeCreationPromptFeature.State(
+      repositoryID: repository.id,
+      repositoryName: repository.name,
+      automaticBaseRefLabel: "Automatic (origin/main)",
+      baseRefOptions: ["origin/main"],
+      branchName: "feature/new-branch",
+      selectedBaseRef: nil,
+      validationMessage: nil
+    )
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.gitClient.localBranchNames = { _ in
+        try? await Task.sleep(for: .seconds(1))
+        return []
+      }
+    }
+
+    await store.send(
+      .startPromptedWorktreeCreation(
+        repositoryID: repository.id,
+        branchName: "feature/new-branch",
+        baseRef: nil
+      )
+    ) {
+      $0.worktreeCreationPrompt?.validationMessage = nil
+      $0.worktreeCreationPrompt?.isValidating = true
+    }
+    await store.send(.worktreeCreationPrompt(.presented(.delegate(.cancel)))) {
+      $0.worktreeCreationPrompt = nil
+    }
+    await store.finish()
+  }
+
+  @Test func createWorktreeInRepositoryWithInvalidBranchNameFails() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree])
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.uuid = .incrementing
+      $0.gitClient.isValidBranchName = { _, _ in false }
+      $0.gitClient.localBranchNames = { _ in [] }
+    }
+    store.exhaustivity = .off
+
+    let expectedAlert = AlertState<RepositoriesFeature.Alert> {
+      TextState("Branch name invalid")
+    } actions: {
+      ButtonState(role: .cancel) {
+        TextState("OK")
+      }
+    } message: {
+      TextState("Enter a valid git branch name and try again.")
+    }
+
+    await store.send(
+      .createWorktreeInRepository(
+        repositoryID: repository.id,
+        nameSource: .explicit("../../Desktop"),
+        baseRefSource: .repositorySetting
+      )
+    )
+    await store.receive(\.createRandomWorktreeFailed) {
+      $0.alert = expectedAlert
+    }
+    #expect(store.state.pendingWorktrees.isEmpty)
+    await store.finish()
+  }
+
+  @Test func createRandomWorktreeFailedWithTraversalNameSkipsCleanup() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree])
+    let removed = LockIsolated(false)
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.gitClient.removeWorktree = { _, _ in
+        removed.withValue { $0 = true }
+        return URL(fileURLWithPath: "/tmp/removed")
+      }
+      $0.gitClient.pruneWorktrees = { _ in }
+      $0.gitClient.worktrees = { _ in [mainWorktree] }
+    }
+
+    let expectedAlert = AlertState<RepositoriesFeature.Alert> {
+      TextState("Unable to create worktree")
+    } actions: {
+      ButtonState(role: .cancel) {
+        TextState("OK")
+      }
+    } message: {
+      TextState("boom")
+    }
+
+    await store.send(
+      .createRandomWorktreeFailed(
+        title: "Unable to create worktree",
+        message: "boom",
+        pendingID: "pending:1",
+        previousSelection: nil,
+        repositoryID: repository.id,
+        name: "../../Desktop"
+      )
+    ) {
+      $0.alert = expectedAlert
+    }
+    await store.finish()
+    #expect(removed.value == false)
+  }
+
   @Test(.dependencies) func createRandomWorktreeInRepositoryStreamsOutputLines() async {
     let repoRoot = "/tmp/repo"
     let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)

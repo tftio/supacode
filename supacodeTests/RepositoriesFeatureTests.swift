@@ -1399,6 +1399,7 @@ struct RepositoriesFeatureTests {
     await store.send(.selectNextWorktree)
     await store.receive(\.selectWorktree) {
       $0.selection = .worktree(wt1.id)
+      $0.sidebarSelectedWorktreeIDs = [wt1.id]
     }
     await store.receive(\.delegate.selectedWorktreeChanged)
   }
@@ -1416,6 +1417,7 @@ struct RepositoriesFeatureTests {
     await store.send(.selectPreviousWorktree)
     await store.receive(\.selectWorktree) {
       $0.selection = .worktree(wt2.id)
+      $0.sidebarSelectedWorktreeIDs = [wt2.id]
     }
     await store.receive(\.delegate.selectedWorktreeChanged)
   }
@@ -1431,6 +1433,7 @@ struct RepositoriesFeatureTests {
     await store.send(.selectNextWorktree)
     await store.receive(\.selectWorktree) {
       $0.selection = .worktree(wt1.id)
+      $0.sidebarSelectedWorktreeIDs = [wt1.id]
     }
     await store.receive(\.delegate.selectedWorktreeChanged)
   }
@@ -1446,6 +1449,7 @@ struct RepositoriesFeatureTests {
     await store.send(.selectPreviousWorktree)
     await store.receive(\.selectWorktree) {
       $0.selection = .worktree(wt2.id)
+      $0.sidebarSelectedWorktreeIDs = [wt2.id]
     }
     await store.receive(\.delegate.selectedWorktreeChanged)
   }
@@ -1468,7 +1472,10 @@ struct RepositoriesFeatureTests {
     }
 
     await store.send(.selectNextWorktree)
-    await store.receive(\.selectWorktree)
+    await store.receive(\.selectWorktree) {
+      $0.selection = .worktree(worktree.id)
+      $0.sidebarSelectedWorktreeIDs = [worktree.id]
+    }
     await store.receive(\.delegate.selectedWorktreeChanged)
   }
 

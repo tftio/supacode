@@ -19,6 +19,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyDownloadUpdates: true,
       inAppNotificationsEnabled: false,
       notificationSoundEnabled: true,
+      moveNotifiedWorktreeToTop: false,
       analyticsEnabled: false,
       crashReportsEnabled: true,
       githubIntegrationEnabled: true,
@@ -43,6 +44,7 @@ struct SettingsFeatureTests {
       $0.updatesAutomaticallyDownloadUpdates = true
       $0.inAppNotificationsEnabled = false
       $0.notificationSoundEnabled = true
+      $0.moveNotifiedWorktreeToTop = false
       $0.analyticsEnabled = false
       $0.crashReportsEnabled = true
       $0.githubIntegrationEnabled = true
@@ -63,6 +65,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyDownloadUpdates: false,
       inAppNotificationsEnabled: false,
       notificationSoundEnabled: false,
+      moveNotifiedWorktreeToTop: true,
       analyticsEnabled: true,
       crashReportsEnabled: false,
       githubIntegrationEnabled: true,
@@ -89,6 +92,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyDownloadUpdates: initialSettings.updatesAutomaticallyDownloadUpdates,
       inAppNotificationsEnabled: initialSettings.inAppNotificationsEnabled,
       notificationSoundEnabled: initialSettings.notificationSoundEnabled,
+      moveNotifiedWorktreeToTop: initialSettings.moveNotifiedWorktreeToTop,
       analyticsEnabled: initialSettings.analyticsEnabled,
       crashReportsEnabled: initialSettings.crashReportsEnabled,
       githubIntegrationEnabled: initialSettings.githubIntegrationEnabled,
@@ -138,6 +142,7 @@ struct SettingsFeatureTests {
       updatesAutomaticallyDownloadUpdates: true,
       inAppNotificationsEnabled: false,
       notificationSoundEnabled: false,
+      moveNotifiedWorktreeToTop: true,
       analyticsEnabled: true,
       crashReportsEnabled: false,
       githubIntegrationEnabled: true,
@@ -155,6 +160,7 @@ struct SettingsFeatureTests {
       $0.updatesAutomaticallyDownloadUpdates = true
       $0.inAppNotificationsEnabled = false
       $0.notificationSoundEnabled = false
+      $0.moveNotifiedWorktreeToTop = true
       $0.analyticsEnabled = true
       $0.crashReportsEnabled = false
       $0.githubIntegrationEnabled = true

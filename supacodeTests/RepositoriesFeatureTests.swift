@@ -845,6 +845,36 @@ struct RepositoriesFeatureTests {
     #expect(store.state.statusToast == nil)
   }
 
+  @Test func worktreeNotificationReceivedDoesNotReorderWhenMoveToTopDisabled() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let featureA = makeWorktree(id: "/tmp/repo/a", name: "a", repoRoot: repoRoot)
+    let featureB = makeWorktree(id: "/tmp/repo/b", name: "b", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureA, featureB])
+    var state = makeState(repositories: [repository])
+    state.worktreeOrderByRepository[repoRoot] = [featureA.id, featureB.id]
+    state.moveNotifiedWorktreeToTop = false
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.worktreeNotificationReceived(featureB.id))
+    #expect(store.state.worktreeOrderByRepository[repoRoot] == [featureA.id, featureB.id])
+    #expect(store.state.statusToast == nil)
+  }
+
+  @Test func setMoveNotifiedWorktreeToTopUpdatesState() async {
+    var state = makeState(repositories: [])
+    state.moveNotifiedWorktreeToTop = true
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.setMoveNotifiedWorktreeToTop(false)) {
+      $0.moveNotifiedWorktreeToTop = false
+    }
+  }
+
   @Test func worktreeBranchNameLoadedPreservesCreatedAt() async {
     let createdAt = Date(timeIntervalSince1970: 1_737_303_600)
     let worktree = makeWorktree(id: "/tmp/wt", name: "eagle", createdAt: createdAt)

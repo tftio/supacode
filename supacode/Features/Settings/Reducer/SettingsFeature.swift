@@ -13,6 +13,7 @@ struct SettingsFeature {
     var updatesAutomaticallyDownloadUpdates: Bool
     var inAppNotificationsEnabled: Bool
     var notificationSoundEnabled: Bool
+    var moveNotifiedWorktreeToTop: Bool
     var analyticsEnabled: Bool
     var crashReportsEnabled: Bool
     var githubIntegrationEnabled: Bool
@@ -32,6 +33,7 @@ struct SettingsFeature {
       updatesAutomaticallyDownloadUpdates = settings.updatesAutomaticallyDownloadUpdates
       inAppNotificationsEnabled = settings.inAppNotificationsEnabled
       notificationSoundEnabled = settings.notificationSoundEnabled
+      moveNotifiedWorktreeToTop = settings.moveNotifiedWorktreeToTop
       analyticsEnabled = settings.analyticsEnabled
       crashReportsEnabled = settings.crashReportsEnabled
       githubIntegrationEnabled = settings.githubIntegrationEnabled
@@ -50,6 +52,7 @@ struct SettingsFeature {
         updatesAutomaticallyDownloadUpdates: updatesAutomaticallyDownloadUpdates,
         inAppNotificationsEnabled: inAppNotificationsEnabled,
         notificationSoundEnabled: notificationSoundEnabled,
+        moveNotifiedWorktreeToTop: moveNotifiedWorktreeToTop,
         analyticsEnabled: analyticsEnabled,
         crashReportsEnabled: crashReportsEnabled,
         githubIntegrationEnabled: githubIntegrationEnabled,
@@ -104,6 +107,7 @@ struct SettingsFeature {
         state.updatesAutomaticallyDownloadUpdates = normalizedSettings.updatesAutomaticallyDownloadUpdates
         state.inAppNotificationsEnabled = normalizedSettings.inAppNotificationsEnabled
         state.notificationSoundEnabled = normalizedSettings.notificationSoundEnabled
+        state.moveNotifiedWorktreeToTop = normalizedSettings.moveNotifiedWorktreeToTop
         state.analyticsEnabled = normalizedSettings.analyticsEnabled
         state.crashReportsEnabled = normalizedSettings.crashReportsEnabled
         state.githubIntegrationEnabled = normalizedSettings.githubIntegrationEnabled

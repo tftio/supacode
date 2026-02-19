@@ -141,6 +141,7 @@ struct RepositoriesFeature {
     case consumeSetupScript(Worktree.ID)
     case consumeTerminalFocus(Worktree.ID)
     case requestArchiveWorktree(Worktree.ID, Repository.ID)
+    case requestArchiveWorktrees([ArchiveWorktreeTarget])
     case archiveWorktreeConfirmed(Worktree.ID, Repository.ID)
     case unarchiveWorktree(Worktree.ID)
     case requestDeleteWorktree(Worktree.ID, Repository.ID)
@@ -194,6 +195,11 @@ struct RepositoriesFeature {
     let repositoryID: Repository.ID
   }
 
+  struct ArchiveWorktreeTarget: Equatable {
+    let worktreeID: Worktree.ID
+    let repositoryID: Repository.ID
+  }
+
   private struct ApplyRepositoriesResult {
     let didPrunePinned: Bool
     let didPruneRepositoryOrder: Bool
@@ -208,6 +214,7 @@ struct RepositoriesFeature {
 
   enum Alert: Equatable {
     case confirmArchiveWorktree(Worktree.ID, Repository.ID)
+    case confirmArchiveWorktrees([ArchiveWorktreeTarget])
     case confirmDeleteWorktree(Worktree.ID, Repository.ID)
     case confirmDeleteWorktrees([DeleteWorktreeTarget])
     case confirmRemoveRepository(Repository.ID)
@@ -853,8 +860,57 @@ struct RepositoriesFeature {
         }
         return .none
 
+      case .requestArchiveWorktrees(let targets):
+        var validTargets: [ArchiveWorktreeTarget] = []
+        var seenWorktreeIDs: Set<Worktree.ID> = []
+        for target in targets {
+          guard seenWorktreeIDs.insert(target.worktreeID).inserted else { continue }
+          if state.removingRepositoryIDs.contains(target.repositoryID) {
+            continue
+          }
+          guard let repository = state.repositories[id: target.repositoryID],
+            let worktree = repository.worktrees[id: target.worktreeID]
+          else {
+            continue
+          }
+          if state.isMainWorktree(worktree)
+            || state.deletingWorktreeIDs.contains(worktree.id)
+            || state.isWorktreeArchived(worktree.id)
+          {
+            continue
+          }
+          validTargets.append(target)
+        }
+        guard !validTargets.isEmpty else {
+          return .none
+        }
+        if validTargets.count == 1, let target = validTargets.first {
+          return .send(.requestArchiveWorktree(target.worktreeID, target.repositoryID))
+        }
+        let count = validTargets.count
+        state.alert = AlertState {
+          TextState("Archive \(count) worktrees?")
+        } actions: {
+          ButtonState(role: .destructive, action: .confirmArchiveWorktrees(validTargets)) {
+            TextState("Archive \(count) (⌘↩)")
+          }
+          ButtonState(role: .cancel) {
+            TextState("Cancel")
+          }
+        } message: {
+          TextState("Archive \(count) worktrees?")
+        }
+        return .none
+
       case .alert(.presented(.confirmArchiveWorktree(let worktreeID, let repositoryID))):
         return .send(.archiveWorktreeConfirmed(worktreeID, repositoryID))
+
+      case .alert(.presented(.confirmArchiveWorktrees(let targets))):
+        return .merge(
+          targets.map { target in
+            .send(.archiveWorktreeConfirmed(target.worktreeID, target.repositoryID))
+          }
+        )
 
       case .archiveWorktreeConfirmed(let worktreeID, let repositoryID):
         guard let repository = state.repositories[id: repositoryID],
@@ -2483,6 +2539,9 @@ extension RepositoriesFeature.State {
     for button in alert.buttons {
       if case .confirmArchiveWorktree(let worktreeID, let repositoryID)? = button.action.action {
         return .confirmArchiveWorktree(worktreeID, repositoryID)
+      }
+      if case .confirmArchiveWorktrees(let targets)? = button.action.action {
+        return .confirmArchiveWorktrees(targets)
       }
       if case .confirmDeleteWorktree(let worktreeID, let repositoryID)? = button.action.action {
         return .confirmDeleteWorktree(worktreeID, repositoryID)

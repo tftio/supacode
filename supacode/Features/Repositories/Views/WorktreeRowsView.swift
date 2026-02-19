@@ -6,6 +6,7 @@ struct WorktreeRowsView: View {
   let repository: Repository
   let isExpanded: Bool
   let hotkeyRows: [WorktreeRowModel]
+  let selectedWorktreeIDs: Set<Worktree.ID>
   @Bindable var store: StoreOf<RepositoriesFeature>
   let terminalManager: WorktreeTerminalManager
   @Environment(CommandKeyObserver.self) private var commandKeyObserver
@@ -177,7 +178,7 @@ struct WorktreeRowsView: View {
   }
 
   private func worktreeRowView(_ row: WorktreeRowModel, config: WorktreeRowViewConfig) -> some View {
-    let isSelected = row.id == store.state.selectedWorktreeID
+    let isSelected = selectedWorktreeIDs.contains(row.id)
     let taskStatus = terminalManager.taskStatus(for: row.id)
     let isRunScriptRunning = terminalManager.isRunScriptRunning(for: row.id)
     return WorktreeRow(

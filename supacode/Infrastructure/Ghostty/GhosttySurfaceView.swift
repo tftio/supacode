@@ -177,7 +177,9 @@ final class GhosttySurfaceView: NSView, Identifiable {
         object: window,
         queue: .main
       ) { [weak self] _ in
-        self?.windowDidChangeScreen()
+        Task { @MainActor [weak self] in
+          self?.windowDidChangeScreen()
+        }
       })
   }
 
@@ -1392,7 +1394,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView.contentView,
         queue: .main
       ) { [weak self] _ in
-        self?.handleScrollChange()
+        Task { @MainActor [weak self] in
+          self?.handleScrollChange()
+        }
       })
 
     observers.append(
@@ -1401,7 +1405,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        self?.isLiveScrolling = true
+        Task { @MainActor [weak self] in
+          self?.isLiveScrolling = true
+        }
       })
 
     observers.append(
@@ -1410,7 +1416,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        self?.isLiveScrolling = false
+        Task { @MainActor [weak self] in
+          self?.isLiveScrolling = false
+        }
       })
 
     observers.append(
@@ -1419,7 +1427,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        self?.handleLiveScroll()
+        Task { @MainActor [weak self] in
+          self?.handleLiveScroll()
+        }
       })
 
     observers.append(
@@ -1428,7 +1438,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: nil,
         queue: nil
       ) { [weak self] _ in
-        self?.handleScrollerStyleChange()
+        Task { @MainActor [weak self] in
+          self?.handleScrollerStyleChange()
+        }
       })
 
     observers.append(
@@ -1437,7 +1449,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: nil,
         queue: .main
       ) { [weak self] _ in
-        self?.refreshAppearance()
+        Task { @MainActor [weak self] in
+          self?.refreshAppearance()
+        }
       })
   }
 

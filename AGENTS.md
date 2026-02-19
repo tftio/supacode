@@ -4,8 +4,12 @@
 make build-ghostty-xcframework  # Rebuild GhosttyKit from Zig source (requires mise)
 make build-app                   # Build macOS app (Debug) via xcodebuild
 make run-app                     # Build and launch Debug app
-make check                       # Run swiftformat and swiftlint
+make install-dev-build           # Build and copy to /Applications
+make format                      # Run swift-format only
+make lint                        # Run swiftlint only (fix + lint)
+make check                       # Run both format and lint
 make test                        # Run all tests
+make log-stream                  # Stream app logs (subsystem: app.supabit.supacode)
 make bump-version                # Bump patch version and create git tag
 make bump-and-release            # Bump version and push to trigger release
 ```

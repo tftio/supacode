@@ -504,7 +504,7 @@ struct RepositoriesFeature {
       case .selectWorktree(let worktreeID, let focusTerminal):
         state.selection = worktreeID.map(SidebarSelection.worktree)
         if let worktreeID {
-          state.sidebarSelectedWorktreeIDs.insert(worktreeID)
+          state.sidebarSelectedWorktreeIDs = [worktreeID]
         } else {
           state.sidebarSelectedWorktreeIDs = []
         }

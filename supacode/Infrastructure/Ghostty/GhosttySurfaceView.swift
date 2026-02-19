@@ -1405,9 +1405,7 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        Task { @MainActor [weak self] in
-          self?.isLiveScrolling = true
-        }
+        self?.isLiveScrolling = true
       })
 
     observers.append(
@@ -1416,9 +1414,7 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        Task { @MainActor [weak self] in
-          self?.isLiveScrolling = false
-        }
+        self?.isLiveScrolling = false
       })
 
     observers.append(

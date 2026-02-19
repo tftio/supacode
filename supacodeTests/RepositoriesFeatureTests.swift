@@ -76,6 +76,25 @@ struct RepositoriesFeatureTests {
     await store.receive(\.delegate.selectedWorktreeChanged)
   }
 
+  @Test func selectWorktreeCollapsesSidebarSelectedWorktreeIDs() async {
+    let wt1 = makeWorktree(id: "/tmp/repo/wt1", name: "wt1", repoRoot: "/tmp/repo")
+    let wt2 = makeWorktree(id: "/tmp/repo/wt2", name: "wt2", repoRoot: "/tmp/repo")
+    let wt3 = makeWorktree(id: "/tmp/repo/wt3", name: "wt3", repoRoot: "/tmp/repo")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [wt1, wt2, wt3])
+    var initialState = makeState(repositories: [repository])
+    initialState.selection = .worktree(wt1.id)
+    initialState.sidebarSelectedWorktreeIDs = [wt1.id, wt2.id, wt3.id]
+    let store = TestStore(initialState: initialState) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectWorktree(wt2.id)) {
+      $0.selection = .worktree(wt2.id)
+      $0.sidebarSelectedWorktreeIDs = [wt2.id]
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
   @Test func setSidebarSelectedWorktreeIDsKeepsSelectedAndPrunesUnknown() async {
     let worktree1 = makeWorktree(id: "/tmp/repo/wt1", name: "wt1", repoRoot: "/tmp/repo")
     let worktree2 = makeWorktree(id: "/tmp/repo/wt2", name: "wt2", repoRoot: "/tmp/repo")
@@ -1434,6 +1453,26 @@ struct RepositoriesFeatureTests {
     await store.receive(\.selectWorktree) {
       $0.selection = .worktree(wt1.id)
       $0.sidebarSelectedWorktreeIDs = [wt1.id]
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
+  @Test func selectNextWorktreeCollapsesSidebarSelectionToSingleWorktree() async {
+    let wt1 = makeWorktree(id: "/tmp/wt1", name: "alpha")
+    let wt2 = makeWorktree(id: "/tmp/wt2", name: "beta")
+    let wt3 = makeWorktree(id: "/tmp/wt3", name: "gamma")
+    let repository = makeRepository(id: "/tmp/repo", worktrees: [wt1, wt2, wt3])
+    var state = makeState(repositories: [repository])
+    state.selection = .worktree(wt1.id)
+    state.sidebarSelectedWorktreeIDs = [wt1.id, wt3.id]
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.selectNextWorktree)
+    await store.receive(\.selectWorktree) {
+      $0.selection = .worktree(wt2.id)
+      $0.sidebarSelectedWorktreeIDs = [wt2.id]
     }
     await store.receive(\.delegate.selectedWorktreeChanged)
   }

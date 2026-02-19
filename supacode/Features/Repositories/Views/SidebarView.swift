@@ -18,7 +18,7 @@ struct SidebarView: View {
     )
     let visibleHotkeyRows = state.orderedWorktreeRows(includingRepositoryIDs: expandedRepoIDs)
     let visibleWorktreeIDs = Set(visibleHotkeyRows.map(\.id))
-    let effectiveSelectedRows = selectedRows(state: state, visibleHotkeyRows: visibleHotkeyRows)
+    let effectiveSelectedRows = selectedRows(state: state)
     let confirmWorktreeAction = makeConfirmWorktreeAction(state: state)
     let archiveWorktreeAction = makeArchiveWorktreeAction(rows: effectiveSelectedRows)
     let deleteWorktreeAction = makeDeleteWorktreeAction(rows: effectiveSelectedRows)
@@ -75,13 +75,10 @@ struct SidebarView: View {
     )
   }
 
-  private func selectedRows(
-    state: RepositoriesFeature.State,
-    visibleHotkeyRows: [WorktreeRowModel]
-  ) -> [WorktreeRowModel] {
+  private func selectedRows(state: RepositoriesFeature.State) -> [WorktreeRowModel] {
     let selectedRow = state.selectedRow(for: state.selectedWorktreeID)
-    let selectedWorktreeIDs = Set(sidebarSelections.compactMap(\.worktreeID))
-    let selectedRows = visibleHotkeyRows.filter { selectedWorktreeIDs.contains($0.id) }
+    let selectedWorktreeIDs = state.sidebarSelectedWorktreeIDs
+    let selectedRows = state.orderedWorktreeRows().filter { selectedWorktreeIDs.contains($0.id) }
     return selectedRows.isEmpty ? (selectedRow.map { [$0] } ?? []) : selectedRows
   }
 
@@ -141,7 +138,6 @@ struct SidebarView: View {
     visibleWorktreeIDs: Set<Worktree.ID>
   ) {
     sidebarSelections = normalizedSidebarSelections(
-      current: sidebarSelections,
       state: state,
       visibleWorktreeIDs: visibleWorktreeIDs
     )
@@ -149,7 +145,6 @@ struct SidebarView: View {
   }
 
   private func normalizedSidebarSelections(
-    current: Set<SidebarSelection>,
     state: RepositoriesFeature.State,
     visibleWorktreeIDs: Set<Worktree.ID>
   ) -> Set<SidebarSelection> {
@@ -157,14 +152,9 @@ struct SidebarView: View {
       return [.archivedWorktrees]
     }
     var normalized = Set(
-      current.compactMap { selection -> SidebarSelection? in
-        guard let worktreeID = selection.worktreeID,
-          visibleWorktreeIDs.contains(worktreeID)
-        else {
-          return nil
-        }
-        return .worktree(worktreeID)
-      }
+      state.sidebarSelectedWorktreeIDs
+        .intersection(visibleWorktreeIDs)
+        .map(SidebarSelection.worktree)
     )
     if let selectedWorktreeID = state.selectedWorktreeID {
       normalized.insert(.worktree(selectedWorktreeID))

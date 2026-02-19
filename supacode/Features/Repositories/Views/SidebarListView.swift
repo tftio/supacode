@@ -198,6 +198,8 @@ struct SidebarListView: View {
       let hasCommandModifier = keyPress.modifiers.contains(.command)
       if hasCommandModifier { return .ignored }
       guard let worktreeID = store.selectedWorktreeID,
+        state.sidebarSelectedWorktreeIDs.count == 1,
+        state.sidebarSelectedWorktreeIDs.contains(worktreeID),
         let terminalState = terminalManager.stateIfExists(for: worktreeID)
       else { return .ignored }
       terminalState.focusAndInsertText(keyPress.characters)

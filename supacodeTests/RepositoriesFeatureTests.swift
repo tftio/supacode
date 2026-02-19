@@ -1379,6 +1379,49 @@ struct RepositoriesFeatureTests {
     await store.finish()
   }
 
+  @Test func pullRequestActionMergeRefreshesImmediatelyWithoutSyntheticMergedState() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let featureWorktree = makeWorktree(
+      id: "\(repoRoot)/feature",
+      name: "feature",
+      repoRoot: repoRoot
+    )
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureWorktree])
+    let openPullRequest = makePullRequest(state: "OPEN", headRefName: featureWorktree.name, number: 12)
+    var state = makeState(repositories: [repository])
+    state.githubIntegrationAvailability = .disabled
+    state.automaticallyArchiveMergedWorktrees = true
+    state.worktreeInfoByID[featureWorktree.id] = WorktreeInfoEntry(
+      addedLines: nil,
+      removedLines: nil,
+      pullRequest: openPullRequest
+    )
+    let mergedNumbers = LockIsolated<[Int]>([])
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.githubIntegration.isAvailable = { true }
+      $0.githubCLI.mergePullRequest = { _, number, _ in
+        mergedNumbers.withValue { $0.append(number) }
+      }
+    }
+    store.exhaustivity = .off
+
+    await store.send(.pullRequestAction(featureWorktree.id, .merge))
+    await store.receive(\.showToast) {
+      $0.statusToast = .inProgress("Merging pull request…")
+    }
+    await store.receive(\.showToast) {
+      $0.statusToast = .success("Pull request merged")
+    }
+    await store.receive(\.worktreeInfoEvent)
+    #expect(store.state.worktreeInfoByID[featureWorktree.id]?.pullRequest?.state == "OPEN")
+    #expect(store.state.archivedWorktreeIDs.isEmpty)
+    #expect(mergedNumbers.value == [12])
+    await store.finish()
+  }
+
   @Test func worktreeInfoEventRepositoryPullRequestRefreshMarksInFlightThenCompletes() async {
     let repoRoot = "/tmp/repo"
     let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)

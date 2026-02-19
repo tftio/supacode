@@ -2045,6 +2045,8 @@ struct RepositoriesFeature {
 
       case .pullRequestAction(let worktreeID, let action):
         guard let worktree = state.worktree(for: worktreeID),
+          let repositoryID = state.repositoryID(containing: worktreeID),
+          let repository = state.repositories[id: repositoryID],
           let pullRequest = state.worktreeInfo(for: worktreeID)?.pullRequest
         else {
           return .send(
@@ -2056,6 +2058,10 @@ struct RepositoriesFeature {
         }
         let repoRoot = worktree.repositoryRootURL
         let worktreeRoot = worktree.workingDirectory
+        let pullRequestRefresh = WorktreeInfoWatcherClient.Event.repositoryPullRequestRefresh(
+          repositoryRootURL: repoRoot,
+          worktreeIDs: repository.worktrees.map(\.id)
+        )
         let branchName = pullRequest.headRefName ?? worktree.name
         let failingCheckDetailsURL = (pullRequest.statusCheckRollup?.checks ?? []).first {
           $0.checkState == .failure && $0.detailsUrl != nil
@@ -2152,6 +2158,7 @@ struct RepositoriesFeature {
             do {
               try await githubCLI.mergePullRequest(worktreeRoot, pullRequest.number, strategy)
               await send(.showToast(.success("Pull request merged")))
+              await send(.worktreeInfoEvent(pullRequestRefresh))
               await send(.delayedPullRequestRefresh(worktreeID))
             } catch {
               await send(.dismissToast)

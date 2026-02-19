@@ -73,6 +73,7 @@ struct RepositoriesFeature {
     var pinnedWorktreeIDs: [Worktree.ID] = []
     var archivedWorktreeIDs: [Worktree.ID] = []
     var automaticallyArchiveMergedWorktrees = false
+    var moveNotifiedWorktreeToTop = true
     var lastFocusedWorktreeID: Worktree.ID?
     var shouldRestoreLastFocusedWorktree = false
     var shouldSelectFirstAfterReload = false
@@ -178,6 +179,7 @@ struct RepositoriesFeature {
     )
     case setGithubIntegrationEnabled(Bool)
     case setAutomaticallyArchiveMergedWorktrees(Bool)
+    case setMoveNotifiedWorktreeToTop(Bool)
     case pullRequestAction(Worktree.ID, PullRequestAction)
     case showToast(StatusToast)
     case dismissToast
@@ -1496,12 +1498,10 @@ struct RepositoriesFeature {
         if state.isWorktreeArchived(worktree.id) {
           return .none
         }
-        @Shared(.settingsFile) var settingsFile
-        let moveNotifiedWorktreeToTop = settingsFile.global.moveNotifiedWorktreeToTop
 
         var effects: [Effect<Action>] = []
 
-        if moveNotifiedWorktreeToTop, !state.isMainWorktree(worktree), !state.isWorktreePinned(worktree) {
+        if state.moveNotifiedWorktreeToTop, !state.isMainWorktree(worktree), !state.isWorktreePinned(worktree) {
           let reordered = reorderedUnpinnedWorktreeIDs(
             for: worktreeID,
             in: repository,
@@ -2037,6 +2037,10 @@ struct RepositoriesFeature {
 
       case .setAutomaticallyArchiveMergedWorktrees(let isEnabled):
         state.automaticallyArchiveMergedWorktrees = isEnabled
+        return .none
+
+      case .setMoveNotifiedWorktreeToTop(let isEnabled):
+        state.moveNotifiedWorktreeToTop = isEnabled
         return .none
 
       case .openRepositorySettings(let repositoryID):

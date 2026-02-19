@@ -266,6 +266,13 @@ struct AppFeature {
             )
           ),
           .send(
+            .repositories(
+              .setMoveNotifiedWorktreeToTop(
+                settings.moveNotifiedWorktreeToTop
+              )
+            )
+          ),
+          .send(
             .updates(
               .applySettings(
                 updateChannel: settings.updateChannel,

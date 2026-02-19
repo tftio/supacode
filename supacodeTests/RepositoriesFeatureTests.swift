@@ -1075,7 +1075,7 @@ struct RepositoriesFeatureTests {
     await store.finish()
   }
 
-  @Test func pullRequestActionMergeMarksPullRequestMergedImmediately() async {
+  @Test func pullRequestActionMergeRefreshesImmediatelyWithoutSyntheticMergedState() async {
     let repoRoot = "/tmp/repo"
     let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
     let featureWorktree = makeWorktree(
@@ -1085,9 +1085,9 @@ struct RepositoriesFeatureTests {
     )
     let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, featureWorktree])
     let openPullRequest = makePullRequest(state: "OPEN", headRefName: featureWorktree.name, number: 12)
-    let mergedPullRequest = makePullRequest(state: "MERGED", headRefName: featureWorktree.name, number: 12)
     var state = makeState(repositories: [repository])
     state.githubIntegrationAvailability = .disabled
+    state.automaticallyArchiveMergedWorktrees = true
     state.worktreeInfoByID[featureWorktree.id] = WorktreeInfoEntry(
       addedLines: nil,
       removedLines: nil,
@@ -1111,13 +1111,9 @@ struct RepositoriesFeatureTests {
     await store.receive(\.showToast) {
       $0.statusToast = .success("Pull request merged")
     }
-    await store.receive(\.repositoryPullRequestsLoaded) {
-      $0.worktreeInfoByID[featureWorktree.id] = WorktreeInfoEntry(
-        addedLines: nil,
-        removedLines: nil,
-        pullRequest: mergedPullRequest
-      )
-    }
+    await store.receive(\.worktreeInfoEvent)
+    #expect(store.state.worktreeInfoByID[featureWorktree.id]?.pullRequest?.state == "OPEN")
+    #expect(store.state.archivedWorktreeIDs.isEmpty)
     #expect(mergedNumbers.value == [12])
     await store.finish()
   }

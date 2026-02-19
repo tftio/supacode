@@ -642,9 +642,15 @@ struct RepositoriesFeature {
         let rootURL = repository.rootURL
         return .run { send in
           let automaticBaseRef = await gitClient.automaticWorktreeBaseRef(rootURL) ?? "HEAD"
+          guard !Task.isCancelled else {
+            return
+          }
           let baseRefOptions: [String]
           do {
             let refs = try await gitClient.branchRefs(rootURL)
+            guard !Task.isCancelled else {
+              return
+            }
             var options = refs
             if !automaticBaseRef.isEmpty, !options.contains(automaticBaseRef) {
               options.append(automaticBaseRef)
@@ -654,6 +660,9 @@ struct RepositoriesFeature {
             }
             baseRefOptions = options.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
           } catch {
+            guard !Task.isCancelled else {
+              return
+            }
             var options: [String] = []
             if !automaticBaseRef.isEmpty {
               options.append(automaticBaseRef)
@@ -662,6 +671,9 @@ struct RepositoriesFeature {
               options.append(selectedBaseRef)
             }
             baseRefOptions = options
+          }
+          guard !Task.isCancelled else {
+            return
           }
           let automaticBaseRefLabel =
             automaticBaseRef.isEmpty ? "Automatic" : "Automatic (\(automaticBaseRef))"

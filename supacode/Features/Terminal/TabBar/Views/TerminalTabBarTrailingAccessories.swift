@@ -22,14 +22,14 @@ struct TerminalTabBarTrailingAccessories: View {
       newTabButton
       splitButton(
         title: "Split Vertically",
-        systemImage: "rectangle.righthalf.inset.filled",
+        systemImage: "rectangle.split.2x1",
         shortcutBinding: "new_split:right",
         action: splitVertically
       )
       .disabled(!canSplit)
       splitButton(
         title: "Split Horizontally",
-        systemImage: "rectangle.bottomhalf.inset.filled",
+        systemImage: "rectangle.split.1x2",
         shortcutBinding: "new_split:down",
         action: splitHorizontally
       )
@@ -133,7 +133,7 @@ struct TerminalTabBarTrailingAccessories: View {
         isHoverPopoverPresented = false
       } label: {
         HStack(spacing: 8) {
-          Image(systemName: "rectangle.righthalf.inset.filled")
+          Image(systemName: "rectangle.split.2x1")
             .accessibilityHidden(true)
           Text("Split Vertically")
           Spacer(minLength: 0)
@@ -152,7 +152,7 @@ struct TerminalTabBarTrailingAccessories: View {
         isHoverPopoverPresented = false
       } label: {
         HStack(spacing: 8) {
-          Image(systemName: "rectangle.bottomhalf.inset.filled")
+          Image(systemName: "rectangle.split.1x2")
             .accessibilityHidden(true)
           Text("Split Horizontally")
           Spacer(minLength: 0)

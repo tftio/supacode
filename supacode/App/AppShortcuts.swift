@@ -26,6 +26,10 @@ struct AppShortcut {
     return parts.joined(separator: "+")
   }
 
+  var ghosttyUnbindArgument: String {
+    "--keybind=\(ghosttyKeybind)=unbind"
+  }
+
   var display: String {
     let parts = displayModifierParts + [keyEquivalent.display]
     return parts.joined()
@@ -73,16 +77,16 @@ enum AppShortcuts {
   static let selectPreviousWorktree = AppShortcut(
     keyEquivalent: .upArrow, ghosttyKeyName: "arrow_up", modifiers: [.command, .control]
   )
-  static let selectWorktree1 = AppShortcut(key: "1", modifiers: [.command, .control])
-  static let selectWorktree2 = AppShortcut(key: "2", modifiers: [.command, .control])
-  static let selectWorktree3 = AppShortcut(key: "3", modifiers: [.command, .control])
-  static let selectWorktree4 = AppShortcut(key: "4", modifiers: [.command, .control])
-  static let selectWorktree5 = AppShortcut(key: "5", modifiers: [.command, .control])
-  static let selectWorktree6 = AppShortcut(key: "6", modifiers: [.command, .control])
-  static let selectWorktree7 = AppShortcut(key: "7", modifiers: [.command, .control])
-  static let selectWorktree8 = AppShortcut(key: "8", modifiers: [.command, .control])
-  static let selectWorktree9 = AppShortcut(key: "9", modifiers: [.command, .control])
-  static let selectWorktree0 = AppShortcut(key: "0", modifiers: [.command, .control])
+  static let selectWorktree1 = AppShortcut(key: "1", modifiers: .command)
+  static let selectWorktree2 = AppShortcut(key: "2", modifiers: .command)
+  static let selectWorktree3 = AppShortcut(key: "3", modifiers: .command)
+  static let selectWorktree4 = AppShortcut(key: "4", modifiers: .command)
+  static let selectWorktree5 = AppShortcut(key: "5", modifiers: .command)
+  static let selectWorktree6 = AppShortcut(key: "6", modifiers: .command)
+  static let selectWorktree7 = AppShortcut(key: "7", modifiers: .command)
+  static let selectWorktree8 = AppShortcut(key: "8", modifiers: .command)
+  static let selectWorktree9 = AppShortcut(key: "9", modifiers: .command)
+  static let selectWorktree0 = AppShortcut(key: "0", modifiers: .command)
   static let worktreeSelection: [AppShortcut] = [
     selectWorktree1,
     selectWorktree2,
@@ -95,6 +99,24 @@ enum AppShortcuts {
     selectWorktree9,
     selectWorktree0,
   ]
+
+  static let tabSelectionGhosttyKeybindArguments: [String] = [
+    "--keybind=ctrl+1=goto_tab:1",
+    "--keybind=ctrl+2=goto_tab:2",
+    "--keybind=ctrl+3=goto_tab:3",
+    "--keybind=ctrl+4=goto_tab:4",
+    "--keybind=ctrl+5=goto_tab:5",
+    "--keybind=ctrl+6=goto_tab:6",
+    "--keybind=ctrl+7=goto_tab:7",
+    "--keybind=ctrl+8=goto_tab:8",
+    "--keybind=ctrl+9=goto_tab:9",
+    "--keybind=ctrl+0=goto_tab:10",
+  ]
+
+  static var ghosttyCLIKeybindArguments: [String] {
+    all.map(\.ghosttyUnbindArgument) + tabSelectionGhosttyKeybindArguments
+  }
+
   static let all: [AppShortcut] = [
     newWorktree,
     openSettings,

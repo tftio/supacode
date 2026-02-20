@@ -1463,7 +1463,7 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView.contentView,
         queue: .main
       ) { [weak self] _ in
-        Task { @MainActor [weak self] in
+        MainActor.assumeIsolated {
           self?.handleScrollChange()
         }
       })
@@ -1474,7 +1474,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        self?.isLiveScrolling = true
+        MainActor.assumeIsolated {
+          self?.isLiveScrolling = true
+        }
       })
 
     observers.append(
@@ -1483,7 +1485,9 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        self?.isLiveScrolling = false
+        MainActor.assumeIsolated {
+          self?.isLiveScrolling = false
+        }
       })
 
     observers.append(
@@ -1492,7 +1496,7 @@ final class GhosttySurfaceScrollView: NSView {
         object: scrollView,
         queue: .main
       ) { [weak self] _ in
-        Task { @MainActor [weak self] in
+        MainActor.assumeIsolated {
           self?.handleLiveScroll()
         }
       })
@@ -1501,9 +1505,9 @@ final class GhosttySurfaceScrollView: NSView {
       NotificationCenter.default.addObserver(
         forName: NSScroller.preferredScrollerStyleDidChangeNotification,
         object: nil,
-        queue: nil
+        queue: .main
       ) { [weak self] _ in
-        Task { @MainActor [weak self] in
+        MainActor.assumeIsolated {
           self?.handleScrollerStyleChange()
         }
       })
@@ -1514,7 +1518,7 @@ final class GhosttySurfaceScrollView: NSView {
         object: nil,
         queue: .main
       ) { [weak self] _ in
-        Task { @MainActor [weak self] in
+        MainActor.assumeIsolated {
           self?.refreshAppearance()
         }
       })

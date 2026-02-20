@@ -46,6 +46,7 @@ struct ContentView: View {
           .background(.background)
       }
     }
+    .environment(\.surfaceBackgroundOpacity, terminalManager.surfaceBackgroundOpacity())
     .onChange(of: scenePhase) { _, newValue in
       store.send(.scenePhaseChanged(newValue))
     }
@@ -101,6 +102,17 @@ struct ContentView: View {
     }
   }
 
+}
+
+private struct SurfaceBackgroundOpacityKey: EnvironmentKey {
+  static let defaultValue: Double = 1
+}
+
+extension EnvironmentValues {
+  var surfaceBackgroundOpacity: Double {
+    get { self[SurfaceBackgroundOpacityKey.self] }
+    set { self[SurfaceBackgroundOpacityKey.self] = newValue }
+  }
 }
 
 private struct RunScriptPromptView: View {

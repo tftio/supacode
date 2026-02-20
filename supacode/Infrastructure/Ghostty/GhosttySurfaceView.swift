@@ -203,6 +203,26 @@ final class GhosttySurfaceView: NSView, Identifiable {
       })
     notificationObservers.append(
       center.addObserver(
+        forName: NSWindow.didBecomeKeyNotification,
+        object: window,
+        queue: .main
+      ) { [weak self] _ in
+        Task { @MainActor [weak self] in
+          self?.applyWindowBackgroundAppearance()
+        }
+      })
+    notificationObservers.append(
+      center.addObserver(
+        forName: NSWindow.didChangeOcclusionStateNotification,
+        object: window,
+        queue: .main
+      ) { [weak self] _ in
+        Task { @MainActor [weak self] in
+          self?.applyWindowBackgroundAppearance()
+        }
+      })
+    notificationObservers.append(
+      center.addObserver(
         forName: .ghosttyRuntimeConfigDidChange,
         object: runtime,
         queue: .main
@@ -278,7 +298,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   private func applyWindowBackgroundAppearance() {
-    guard let window else { return }
+    guard let window, window.isVisible else { return }
     let opacity = runtime.backgroundOpacity()
     if !window.styleMask.contains(.fullScreen), opacity < 1 {
       window.isOpaque = false

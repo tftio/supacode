@@ -477,7 +477,7 @@ final class GhosttyRuntime {
     var value: Double = 1
     let key = "background-opacity"
     _ = ghostty_config_get(config, &value, key, UInt(key.lengthOfBytes(using: .utf8)))
-    return min(max(value, 0), 1)
+    return min(max(value, 0.001), 1)
   }
 
   func backgroundColor() -> NSColor {

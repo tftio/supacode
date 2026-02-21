@@ -3,8 +3,8 @@ import SwiftUI
 struct TerminalTabBarBackground: View {
   @Environment(\.controlActiveState)
   private var activeState
-  @Environment(\.surfaceChromeBackgroundOpacity)
-  private var surfaceChromeBackgroundOpacity
+  @Environment(\.surfaceTopChromeBackgroundOpacity)
+  private var surfaceTopChromeBackgroundOpacity
 
   var body: some View {
     Rectangle()
@@ -12,7 +12,7 @@ struct TerminalTabBarBackground: View {
   }
 
   private var chromeBackgroundOpacity: Double {
-    let baseOpacity = surfaceChromeBackgroundOpacity
+    let baseOpacity = surfaceTopChromeBackgroundOpacity
     if activeState == .inactive {
       return baseOpacity * 0.95
     }

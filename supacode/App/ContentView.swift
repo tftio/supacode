@@ -114,11 +114,24 @@ extension EnvironmentValues {
     set { self[SurfaceBackgroundOpacityKey.self] = newValue }
   }
 
-  var surfaceChromeBackgroundOpacity: Double {
+  var surfaceTopChromeBackgroundOpacity: Double {
     get {
       if surfaceBackgroundOpacity < 1 {
-        let proportionalOpacity = surfaceBackgroundOpacity * 0.68
-        return min(max(proportionalOpacity, 0.45), 0.72)
+        let proportionalOpacity = surfaceBackgroundOpacity * 0.56
+        return min(max(proportionalOpacity, 0.36), 0.62)
+      }
+      return 1
+    }
+    set {
+      surfaceBackgroundOpacity = newValue
+    }
+  }
+
+  var surfaceBottomChromeBackgroundOpacity: Double {
+    get {
+      if surfaceBackgroundOpacity < 1 {
+        let proportionalOpacity = surfaceBackgroundOpacity * 0.78
+        return min(max(proportionalOpacity, 0.52), 0.82)
       }
       return 1
     }

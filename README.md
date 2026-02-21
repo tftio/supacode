@@ -17,7 +17,7 @@ A macOS app for running multiple coding agents in isolated worktrees.
 ## Building
 
 ```bash
-make build-ghostty-xcframework  # Build GhosttyKit from Zig source
+make build-ghostty-xcframework   # Build GhosttyKit from Zig source
 make build-app                   # Build macOS app (Debug)
 make run-app                     # Build and launch
 ```

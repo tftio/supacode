@@ -73,16 +73,16 @@ enum AppShortcuts {
   static let selectPreviousWorktree = AppShortcut(
     keyEquivalent: .upArrow, ghosttyKeyName: "arrow_up", modifiers: [.command, .control]
   )
-  static let selectWorktree1 = AppShortcut(key: "1", modifiers: [.command, .control])
-  static let selectWorktree2 = AppShortcut(key: "2", modifiers: [.command, .control])
-  static let selectWorktree3 = AppShortcut(key: "3", modifiers: [.command, .control])
-  static let selectWorktree4 = AppShortcut(key: "4", modifiers: [.command, .control])
-  static let selectWorktree5 = AppShortcut(key: "5", modifiers: [.command, .control])
-  static let selectWorktree6 = AppShortcut(key: "6", modifiers: [.command, .control])
-  static let selectWorktree7 = AppShortcut(key: "7", modifiers: [.command, .control])
-  static let selectWorktree8 = AppShortcut(key: "8", modifiers: [.command, .control])
-  static let selectWorktree9 = AppShortcut(key: "9", modifiers: [.command, .control])
-  static let selectWorktree0 = AppShortcut(key: "0", modifiers: [.command, .control])
+  static let selectWorktree1 = AppShortcut(key: "1", modifiers: [.control])
+  static let selectWorktree2 = AppShortcut(key: "2", modifiers: [.control])
+  static let selectWorktree3 = AppShortcut(key: "3", modifiers: [.control])
+  static let selectWorktree4 = AppShortcut(key: "4", modifiers: [.control])
+  static let selectWorktree5 = AppShortcut(key: "5", modifiers: [.control])
+  static let selectWorktree6 = AppShortcut(key: "6", modifiers: [.control])
+  static let selectWorktree7 = AppShortcut(key: "7", modifiers: [.control])
+  static let selectWorktree8 = AppShortcut(key: "8", modifiers: [.control])
+  static let selectWorktree9 = AppShortcut(key: "9", modifiers: [.control])
+  static let selectWorktree0 = AppShortcut(key: "0", modifiers: [.control])
   static let worktreeSelection: [AppShortcut] = [
     selectWorktree1,
     selectWorktree2,

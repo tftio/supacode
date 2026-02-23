@@ -113,7 +113,14 @@ Reducer ← .terminalEvent(Event) ← AsyncStream<Event>
 - Before you go on your task, check the current git branch name, if it's something generic like an animal name, name it accordingly. Do not do this for main branch
 - After implementing an execplan, always submit a PR if you're not in the main branch
 
+## Submodules
+
+- `ThirdParty/ghostty` (`https://github.com/ghostty-org/ghostty`): Source dependency used to build `Frameworks/GhosttyKit.xcframework` and terminal resources.
+- `Resources/git-wt` (`https://github.com/khoi/git-wt.git`): Bundled `wt` CLI used by Supacode Git worktree flows at runtime.
+- Keep submodules initialized and updated in local clones:
+  - `git submodule update --init --recursive`
+  - `git submodule update --remote --recursive` (when intentionally bumping submodule revisions)
+
 ## References
 
 - `git@github.com:ghostty-org/ghostty.git` - Dive into this codebase when implementing Ghostty features
-- `git@github.com:khoi/git-wt.git` - Git worktree wrapper submodule at `Resources/git-wt`

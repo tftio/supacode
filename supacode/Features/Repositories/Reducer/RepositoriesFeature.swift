@@ -129,6 +129,8 @@ struct RepositoriesFeature {
     case refreshWorktrees
     case reloadRepositories(animated: Bool)
     case repositoriesLoaded([Repository], failures: [LoadFailure], roots: [URL], animated: Bool)
+    case selectionChanged(Set<SidebarSelection>, focusTerminal: Bool = false)
+    case repositoryExpansionChanged(Repository.ID, isExpanded: Bool)
     case selectArchivedWorktrees
     case setSidebarSelectedWorktreeIDs(Set<Worktree.ID>)
     case openRepositories([URL])
@@ -251,6 +253,8 @@ struct RepositoriesFeature {
 
   private struct ApplyRepositoriesResult {
     let didPrunePinned: Bool
+    // Auto-persisted via `@Shared`; tracked for consistency but not consumed in effect dispatch.
+    let didPruneCollapsedRepositoryIDs: Bool
     let didPruneRepositoryOrder: Bool
     let didPruneWorktreeOrder: Bool
     let didPruneArchivedWorktreeIDs: Bool
@@ -536,6 +540,24 @@ struct RepositoriesFeature {
           )
         }
         return .merge(allEffects)
+
+      case .selectionChanged(let selections, let focusTerminal):
+        return reduceSelectionChanged(
+          into: &state,
+          selections: selections,
+          focusTerminal: focusTerminal
+        )
+
+      case .repositoryExpansionChanged(let repositoryID, let isExpanded):
+        state.$collapsedRepositoryIDs.withLock { collapsedRepositoryIDs in
+          if isExpanded {
+            collapsedRepositoryIDs.removeAll { $0 == repositoryID }
+          } else if !collapsedRepositoryIDs.contains(repositoryID) {
+            collapsedRepositoryIDs.append(repositoryID)
+          }
+          collapsedRepositoryIDs.sort()
+        }
+        return .none
 
       case .selectArchivedWorktrees:
         state.selection = .archivedWorktrees
@@ -2739,6 +2761,7 @@ struct RepositoriesFeature {
       state.worktreeInfoByID = filteredWorktreeInfo
     }
     let didPrunePinned = prunePinnedWorktreeIDs(state: &state)
+    let didPruneCollapsedRepositoryIDs = pruneCollapsedRepositoryIDs(state: &state)
     let didPruneRepositoryOrder = pruneRepositoryOrderIDs(roots: roots, state: &state)
     let didPruneWorktreeOrder = pruneWorktreeOrderByRepository(roots: roots, state: &state)
     let didPruneArchivedWorktreeIDs =
@@ -2763,6 +2786,7 @@ struct RepositoriesFeature {
     }
     return ApplyRepositoriesResult(
       didPrunePinned: didPrunePinned,
+      didPruneCollapsedRepositoryIDs: didPruneCollapsedRepositoryIDs,
       didPruneRepositoryOrder: didPruneRepositoryOrder,
       didPruneWorktreeOrder: didPruneWorktreeOrder,
       didPruneArchivedWorktreeIDs: didPruneArchivedWorktreeIDs
@@ -2805,23 +2829,6 @@ struct RepositoriesFeature {
     }
   }
 
-  private func selectionDidChange(
-    previousSelectionID: Worktree.ID?,
-    previousSelectedWorktree: Worktree?,
-    selectedWorktreeID: Worktree.ID?,
-    selectedWorktree: Worktree?
-  ) -> Bool {
-    if previousSelectionID != selectedWorktreeID {
-      return true
-    }
-    if previousSelectedWorktree?.workingDirectory != selectedWorktree?.workingDirectory {
-      return true
-    }
-    if previousSelectedWorktree?.repositoryRootURL != selectedWorktree?.repositoryRootURL {
-      return true
-    }
-    return false
-  }
 }
 
 extension RepositoriesFeature.State {
@@ -2829,11 +2836,31 @@ extension RepositoriesFeature.State {
     selection?.worktreeID
   }
 
+  var effectiveSidebarSelectedRows: [WorktreeRowModel] {
+    let selectedRows = orderedWorktreeRows().filter { sidebarSelectedWorktreeIDs.contains($0.id) }
+    return selectedRows.isEmpty ? (selectedRow(for: selectedWorktreeID).map { [$0] } ?? []) : selectedRows
+  }
+
   var expandedRepositoryIDs: Set<Repository.ID> {
     let repositoryIDs = Set(repositories.map(\.id))
     let collapsedSet = Set(collapsedRepositoryIDs).intersection(repositoryIDs)
     let pendingRepositoryIDs = Set(pendingWorktrees.map(\.repositoryID))
     return repositoryIDs.subtracting(collapsedSet).union(pendingRepositoryIDs)
+  }
+
+  func isRepositoryExpanded(_ repositoryID: Repository.ID) -> Bool {
+    expandedRepositoryIDs.contains(repositoryID)
+  }
+
+  var sidebarSelections: Set<SidebarSelection> {
+    guard !isShowingArchivedWorktrees else {
+      return [.archivedWorktrees]
+    }
+    var selections = Set(sidebarSelectedWorktreeIDs.map(SidebarSelection.worktree))
+    if let selectedWorktreeID {
+      selections.insert(.worktree(selectedWorktreeID))
+    }
+    return selections
   }
 
   func worktreeID(byOffset offset: Int) -> Worktree.ID? {
@@ -3586,6 +3613,75 @@ private func setSingleWorktreeSelection(
   }
 }
 
+private func reduceSelectionChanged(
+  into state: inout RepositoriesFeature.State,
+  selections: Set<SidebarSelection>,
+  focusTerminal: Bool
+) -> Effect<RepositoriesFeature.Action> {
+  let previousSelection = state.selectedWorktreeID
+  let previousSelectedWorktree = state.worktree(for: previousSelection)
+
+  guard !selections.contains(.archivedWorktrees) else {
+    state.selection = .archivedWorktrees
+    state.sidebarSelectedWorktreeIDs = []
+    return .send(.delegate(.selectedWorktreeChanged(nil)))
+  }
+
+  let orderedRows = state.orderedWorktreeRows()
+  let orderedWorktreeIDs = orderedRows.map(\.id)
+  let allWorktreeIDs = Set(orderedWorktreeIDs)
+  let requestedWorktreeIDs = Set(selections.compactMap(\.worktreeID))
+  let nextSidebarSelectedWorktreeIDs = requestedWorktreeIDs.intersection(allWorktreeIDs)
+  let droppedIDs = requestedWorktreeIDs.subtracting(nextSidebarSelectedWorktreeIDs)
+  if !droppedIDs.isEmpty {
+    repositoriesLogger.debug("Selection dropped unknown worktree IDs: \(droppedIDs).")
+  }
+
+  guard !nextSidebarSelectedWorktreeIDs.isEmpty else {
+    setSingleWorktreeSelection(nil, state: &state)
+    return .send(.delegate(.selectedWorktreeChanged(nil)))
+  }
+
+  let nextSelectedWorktreeID =
+    if let selectedWorktreeID = state.selectedWorktreeID,
+      nextSidebarSelectedWorktreeIDs.contains(selectedWorktreeID)
+    {
+      selectedWorktreeID
+    } else {
+      orderedWorktreeIDs.first(where: nextSidebarSelectedWorktreeIDs.contains)
+        ?? nextSidebarSelectedWorktreeIDs.first
+    }
+
+  state.selection = nextSelectedWorktreeID.map(SidebarSelection.worktree)
+  state.sidebarSelectedWorktreeIDs = nextSidebarSelectedWorktreeIDs
+  if focusTerminal,
+    let nextSelectedWorktreeID,
+    previousSelection != nextSelectedWorktreeID
+  {
+    state.pendingTerminalFocusWorktreeIDs.insert(nextSelectedWorktreeID)
+  }
+
+  let selectedWorktree = state.worktree(for: nextSelectedWorktreeID)
+  let selectionChanged = selectionDidChange(
+    previousSelectionID: previousSelection,
+    previousSelectedWorktree: previousSelectedWorktree,
+    selectedWorktreeID: nextSelectedWorktreeID,
+    selectedWorktree: selectedWorktree
+  )
+  return selectionChanged ? .send(.delegate(.selectedWorktreeChanged(selectedWorktree))) : .none
+}
+
+private func selectionDidChange(
+  previousSelectionID: Worktree.ID?,
+  previousSelectedWorktree: Worktree?,
+  selectedWorktreeID: Worktree.ID?,
+  selectedWorktree: Worktree?
+) -> Bool {
+  previousSelectionID != selectedWorktreeID
+    || previousSelectedWorktree?.workingDirectory != selectedWorktree?.workingDirectory
+    || previousSelectedWorktree?.repositoryRootURL != selectedWorktree?.repositoryRootURL
+}
+
 private func repositoryForWorktreeCreation(
   _ state: RepositoriesFeature.State
 ) -> Repository? {
@@ -3622,6 +3718,18 @@ private func prunePinnedWorktreeIDs(state: inout RepositoriesFeature.State) -> B
     return true
   }
   return false
+}
+
+private func pruneCollapsedRepositoryIDs(state: inout RepositoriesFeature.State) -> Bool {
+  let repositoryIDs = Set(state.repositories.map(\.id))
+  var didChange = false
+  state.$collapsedRepositoryIDs.withLock { collapsedRepositoryIDs in
+    let pruned = collapsedRepositoryIDs.filter { repositoryIDs.contains($0) }
+    didChange = pruned != collapsedRepositoryIDs
+    guard didChange else { return }
+    collapsedRepositoryIDs = pruned
+  }
+  return didChange
 }
 
 private func pruneRepositoryOrderIDs(

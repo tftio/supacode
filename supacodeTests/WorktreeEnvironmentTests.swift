@@ -142,7 +142,7 @@ struct WorktreeEnvironmentTests {
     #expect(
       try makeBlockingScriptLaunch(
         script: """
-            
+
           """,
         environment: [
           "SUPACODE_ROOT_PATH": "/tmp/repo",

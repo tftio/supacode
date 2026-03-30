@@ -1120,7 +1120,7 @@ nonisolated func makeBlockingScriptLaunch(
   script: String,
   environment: [String: String],
   shellPath: String,
-  baseDirectoryURL: URL = URL(filePath: "/tmp", directoryHint: .isDirectory)
+  baseDirectoryURL: URL = FileManager.default.temporaryDirectory
 ) throws -> BlockingScriptLaunch? {
   let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
   guard !trimmed.isEmpty,
@@ -1171,7 +1171,7 @@ nonisolated func makeBlockingScriptLaunch(
     rootPathURL: rootPathURL,
     worktreePathURL: worktreePathURL,
     shellPathURL: shellPathURL,
-    commandInput: runnerURL.path(percentEncoded: false) + "\nexit\n"
+    commandInput: shellSingleQuoted(runnerURL.path(percentEncoded: false)) + "\nexit\n"
   )
 }
 
@@ -1181,13 +1181,22 @@ nonisolated func blockingScriptRunnerContents(
   worktreePathURL: URL,
   shellPathURL: URL
 ) -> String {
-  """
+  let quotedRootPath = shellSingleQuoted(rootPathURL.path(percentEncoded: false))
+  let quotedWorktreePath = shellSingleQuoted(worktreePathURL.path(percentEncoded: false))
+  let quotedShellPath = shellSingleQuoted(shellPathURL.path(percentEncoded: false))
+  let quotedScriptPath = shellSingleQuoted(scriptURL.path(percentEncoded: false))
+
+  return """
   #!/bin/sh
   set -eu
-  IFS= read -r SUPACODE_ROOT_PATH < \(rootPathURL.path(percentEncoded: false))
-  IFS= read -r SUPACODE_WORKTREE_PATH < \(worktreePathURL.path(percentEncoded: false))
-  IFS= read -r SUPACODE_SHELL_PATH < \(shellPathURL.path(percentEncoded: false))
+  IFS= read -r SUPACODE_ROOT_PATH < \(quotedRootPath)
+  IFS= read -r SUPACODE_WORKTREE_PATH < \(quotedWorktreePath)
+  IFS= read -r SUPACODE_SHELL_PATH < \(quotedShellPath)
   export SUPACODE_ROOT_PATH SUPACODE_WORKTREE_PATH
-  exec "$SUPACODE_SHELL_PATH" -l \(scriptURL.path(percentEncoded: false))
+  exec "$SUPACODE_SHELL_PATH" -l \(quotedScriptPath)
   """
+}
+
+nonisolated func shellSingleQuoted(_ value: String) -> String {
+  "'\(value.replacing("'", with: "'\"'\"'"))'"
 }

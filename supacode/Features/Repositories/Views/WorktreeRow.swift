@@ -6,7 +6,7 @@ struct WorktreeRow: View {
   let worktreeColor: WorktreeColor
   let isBusy: Bool
   let gitIconName: String
-  let gitIconColor: Color
+  let gitIconColor: AnyShapeStyle
   let isArchiving: Bool
   let isDeleting: Bool
   let info: WorktreeInfoEntry?
@@ -16,11 +16,42 @@ struct WorktreeRow: View {
   let showsNotificationIndicator: Bool
   let notifications: [WorktreeTerminalNotification]
   let shortcutHint: String?
+  let checkBadgeState: CheckBadgeState?
 
   enum WorktreeColor {
     case `default`
     case main
     case pinned
+  }
+
+  enum CheckBadgeState {
+    case passing
+    case failing
+    case inProgress
+
+    var symbolName: String {
+      switch self {
+      case .passing: "checkmark"
+      case .failing: "xmark"
+      case .inProgress: "ellipsis"
+      }
+    }
+
+    var color: Color {
+      switch self {
+      case .passing: .green
+      case .failing: .red
+      case .inProgress: .yellow
+      }
+    }
+
+    var accessibilityLabel: String {
+      switch self {
+      case .passing: "Checks passed"
+      case .failing: "Checks failed"
+      case .inProgress: "Checks in progress"
+      }
+    }
   }
 
   init(
@@ -79,24 +110,39 @@ struct WorktreeRow: View {
       switch pullRequest.state.uppercased() {
       case "MERGED":
         self.gitIconName = "git-merge"
-        self.gitIconColor = .purple
+        self.gitIconColor = AnyShapeStyle(.purple)
       case "CLOSED":
         self.gitIconName = "git-pull-request-closed"
-        self.gitIconColor = .red
+        self.gitIconColor = AnyShapeStyle(.red)
       case "OPEN" where pullRequest.isDraft:
         self.gitIconName = "git-pull-request-draft"
-        self.gitIconColor = .secondary
+        self.gitIconColor = AnyShapeStyle(.tertiary)
       case "OPEN":
         self.gitIconName = "git-pull-request"
-        let readiness = PullRequestMergeReadiness(pullRequest: pullRequest)
-        self.gitIconColor = readiness.isBlocking ? .red : .green
+        self.gitIconColor = AnyShapeStyle(.green)
       default:
         self.gitIconName = "git-branch"
-        self.gitIconColor = .secondary
+        self.gitIconColor = AnyShapeStyle(.secondary)
       }
     } else {
       self.gitIconName = "git-branch"
-      self.gitIconColor = .secondary
+      self.gitIconColor = AnyShapeStyle(.secondary)
+    }
+
+    // Check badge for PRs with status checks.
+    if let checks = prDisplay.pullRequest?.statusCheckRollup?.checks,
+      !checks.isEmpty
+    {
+      let breakdown = PullRequestCheckBreakdown(checks: checks)
+      if breakdown.failed > 0 {
+        self.checkBadgeState = .failing
+      } else if breakdown.inProgress > 0 || breakdown.expected > 0 {
+        self.checkBadgeState = .inProgress
+      } else {
+        self.checkBadgeState = .passing
+      }
+    } else {
+      self.checkBadgeState = nil
     }
   }
 
@@ -116,7 +162,7 @@ struct WorktreeRow: View {
 
   var body: some View {
     Label {
-      HStack(spacing: 6) {
+      HStack(spacing: 8) {
         TitleView(
           name: name,
           subtitle: subtitle,
@@ -140,7 +186,8 @@ struct WorktreeRow: View {
         isArchiving: isArchiving,
         isDeleting: isDeleting,
         gitIconName: gitIconName,
-        gitIconColor: gitIconColor
+        gitIconColor: gitIconColor,
+        checkBadgeState: checkBadgeState
       )
     }
     .labelStyle(.verticallyCentered)
@@ -189,7 +236,8 @@ private struct IconView: View {
   let isArchiving: Bool
   let isDeleting: Bool
   let gitIconName: String
-  let gitIconColor: Color
+  let gitIconColor: AnyShapeStyle
+  let checkBadgeState: WorktreeRow.CheckBadgeState?
   @Environment(\.backgroundProminence) private var backgroundProminence
 
   private var isEmphasized: Bool {
@@ -206,7 +254,7 @@ private struct IconView: View {
     guard !isEmphasized else { return AnyShapeStyle(.secondary) }
     if isArchiving { return AnyShapeStyle(.orange) }
     if isDeleting { return AnyShapeStyle(.red) }
-    return AnyShapeStyle(gitIconColor)
+    return gitIconColor
   }
 
   private var isSystemImage: Bool {
@@ -229,6 +277,25 @@ private struct IconView: View {
       }
     }
     .foregroundStyle(resolvedColor)
+    .overlay(alignment: .bottomTrailing) {
+      if let checkBadgeState, !isSystemImage {
+        let badgeColor = AnyShapeStyle(checkBadgeState.color)
+        let background = AnyShapeStyle(.windowBackground)
+        Image(systemName: checkBadgeState.symbolName)
+          .resizable()
+          .symbolVariant(.circle.fill)
+          .symbolRenderingMode(.palette)
+          .fontWeight(.black)
+          .frame(width: 10, height: 10)
+          .foregroundStyle(
+            isEmphasized ? badgeColor : background,
+            isEmphasized ? background : badgeColor,
+          )
+          .background(in: Circle())
+          .accessibilityLabel(checkBadgeState.accessibilityLabel)
+          .offset(x: 2, y: 2)
+      }
+    }
     .accessibilityLabel(accessibilityLabel ?? "")
     .accessibilityHidden(accessibilityLabel == nil)
   }

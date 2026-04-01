@@ -131,10 +131,12 @@ private struct ScriptSection: View {
 
   var body: some View {
     Section {
-      TextField(title, text: text, axis: .vertical)
-        .labelsHidden()
-        .lineLimit(5, reservesSpace: true)
+      TextEditor(text: text)
         .monospaced()
+        .textEditorStyle(.plain)
+        .autocorrectionDisabled()
+        .frame(height: 112)
+        .accessibilityLabel(title)
     } header: {
       Text(title)
       Text(subtitle)

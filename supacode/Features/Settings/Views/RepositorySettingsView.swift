@@ -134,7 +134,7 @@ private struct ScriptSection: View {
       PlainTextEditor(
         text: text,
         isMonospaced: true,
-        style: .field
+        style: .plain
       )
       .frame(height: 112)
       .accessibilityLabel(title)

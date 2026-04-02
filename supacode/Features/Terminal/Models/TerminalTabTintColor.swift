@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Color token for terminal tab tint indicators, used in place of
 /// `Color` so that `TerminalTabItem` can remain `Equatable` and `Sendable`.
-enum TerminalTabTintColor: Hashable, Sendable {
+enum TerminalTabTintColor: String, Codable, Hashable, Sendable {
   case green
   case orange
   case red

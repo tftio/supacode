@@ -77,6 +77,10 @@ nonisolated enum SupacodePaths {
     .path(percentEncoded: false)
   }
 
+  static var layoutsURL: URL {
+    baseDirectory.appending(path: "layouts.json", directoryHint: .notDirectory)
+  }
+
   static var settingsURL: URL {
     baseDirectory.appending(path: "settings.json", directoryHint: .notDirectory)
   }

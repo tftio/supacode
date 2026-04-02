@@ -27,6 +27,7 @@ struct SettingsFeature {
     var copyUntrackedOnWorktreeCreate: Bool
     var pullRequestMergeStrategy: PullRequestMergeStrategy
     var terminalThemeSyncEnabled: Bool
+    var restoreTerminalLayoutEnabled: Bool
     var defaultWorktreeBaseDirectoryPath: String
     var shortcutOverrides: [AppShortcutID: AppShortcutOverride]
     // nil = settings window closed, non-nil = open to this section.
@@ -59,6 +60,7 @@ struct SettingsFeature {
       copyUntrackedOnWorktreeCreate = settings.copyUntrackedOnWorktreeCreate
       pullRequestMergeStrategy = settings.pullRequestMergeStrategy
       terminalThemeSyncEnabled = settings.terminalThemeSyncEnabled
+      restoreTerminalLayoutEnabled = settings.restoreTerminalLayoutEnabled
       shortcutOverrides = settings.shortcutOverrides
       defaultWorktreeBaseDirectoryPath =
         SupacodePaths.normalizedWorktreeBaseDirectoryPath(settings.defaultWorktreeBaseDirectoryPath) ?? ""
@@ -87,6 +89,7 @@ struct SettingsFeature {
         copyUntrackedOnWorktreeCreate: copyUntrackedOnWorktreeCreate,
         pullRequestMergeStrategy: pullRequestMergeStrategy,
         terminalThemeSyncEnabled: terminalThemeSyncEnabled,
+        restoreTerminalLayoutEnabled: restoreTerminalLayoutEnabled,
         defaultWorktreeBaseDirectoryPath: SupacodePaths.normalizedWorktreeBaseDirectoryPath(
           defaultWorktreeBaseDirectoryPath
         ),
@@ -170,6 +173,7 @@ struct SettingsFeature {
         state.copyUntrackedOnWorktreeCreate = normalizedSettings.copyUntrackedOnWorktreeCreate
         state.pullRequestMergeStrategy = normalizedSettings.pullRequestMergeStrategy
         state.terminalThemeSyncEnabled = normalizedSettings.terminalThemeSyncEnabled
+        state.restoreTerminalLayoutEnabled = normalizedSettings.restoreTerminalLayoutEnabled
         state.shortcutOverrides = normalizedSettings.shortcutOverrides
         state.defaultWorktreeBaseDirectoryPath = normalizedSettings.defaultWorktreeBaseDirectoryPath ?? ""
         state.syncGlobalDefaults(from: normalizedSettings)

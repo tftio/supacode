@@ -98,10 +98,10 @@ struct SplitTree<ViewType: NSView & Identifiable> {
     root?.find(id: id)
   }
 
-  func inserting(view: ViewType, at anchor: ViewType, direction: NewDirection) throws -> Self {
+  func inserting(view: ViewType, at anchor: ViewType, direction: NewDirection, ratio: Double = 0.5) throws -> Self {
     guard let root else { throw SplitError.viewNotFound }
     return .init(
-      root: try root.inserting(view: view, at: anchor, direction: direction),
+      root: try root.inserting(view: view, at: anchor, direction: direction, ratio: ratio),
       zoomed: nil
     )
   }
@@ -397,7 +397,7 @@ extension SplitTree.Node {
     }
   }
 
-  func inserting(view: ViewType, at anchor: ViewType, direction: NewDirection) throws -> Self {
+  func inserting(view: ViewType, at anchor: ViewType, direction: NewDirection, ratio: Double = 0.5) throws -> Self {
     guard let path = path(to: .leaf(view: anchor)) else {
       throw SplitError.viewNotFound
     }
@@ -424,7 +424,7 @@ extension SplitTree.Node {
     let newSplit: Node = .split(
       .init(
         direction: splitDirection,
-        ratio: 0.5,
+        ratio: ratio,
         left: newViewOnLeft ? newNode : existingNode,
         right: newViewOnLeft ? existingNode : newNode
       ))

@@ -32,6 +32,11 @@ private enum GhosttyCLI {
 @MainActor
 final class SupacodeAppDelegate: NSObject, NSApplicationDelegate {
   var appStore: StoreOf<AppFeature>?
+  var terminalManager: WorktreeTerminalManager?
+
+  func applicationWillTerminate(_ notification: Notification) {
+    terminalManager?.saveAllLayoutSnapshots()
+  }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     // Disable press-and-hold accent menu so that key repeat works in the terminal.
@@ -127,6 +132,24 @@ struct SupacodeApp: App {
     let shortcuts = GhosttyShortcutManager(runtime: runtime)
     _ghosttyShortcuts = State(initialValue: shortcuts)
     let terminalManager = WorktreeTerminalManager(runtime: runtime)
+    // Always persist layouts regardless of `restoreTerminalLayoutEnabled`, so enabling
+    // the setting retroactively restores the most recent session.
+    terminalManager.saveLayoutSnapshot = { worktreeID, snapshot in
+      @Shared(.layouts) var layouts: [String: TerminalLayoutSnapshot] = [:]
+      $layouts.withLock { dict in
+        if let snapshot {
+          dict[worktreeID] = snapshot
+        } else {
+          dict.removeValue(forKey: worktreeID)
+        }
+      }
+    }
+    terminalManager.loadLayoutSnapshot = { worktreeID in
+      @SharedReader(.settingsFile) var settingsFile
+      guard settingsFile.global.restoreTerminalLayoutEnabled else { return nil }
+      @SharedReader(.layouts) var layouts: [String: TerminalLayoutSnapshot] = [:]
+      return layouts[worktreeID]
+    }
     _terminalManager = State(initialValue: terminalManager)
     let worktreeInfoWatcher = WorktreeInfoWatcherManager()
     _worktreeInfoWatcher = State(initialValue: worktreeInfoWatcher)
@@ -157,6 +180,7 @@ struct SupacodeApp: App {
     }
     _store = State(initialValue: appStore)
     appDelegate.appStore = appStore
+    appDelegate.terminalManager = terminalManager
   }
 
   var body: some Scene {

@@ -13,6 +13,8 @@ final class WorktreeTerminalManager {
   private var eventContinuation: AsyncStream<TerminalClient.Event>.Continuation?
   private var pendingEvents: [TerminalClient.Event] = []
   var selectedWorktreeID: Worktree.ID?
+  var saveLayoutSnapshot: ((Worktree.ID, TerminalLayoutSnapshot?) -> Void)?
+  var loadLayoutSnapshot: ((Worktree.ID) -> TerminalLayoutSnapshot?)?
 
   init(runtime: GhosttyRuntime) {
     self.runtime = runtime
@@ -96,6 +98,7 @@ final class WorktreeTerminalManager {
       guard id != selectedWorktreeID else { return }
       if let previousID = selectedWorktreeID, let previousState = states[previousID] {
         previousState.setAllSurfacesOccluded()
+        saveLayoutSnapshot?(previousID, previousState.captureLayoutSnapshot())
       }
       selectedWorktreeID = id
       terminalLogger.info("Selected worktree \(id ?? "nil")")
@@ -131,6 +134,13 @@ final class WorktreeTerminalManager {
       if runSetupScriptIfNew() {
         existing.enableSetupScriptIfNeeded()
       }
+      // Reload snapshot if the state has no tabs (e.g., setting was just enabled).
+      if existing.tabManager.tabs.isEmpty,
+        existing.pendingLayoutSnapshot == nil,
+        !existing.needsSetupScript()
+      {
+        existing.pendingLayoutSnapshot = loadLayoutSnapshot?(worktree.id)
+      }
       return existing
     }
     let runSetupScript = runSetupScriptIfNew()
@@ -139,6 +149,10 @@ final class WorktreeTerminalManager {
       worktree: worktree,
       runSetupScript: runSetupScript
     )
+    // Load saved layout snapshot for restoration (skip when a setup script is pending).
+    if !runSetupScript {
+      state.pendingLayoutSnapshot = loadLayoutSnapshot?(worktree.id)
+    }
     state.setNotificationsEnabled(notificationsEnabled)
     state.isSelected = { [weak self] in
       self?.selectedWorktreeID == worktree.id
@@ -205,11 +219,12 @@ final class WorktreeTerminalManager {
   }
 
   func prune(keeping worktreeIDs: Set<Worktree.ID>) {
-    var removed: [WorktreeTerminalState] = []
+    var removed: [(Worktree.ID, WorktreeTerminalState)] = []
     for (id, state) in states where !worktreeIDs.contains(id) {
-      removed.append(state)
+      removed.append((id, state))
     }
-    for state in removed {
+    for (id, state) in removed {
+      saveLayoutSnapshot?(id, state.captureLayoutSnapshot())
       state.closeAllSurfaces()
     }
     if !removed.isEmpty {
@@ -241,6 +256,16 @@ final class WorktreeTerminalManager {
 
   func hasUnseenNotifications(for worktreeID: Worktree.ID) -> Bool {
     states[worktreeID]?.hasUnseenNotification == true
+  }
+
+  func saveAllLayoutSnapshots() {
+    guard let saveLayoutSnapshot else {
+      assertionFailure("saveLayoutSnapshot closure not configured.")
+      return
+    }
+    for (id, state) in states {
+      saveLayoutSnapshot(id, state.captureLayoutSnapshot())
+    }
   }
 
   func surfaceBackgroundOpacity() -> Double {

@@ -5,6 +5,49 @@ import Testing
 
 @MainActor
 struct WorktreeTerminalManagerTests {
+  @Test func reusesExistingStateAndReloadsSnapshotAfterRestoreIsEnabled() {
+    let manager = WorktreeTerminalManager(runtime: GhosttyRuntime())
+    let worktree = makeWorktree()
+    let snapshot = makeLayoutSnapshot()
+    var restoreEnabled = false
+
+    manager.loadLayoutSnapshot = { _ in
+      guard restoreEnabled else { return nil }
+      return snapshot
+    }
+
+    let initialState = manager.state(for: worktree)
+    #expect(initialState.pendingLayoutSnapshot == nil)
+
+    restoreEnabled = true
+
+    let reusedState = manager.state(for: worktree)
+    #expect(reusedState === initialState)
+    #expect(reusedState.pendingLayoutSnapshot == snapshot)
+  }
+
+  @Test func reusingExistingStateDoesNotReloadSnapshotWhenSetupScriptBecomesPending() {
+    let manager = WorktreeTerminalManager(runtime: GhosttyRuntime())
+    let worktree = makeWorktree()
+    let snapshot = makeLayoutSnapshot()
+    var restoreEnabled = false
+
+    manager.loadLayoutSnapshot = { _ in
+      guard restoreEnabled else { return nil }
+      return snapshot
+    }
+
+    let initialState = manager.state(for: worktree)
+    #expect(initialState.pendingLayoutSnapshot == nil)
+
+    restoreEnabled = true
+
+    let reusedState = manager.state(for: worktree) { true }
+    #expect(reusedState === initialState)
+    #expect(reusedState.needsSetupScript())
+    #expect(reusedState.pendingLayoutSnapshot == nil)
+  }
+
   @Test func buffersEventsUntilStreamCreated() async {
     let manager = WorktreeTerminalManager(runtime: GhosttyRuntime())
     let worktree = makeWorktree()
@@ -634,6 +677,25 @@ struct WorktreeTerminalManagerTests {
       title: "Title",
       body: "Body",
       isRead: isRead
+    )
+  }
+
+  private func makeLayoutSnapshot() -> TerminalLayoutSnapshot {
+    TerminalLayoutSnapshot(
+      tabs: [
+        TerminalLayoutSnapshot.TabSnapshot(
+          title: "Terminal 1",
+          icon: nil,
+          tintColor: nil,
+          layout: .leaf(
+            TerminalLayoutSnapshot.SurfaceSnapshot(
+              workingDirectory: "/tmp/repo/wt-1"
+            )
+          ),
+          focusedLeafIndex: 0
+        ),
+      ],
+      selectedTabIndex: 0
     )
   }
 }

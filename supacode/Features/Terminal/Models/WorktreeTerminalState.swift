@@ -6,6 +6,7 @@ import Observation
 import Sharing
 
 private let blockingScriptLogger = SupaLogger("BlockingScript")
+private let layoutLogger = SupaLogger("Layout")
 
 @MainActor
 @Observable
@@ -29,6 +30,7 @@ final class WorktreeTerminalState {
   private var lastBlockingScriptTabByKind: [BlockingScriptKind: TerminalTabID] = [:]
   private var pendingSetupScript: Bool
   private var isEnsuringInitialTab = false
+  @ObservationIgnored var pendingLayoutSnapshot: TerminalLayoutSnapshot?
   private var lastReportedTaskStatus: WorktreeTaskStatus?
   private var lastEmittedFocusSurfaceId: UUID?
   private var lastWindowIsKey: Bool?
@@ -72,6 +74,14 @@ final class WorktreeTerminalState {
     guard tabManager.tabs.isEmpty else { return }
     guard !isEnsuringInitialTab else { return }
     isEnsuringInitialTab = true
+
+    if let snapshot = pendingLayoutSnapshot {
+      pendingLayoutSnapshot = nil
+      restoreFromSnapshot(snapshot, focusing: focusing)
+      isEnsuringInitialTab = false
+      return
+    }
+
     Task {
       let setupScript: String?
       if pendingSetupScript {
@@ -586,6 +596,190 @@ final class WorktreeTerminalState {
     emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
   }
 
+  // MARK: - Layout Snapshot
+
+  func captureLayoutSnapshot() -> TerminalLayoutSnapshot? {
+    guard !tabManager.tabs.isEmpty else { return nil }
+    var tabSnapshots: [TerminalLayoutSnapshot.TabSnapshot] = []
+    for tab in tabManager.tabs {
+      guard let tree = trees[tab.id], let root = tree.root else {
+        layoutLogger.warning("Skipping tab \(tab.id.rawValue) during snapshot capture (no tree)")
+        continue
+      }
+      let layout = captureLayoutNode(root)
+      let leaves = root.leaves()
+      let focusedId = focusedSurfaceIdByTab[tab.id]
+      let focusedLeafIndex =
+        focusedId.flatMap { id in
+          leaves.firstIndex(where: { $0.id == id })
+        } ?? 0
+      // Detect blocking-script tabs by their locked title or tint color and normalize to default state.
+      let isBlockingScriptTab = tab.isTitleLocked || tab.tintColor != nil
+      tabSnapshots.append(
+        TerminalLayoutSnapshot.TabSnapshot(
+          title: tab.title,
+          icon: isBlockingScriptTab ? nil : tab.icon,
+          tintColor: isBlockingScriptTab ? nil : tab.tintColor,
+          layout: layout,
+          focusedLeafIndex: focusedLeafIndex
+        )
+      )
+    }
+    guard !tabSnapshots.isEmpty else { return nil }
+    let selectedIndex =
+      tabManager.selectedTabId.flatMap { id in
+        tabManager.tabs.firstIndex(where: { $0.id == id })
+      } ?? 0
+    return TerminalLayoutSnapshot(tabs: tabSnapshots, selectedTabIndex: selectedIndex)
+  }
+
+  private func captureLayoutNode(
+    _ node: SplitTree<GhosttySurfaceView>.Node
+  ) -> TerminalLayoutSnapshot.LayoutNode {
+    switch node {
+    case .leaf(let view):
+      return .leaf(
+        TerminalLayoutSnapshot.SurfaceSnapshot(workingDirectory: view.bridge.state.pwd)
+      )
+    case .split(let split):
+      let direction: TerminalLayoutSnapshot.SplitDirection =
+        switch split.direction {
+        case .horizontal: .horizontal
+        case .vertical: .vertical
+        }
+      return .split(
+        TerminalLayoutSnapshot.SplitSnapshot(
+          direction: direction,
+          ratio: split.ratio,
+          left: captureLayoutNode(split.left),
+          right: captureLayoutNode(split.right)
+        )
+      )
+    }
+  }
+
+  private func restoreFromSnapshot(_ snapshot: TerminalLayoutSnapshot, focusing: Bool) {
+    guard !snapshot.tabs.isEmpty else {
+      layoutLogger.warning("Attempted to restore empty layout snapshot, skipping restoration.")
+      return
+    }
+
+    // Skip setup script when restoring a saved layout.
+    pendingSetupScript = false
+
+    for (index, tabSnapshot) in snapshot.tabs.enumerated() {
+      let firstLeafPwd = tabSnapshot.layout.firstLeaf.workingDirectory
+      let workingDir = firstLeafPwd.flatMap { URL(filePath: $0, directoryHint: .isDirectory) }
+      let context: ghostty_surface_context_e =
+        index == 0 ? GHOSTTY_SURFACE_CONTEXT_WINDOW : GHOSTTY_SURFACE_CONTEXT_TAB
+      let tabId = tabManager.createTab(
+        title: tabSnapshot.title,
+        icon: tabSnapshot.icon,
+        isTitleLocked: false,
+        tintColor: tabSnapshot.tintColor
+      )
+      let surface = createSurface(
+        tabId: tabId,
+        initialInput: nil,
+        workingDirectoryOverride: workingDir,
+        inheritingFromSurfaceId: nil,
+        context: context
+      )
+      let tree = SplitTree(view: surface)
+      trees[tabId] = tree
+      focusedSurfaceIdByTab[tabId] = surface.id
+      tabIsRunningById[tabId] = false
+
+      // Recursively restore splits.
+      restoreLayoutNode(tabSnapshot.layout, anchor: surface, tabId: tabId)
+
+      // Log if partial restoration produced fewer panes than expected.
+      let leaves = trees[tabId]?.root?.leaves() ?? []
+      let expectedLeaves = tabSnapshot.layout.leafCount
+      if leaves.count != expectedLeaves {
+        layoutLogger.warning(
+          "Partial restore for tab '\(tabSnapshot.title)': expected \(expectedLeaves) panes, got \(leaves.count)"
+        )
+      }
+
+      // Focus the correct leaf.
+      let focusedIndex = max(0, min(tabSnapshot.focusedLeafIndex, leaves.count - 1))
+      if focusedIndex < leaves.count {
+        focusedSurfaceIdByTab[tabId] = leaves[focusedIndex].id
+      }
+
+      onTabCreated?()
+    }
+
+    // Select the correct tab.
+    let selectedIndex = max(0, min(snapshot.selectedTabIndex, tabManager.tabs.count - 1))
+    if selectedIndex < tabManager.tabs.count {
+      let selectedTab = tabManager.tabs[selectedIndex]
+      tabManager.selectTab(selectedTab.id)
+      if focusing {
+        focusSurface(in: selectedTab.id)
+      }
+    }
+  }
+
+  private func restoreLayoutNode(
+    _ node: TerminalLayoutSnapshot.LayoutNode,
+    anchor: GhosttySurfaceView,
+    tabId: TerminalTabID
+  ) {
+    guard case .split(let split) = node else { return }
+
+    // Create the right child by splitting the anchor.
+    let rightPwd = split.right.firstLeaf.workingDirectory
+    let rightWorkingDir = rightPwd.flatMap { URL(filePath: $0, directoryHint: .isDirectory) }
+    let direction: SplitTree<GhosttySurfaceView>.NewDirection =
+      split.direction == .horizontal ? .right : .down
+
+    guard
+      let newSurface = createRestorationSplit(
+        at: anchor,
+        direction: direction,
+        ratio: split.ratio,
+        workingDirectory: rightWorkingDir,
+        tabId: tabId
+      )
+    else {
+      layoutLogger.warning("Skipping subtree restoration for tab \(tabId.rawValue)")
+      return
+    }
+
+    // Recurse into left and right subtrees.
+    restoreLayoutNode(split.left, anchor: anchor, tabId: tabId)
+    restoreLayoutNode(split.right, anchor: newSurface, tabId: tabId)
+  }
+
+  private func createRestorationSplit(
+    at anchor: GhosttySurfaceView,
+    direction: SplitTree<GhosttySurfaceView>.NewDirection,
+    ratio: Double,
+    workingDirectory: URL?,
+    tabId: TerminalTabID
+  ) -> GhosttySurfaceView? {
+    guard var tree = trees[tabId] else { return nil }
+    let newSurface = createSurface(
+      tabId: tabId,
+      initialInput: nil,
+      workingDirectoryOverride: workingDirectory,
+      inheritingFromSurfaceId: anchor.id,
+      context: GHOSTTY_SURFACE_CONTEXT_SPLIT
+    )
+    do {
+      tree = try tree.inserting(view: newSurface, at: anchor, direction: direction, ratio: ratio)
+      trees[tabId] = tree
+      return newSurface
+    } catch {
+      layoutLogger.warning("Failed to restore split for tab \(tabId.rawValue): \(error)")
+      newSurface.closeSurface()
+      surfaces.removeValue(forKey: newSurface.id)
+      return nil
+    }
+  }
+
   func needsSetupScript() -> Bool {
     pendingSetupScript
   }
@@ -692,13 +886,14 @@ final class WorktreeTerminalState {
   private func createSurface(
     tabId: TerminalTabID,
     initialInput: String?,
+    workingDirectoryOverride: URL? = nil,
     inheritingFromSurfaceId: UUID?,
     context: ghostty_surface_context_e
   ) -> GhosttySurfaceView {
     let inherited = inheritedSurfaceConfig(fromSurfaceId: inheritingFromSurfaceId, context: context)
     let view = GhosttySurfaceView(
       runtime: runtime,
-      workingDirectory: inherited.workingDirectory ?? worktree.workingDirectory,
+      workingDirectory: workingDirectoryOverride ?? inherited.workingDirectory ?? worktree.workingDirectory,
       initialInput: initialInput,
       fontSize: inherited.fontSize,
       context: context

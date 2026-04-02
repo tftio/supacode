@@ -308,6 +308,21 @@ struct SettingsFeatureTests {
     #expect(settingsFile.global.pullRequestMergeStrategy == .squash)
   }
 
+  @Test(.dependencies) func toggleRestoreTerminalLayoutPersists() async {
+    @Shared(.settingsFile) var settingsFile
+    $settingsFile.withLock { $0.global = .default }
+
+    let store = TestStore(initialState: SettingsFeature.State()) {
+      SettingsFeature()
+    }
+
+    await store.send(.binding(.set(\.restoreTerminalLayoutEnabled, true))) {
+      $0.restoreTerminalLayoutEnabled = true
+    }
+    await store.receive(\.delegate.settingsChanged)
+    #expect(settingsFile.global.restoreTerminalLayoutEnabled == true)
+  }
+
   // MARK: - Sorted repositories.
 
   @Test(.dependencies) func repositoriesChangedSortsByNameCaseInsensitive() async {

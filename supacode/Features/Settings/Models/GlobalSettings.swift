@@ -21,6 +21,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var copyUntrackedOnWorktreeCreate: Bool
   var pullRequestMergeStrategy: PullRequestMergeStrategy
   var terminalThemeSyncEnabled: Bool
+  var restoreTerminalLayoutEnabled: Bool
   var shortcutOverrides: [AppShortcutID: AppShortcutOverride]
 
   static let `default` = GlobalSettings(
@@ -45,6 +46,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     copyUntrackedOnWorktreeCreate: false,
     pullRequestMergeStrategy: .merge,
     terminalThemeSyncEnabled: false,
+    restoreTerminalLayoutEnabled: false,
     defaultWorktreeBaseDirectoryPath: nil,
     shortcutOverrides: [:]
   )
@@ -71,6 +73,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     copyUntrackedOnWorktreeCreate: Bool = false,
     pullRequestMergeStrategy: PullRequestMergeStrategy = .merge,
     terminalThemeSyncEnabled: Bool = false,
+    restoreTerminalLayoutEnabled: Bool = false,
     defaultWorktreeBaseDirectoryPath: String? = nil,
     shortcutOverrides: [AppShortcutID: AppShortcutOverride] = [:]
   ) {
@@ -95,6 +98,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.copyUntrackedOnWorktreeCreate = copyUntrackedOnWorktreeCreate
     self.pullRequestMergeStrategy = pullRequestMergeStrategy
     self.terminalThemeSyncEnabled = terminalThemeSyncEnabled
+    self.restoreTerminalLayoutEnabled = restoreTerminalLayoutEnabled
     self.defaultWorktreeBaseDirectoryPath = defaultWorktreeBaseDirectoryPath
     self.shortcutOverrides = shortcutOverrides
   }
@@ -158,6 +162,9 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     terminalThemeSyncEnabled =
       try container.decodeIfPresent(Bool.self, forKey: .terminalThemeSyncEnabled)
       ?? Self.default.terminalThemeSyncEnabled
+    restoreTerminalLayoutEnabled =
+      try container.decodeIfPresent(Bool.self, forKey: .restoreTerminalLayoutEnabled)
+      ?? Self.default.restoreTerminalLayoutEnabled
     defaultWorktreeBaseDirectoryPath =
       try container.decodeIfPresent(String.self, forKey: .defaultWorktreeBaseDirectoryPath)
       ?? Self.default.defaultWorktreeBaseDirectoryPath

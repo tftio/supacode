@@ -41,6 +41,11 @@ struct AppearanceSettingsView: View {
           isOn: $store.confirmBeforeQuit
         )
         .help("Ask before quitting Supacode")
+        Toggle(isOn: $store.restoreTerminalLayoutEnabled) {
+          Text("Restore Terminal Layout")
+          Text("Reopen tabs, splits, and working directories from your last session.")
+        }
+        .help("Restore tabs and splits when reopening a worktree")
       }
       Section("Editor") {
         Picker(

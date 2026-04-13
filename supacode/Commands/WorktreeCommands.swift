@@ -65,11 +65,13 @@ struct WorktreeCommands: Commands {
       }
       .appKeyboardShortcut(refresh)
       .help("Refresh (\(refresh?.display ?? "none"))")
+      .disabled(!repositories.isInitialLoadComplete)
       Button("Archived Worktrees", systemImage: "archivebox") {
         store.send(.repositories(.selectArchivedWorktrees))
       }
       .appKeyboardShortcut(archived)
       .help("Archived Worktrees (\(archived?.display ?? "none"))")
+      .disabled(!repositories.isInitialLoadComplete)
       Divider()
       // Commands.
       Button("Archive Worktree…", systemImage: "archivebox") {

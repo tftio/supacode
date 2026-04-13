@@ -840,6 +840,72 @@ struct RepositoriesFeatureTests {
     await store.finish()
   }
 
+  @Test func createWorktreeInRepositoryPreservesExplicitNameDuringInitialProgressUpdate() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree])
+    let pendingID = "pending:00000000-0000-0000-0000-000000000001"
+    let validationClock = TestClock()
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.uuid = .constant(UUID(uuidString: "00000000-0000-0000-0000-000000000001")!)
+      $0.gitClient.localBranchNames = { _ in
+        try await validationClock.sleep(for: .seconds(1))
+        return []
+      }
+      $0.gitClient.isValidBranchName = { _, _ in false }
+    }
+
+    let expectedAlert = AlertState<RepositoriesFeature.Alert> {
+      TextState("Branch name invalid")
+    } actions: {
+      ButtonState(role: .cancel) {
+        TextState("OK")
+      }
+    } message: {
+      TextState("Enter a valid git branch name and try again.")
+    }
+
+    await store.send(
+      RepositoriesFeature.Action.createWorktreeInRepository(
+        repositoryID: repository.id,
+        nameSource: .explicit("feature/new-branch"),
+        baseRefSource: .repositorySetting,
+        fetchOrigin: false
+      )
+    ) {
+      $0.pendingWorktrees = [
+        PendingWorktree(
+          id: pendingID,
+          repositoryID: repository.id,
+          progress: WorktreeCreationProgress(
+            stage: .loadingLocalBranches,
+            worktreeName: "feature/new-branch"
+          )
+        ),
+      ]
+      $0.selection = SidebarSelection.worktree(pendingID)
+      $0.sidebarSelectedWorktreeIDs = [pendingID]
+    }
+
+    await store.receive(\.pendingWorktreeProgressUpdated)
+    #expect(store.state.pendingWorktrees[0].progress == WorktreeCreationProgress(
+      stage: .loadingLocalBranches,
+      worktreeName: "feature/new-branch"
+    ))
+
+    await validationClock.advance(by: .seconds(1))
+
+    await store.receive(\.createRandomWorktreeFailed) {
+      $0.pendingWorktrees = []
+      $0.selection = nil
+      $0.sidebarSelectedWorktreeIDs = []
+      $0.alert = expectedAlert
+    }
+    await store.finish()
+  }
+
   @Test func createRandomWorktreeFailedWithTraversalNameSkipsCleanup() async {
     let repoRoot = "/tmp/repo"
     let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)

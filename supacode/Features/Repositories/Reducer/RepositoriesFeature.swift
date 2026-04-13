@@ -894,11 +894,12 @@ struct RepositoriesFeature {
           repositorySettings.copyIgnoredOnWorktreeCreate ?? globalSettings.copyIgnoredOnWorktreeCreate
         let copyUntrackedOnWorktreeCreate =
           repositorySettings.copyUntrackedOnWorktreeCreate ?? globalSettings.copyUntrackedOnWorktreeCreate
+        let initialWorktreeName: String? = if case .explicit(let name) = nameSource { name } else { nil }
         state.pendingWorktrees.append(
           PendingWorktree(
             id: pendingID,
             repositoryID: repository.id,
-            progress: WorktreeCreationProgress(stage: .loadingLocalBranches)
+            progress: WorktreeCreationProgress(stage: .loadingLocalBranches, worktreeName: initialWorktreeName)
           )
         )
         setSingleWorktreeSelection(pendingID, state: &state)
@@ -907,7 +908,10 @@ struct RepositoriesFeature {
         let isValidBranchName = gitClient.isValidBranchName
         return .run { send in
           var newWorktreeName: String?
-          var progress = WorktreeCreationProgress(stage: .loadingLocalBranches)
+          var progress = WorktreeCreationProgress(
+            stage: .loadingLocalBranches,
+            worktreeName: initialWorktreeName
+          )
           var progressUpdateThrottle = WorktreeCreationProgressUpdateThrottle(
             stride: worktreeCreationProgressUpdateStride
           )
@@ -3153,8 +3157,8 @@ extension RepositoriesFeature.State {
     return WorktreeRowModel(
       id: pending.id,
       repositoryID: pending.repositoryID,
-      name: pending.progress.titleText,
-      detail: pending.progress.detailText,
+      name: pending.progress.worktreeName ?? "Creating…",
+      detail: pending.progress.worktreeName ?? "",
       info: worktreeInfo(for: pending.id),
       isPinned: false,
       isMainWorktree: false,

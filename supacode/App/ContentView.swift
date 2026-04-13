@@ -32,21 +32,14 @@ struct ContentView: View {
       get: { store.runScriptDraft },
       set: { store.send(.runScriptDraftChanged($0)) }
     )
-    Group {
-      if store.repositories.isInitialLoadComplete {
-        NavigationSplitView(columnVisibility: $leftSidebarVisibility) {
-          SidebarView(store: repositoriesStore, terminalManager: terminalManager)
-            .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 320)
-        } detail: {
-          WorktreeDetailView(store: store, terminalManager: terminalManager)
-        }
-        .navigationSplitViewStyle(.automatic)
-      } else {
-        AppLoadingView()
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(.background)
-      }
+    NavigationSplitView(columnVisibility: $leftSidebarVisibility) {
+      SidebarView(store: repositoriesStore, terminalManager: terminalManager)
+        .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 320)
+    } detail: {
+      WorktreeDetailView(store: store, terminalManager: terminalManager)
     }
+    .navigationSplitViewStyle(.automatic)
+    .disabled(!store.repositories.isInitialLoadComplete)
     .environment(\.surfaceBackgroundOpacity, terminalManager.surfaceBackgroundOpacity())
     .onChange(of: scenePhase) { _, newValue in
       store.send(.scenePhaseChanged(newValue))
@@ -139,11 +132,9 @@ extension EnvironmentValues {
 
   var surfaceTopChromeBackgroundOpacity: Double {
     get {
-      if surfaceBackgroundOpacity < 1 {
-        let proportionalOpacity = surfaceBackgroundOpacity * 0.56
-        return min(max(proportionalOpacity, 0.36), 0.62)
-      }
-      return 1
+      guard surfaceBackgroundOpacity < 1 else { return 1 }
+      let proportionalOpacity = surfaceBackgroundOpacity * 0.56
+      return max(0.36, min(proportionalOpacity, 0.62))
     }
     set {
       surfaceBackgroundOpacity = newValue
@@ -152,11 +143,9 @@ extension EnvironmentValues {
 
   var surfaceBottomChromeBackgroundOpacity: Double {
     get {
-      if surfaceBackgroundOpacity < 1 {
-        let proportionalOpacity = surfaceBackgroundOpacity * 0.78
-        return min(max(proportionalOpacity, 0.52), 0.82)
-      }
-      return 1
+      guard surfaceBackgroundOpacity < 1 else { return 1 }
+      let proportionalOpacity = surfaceBackgroundOpacity * 0.78
+      return max(0.52, min(proportionalOpacity, 0.82))
     }
     set {
       surfaceBackgroundOpacity = newValue

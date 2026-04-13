@@ -25,7 +25,9 @@ struct SidebarListView: View {
 
     return ScrollViewReader { scrollProxy in
       List(selection: selection) {
-        if orderedRoots.isEmpty {
+        if !state.isInitialLoadComplete, store.repositories.isEmpty {
+          SidebarPlaceholderView()
+        } else if orderedRoots.isEmpty {
           ForEach(store.repositories) { repository in
             SidebarRepositorySectionView(
               repository: repository,
@@ -69,16 +71,11 @@ struct SidebarListView: View {
       }
       .onKeyPress { keyPress in
         guard !keyPress.characters.isEmpty else { return .ignored }
-        let isNavigationKey =
-          keyPress.key == .upArrow
-          || keyPress.key == .downArrow
-          || keyPress.key == .leftArrow
-          || keyPress.key == .rightArrow
-          || keyPress.key == .home
-          || keyPress.key == .end
-          || keyPress.key == .pageUp
-          || keyPress.key == .pageDown
-        if isNavigationKey { return .ignored }
+        let navigationKeys: Set<KeyEquivalent> = [
+          .upArrow, .downArrow, .leftArrow, .rightArrow,
+          .home, .end, .pageUp, .pageDown,
+        ]
+        guard !navigationKeys.contains(keyPress.key) else { return .ignored }
         let hasCommandModifier = keyPress.modifiers.contains(.command)
         if hasCommandModifier { return .ignored }
         guard let worktreeID = store.selectedWorktreeID,
@@ -230,5 +227,43 @@ private struct SidebarFailedRepositoryRow: View {
       }
     )
     .padding(.horizontal, 12)
+  }
+}
+
+// MARK: - Sidebar placeholder.
+
+private struct SidebarPlaceholderView: View {
+  var body: some View {
+    ForEach(0..<2, id: \.self) { section in
+      Section {
+        ForEach(0..<3, id: \.self) { _ in
+          Label {
+            VStack(alignment: .leading, spacing: 2) {
+              Text("placeholder-branch")
+                .font(.body)
+                .lineLimit(1)
+                .redacted(reason: .placeholder)
+                .shimmer(isActive: true)
+              Text("placeholder")
+                .font(.footnote)
+                .lineLimit(1)
+                .redacted(reason: .placeholder)
+                .shimmer(isActive: true)
+            }
+          } icon: {
+            Image(systemName: "arrow.triangle.branch")
+              .accessibilityHidden(true)
+              .foregroundStyle(.secondary)
+              .redacted(reason: .placeholder)
+              .shimmer(isActive: true)
+          }
+        }
+      } header: {
+        Text(section == 0 ? "repository" : "second-repo")
+          .foregroundStyle(.secondary)
+          .redacted(reason: .placeholder)
+          .shimmer(isActive: true)
+      }
+    }
   }
 }

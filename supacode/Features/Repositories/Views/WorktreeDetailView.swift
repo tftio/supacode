@@ -26,6 +26,12 @@ struct WorktreeDetailView: View {
       selectedWorktreeID: repositories.selectedWorktreeID,
       repositories: repositories
     )
+    let showsToolbarPlaceholder = shouldShowToolbarPlaceholder(
+      repositories: repositories,
+      loadingInfo: loadingInfo,
+      selectedWorktree: selectedWorktree,
+      selectedWorktreeSummaries: selectedWorktreeSummaries
+    )
     let hasActiveWorktree =
       selectedWorktree != nil
       && loadingInfo == nil
@@ -45,7 +51,9 @@ struct WorktreeDetailView: View {
     )
     .toolbar(removing: .title)
     .toolbar {
-      if hasActiveWorktree, let selectedWorktree {
+      if showsToolbarPlaceholder {
+        ToolbarPlaceholderContent()
+      } else if hasActiveWorktree, let selectedWorktree {
         let pullRequest = repositories.worktreeInfo(for: selectedWorktree.id)?.pullRequest
         let matchesBranch =
           if let pullRequest {
@@ -125,6 +133,30 @@ struct WorktreeDetailView: View {
       && selectedWorktreeSummaries.count > 1
   }
 
+  private func shouldShowToolbarPlaceholder(
+    repositories: RepositoriesFeature.State,
+    loadingInfo: WorktreeLoadingInfo?,
+    selectedWorktree: Worktree?,
+    selectedWorktreeSummaries: [MultiSelectedWorktreeSummary]
+  ) -> Bool {
+    if repositories.isShowingArchivedWorktrees {
+      return false
+    }
+    if shouldShowMultiSelectionSummary(
+      repositories: repositories,
+      selectedWorktreeSummaries: selectedWorktreeSummaries
+    ) {
+      return false
+    }
+    if loadingInfo != nil {
+      return true
+    }
+    if selectedWorktree != nil {
+      return false
+    }
+    return !repositories.isInitialLoadComplete
+  }
+
   @ViewBuilder
   private func detailContent(
     repositories: RepositoriesFeature.State,
@@ -161,6 +193,8 @@ struct WorktreeDetailView: View {
           store.send(.repositories(.consumeTerminalFocus(selectedWorktree.id)))
         }
       }
+    } else if !repositories.isInitialLoadComplete {
+      DetailPlaceholderView()
     } else {
       EmptyStateView(store: store.scope(state: \.repositories, action: \.repositories))
     }
@@ -427,6 +461,129 @@ struct WorktreeDetailView: View {
       )
     }
     return nil
+  }
+}
+
+// MARK: - Detail placeholder.
+
+private struct DetailPlaceholderView: View {
+  @State private var messageIndex = Int.random(in: 0..<Self.messages.count)
+
+  private static let messages = [
+    "Preparing your worktree…",
+    "Getting your agents ready…",
+    "Syncing git state…",
+    "Indexing branches…",
+    "Staging your workspace…",
+    "Orchestrating terminals…",
+    "Spinning up runners…",
+    "Warming up shells…",
+    "Aligning refs…",
+    "Assembling task graph…",
+    "Tuning buffers…",
+    "Hydrating caches…",
+    "Resolving merge conflicts telepathically…",
+    "Teaching agents to say less…",
+    "Removing \"you're absolutely right!\"…",
+    "Evicting polite overcommit…",
+    "Reducing agent flattery…",
+    "Sharpening code opinions…",
+    "Making the bots decisive…",
+    "Debouncing Claude Code pleasantries…",
+    "Calibrating Codex confidence…",
+    "Pruning Claude Code hedges…",
+    "Clearing Codex verbosity…",
+    "Convincing Copilot to stop guessing…",
+    "Telling Cursor to read the error message…",
+    "Revoking Gemini's thesaurus access…",
+  ]
+
+  var body: some View {
+    VStack(spacing: 12) {
+      ProgressView()
+        .controlSize(.large)
+      Text(Self.messages[messageIndex])
+        .font(.title3)
+        .foregroundStyle(.secondary)
+        .contentTransition(.numericText())
+        .shimmer(isActive: true)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(nsColor: .windowBackgroundColor))
+    .task {
+      let clock = ContinuousClock()
+      while !Task.isCancelled {
+        try? await clock.sleep(for: .seconds(1.8))
+        withAnimation(.easeInOut(duration: 0.25)) {
+          // Pick a random index that differs from the current one.
+          var next = Int.random(in: 0..<Self.messages.count - 1)
+          if next >= messageIndex { next += 1 }
+          messageIndex = next
+        }
+      }
+    }
+  }
+}
+
+// MARK: - Toolbar placeholder.
+
+private struct ToolbarPlaceholderContent: ToolbarContent {
+  var body: some ToolbarContent {
+    ToolbarItem {
+      Button {} label: {
+        HStack(spacing: 6) {
+          Image(systemName: "arrow.trianglehead.branch")
+            .foregroundStyle(.secondary)
+          Text("feature/branch")
+        }
+        .font(.headline)
+      }
+      .redacted(reason: .placeholder)
+      .shimmer(isActive: true)
+    }
+
+    ToolbarSpacer(.flexible)
+
+    ToolbarItemGroup {
+      HStack(spacing: 8) {
+        Image(systemName: "sun.max.fill")
+          .font(.callout)
+        Text("00:00 – Open Command Palette (⌘P)")
+          .font(.footnote)
+          .monospaced()
+      }
+      .foregroundStyle(.secondary)
+      .padding(.horizontal)
+      .redacted(reason: .placeholder)
+      .shimmer(isActive: true)
+    }
+
+    ToolbarSpacer(.flexible)
+
+    ToolbarItemGroup {
+      Button {} label: {
+        HStack(spacing: 4) {
+          Image(systemName: "doc.text")
+          Text("VS Code (⌘O)")
+        }
+      }
+      .font(.caption)
+      .redacted(reason: .placeholder)
+      .shimmer(isActive: true)
+    }
+    ToolbarSpacer(.fixed)
+
+    ToolbarItem {
+      Button {} label: {
+        HStack(spacing: 6) {
+          Image(systemName: "play.fill")
+          Text("Run")
+        }
+      }
+      .font(.caption)
+      .redacted(reason: .placeholder)
+      .shimmer(isActive: true)
+    }
   }
 }
 

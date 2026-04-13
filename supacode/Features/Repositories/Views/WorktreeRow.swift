@@ -9,6 +9,7 @@ struct WorktreeRow: View {
   let gitIconColor: AnyShapeStyle
   let isArchiving: Bool
   let isDeleting: Bool
+  let isPending: Bool
   let info: WorktreeInfoEntry?
   let pullRequestBadgeText: String?
   let showsPullRequestInfo: Bool
@@ -68,6 +69,7 @@ struct WorktreeRow: View {
   ) {
     self.isArchiving = row.isArchiving
     self.isDeleting = row.isDeleting
+    self.isPending = row.isPending
     self.info = row.info
     self.showsPullRequestInfo = showsPullRequestInfo
     self.isRunScriptRunning = isRunScriptRunning
@@ -149,7 +151,6 @@ struct WorktreeRow: View {
 
   private static func worktreeName(for row: WorktreeRowModel) -> String {
     guard !row.isMainWorktree else { return "Default" }
-    guard !row.isPending else { return row.detail }
     if row.id.contains("/") {
       let pathName = URL(fileURLWithPath: row.id).lastPathComponent
       guard pathName.isEmpty else { return pathName }
@@ -185,6 +186,7 @@ struct WorktreeRow: View {
       IconView(
         isArchiving: isArchiving,
         isDeleting: isDeleting,
+        isPending: isPending,
         gitIconName: gitIconName,
         gitIconColor: gitIconColor,
         checkBadgeState: checkBadgeState
@@ -235,6 +237,7 @@ private struct TitleView: View {
 private struct IconView: View {
   let isArchiving: Bool
   let isDeleting: Bool
+  let isPending: Bool
   let gitIconName: String
   let gitIconColor: AnyShapeStyle
   let checkBadgeState: WorktreeRow.CheckBadgeState?
@@ -245,6 +248,7 @@ private struct IconView: View {
   }
 
   private var resolvedName: String {
+    if isPending { return "truck.box.badge.clock" }
     if isArchiving { return "archivebox" }
     if isDeleting { return "trash" }
     return gitIconName
@@ -252,16 +256,18 @@ private struct IconView: View {
 
   private var resolvedColor: AnyShapeStyle {
     guard !isEmphasized else { return AnyShapeStyle(.secondary) }
+    if isPending { return AnyShapeStyle(.blue) }
     if isArchiving { return AnyShapeStyle(.orange) }
     if isDeleting { return AnyShapeStyle(.red) }
     return gitIconColor
   }
 
   private var isSystemImage: Bool {
-    isArchiving || isDeleting
+    isPending || isArchiving || isDeleting
   }
 
   private var accessibilityLabel: String? {
+    if isPending { return "Creating" }
     if isArchiving { return "Archiving" }
     if isDeleting { return "Deleting" }
     return nil

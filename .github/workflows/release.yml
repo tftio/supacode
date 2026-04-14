@@ -52,7 +52,6 @@ jobs:
         with:
           submodules: recursive
       - uses: ./.github/actions/setup-macos
-      - run: mise exec -- tuist auth login
       - run: echo "TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
       - name: Prepare release overrides
         env:

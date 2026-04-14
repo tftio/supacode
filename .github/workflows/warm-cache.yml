@@ -19,5 +19,4 @@ jobs:
         with:
           submodules: recursive
       - uses: ./.github/actions/setup-macos
-      - run: mise exec -- tuist auth login
       - run: make warm-cache

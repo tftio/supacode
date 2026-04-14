@@ -55,7 +55,6 @@ jobs:
         with:
           submodules: recursive
       - uses: ./.github/actions/setup-macos
-      - run: mise exec -- tuist auth login
       - name: Prepare tip overrides
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}

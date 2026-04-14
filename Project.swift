@@ -58,56 +58,6 @@ let testDependencies: [TargetDependency] = [
   .external(name: "Sharing"),
 ]
 
-let projectBaseSettings: SettingsDictionary = [
-  "CLANG_CXX_LANGUAGE_STANDARD": "gnu++20",
-  "CLANG_ENABLE_MODULES": "YES",
-  "CODE_SIGN_STYLE": "Automatic",
-  "DEVELOPMENT_TEAM": "9ZLSJ2GN2B",
-  "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
-  "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
-  "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
-  "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
-  "SWIFT_VERSION": "6.0",
-]
-
-let cliBaseSettings: SettingsDictionary = [
-  "CODE_SIGNING_ALLOWED": "NO",
-  "ENABLE_HARDENED_RUNTIME": "YES",
-  "PRODUCT_MODULE_NAME": "supacode_cli",
-  "PRODUCT_NAME": "supacode",
-  "SKIP_INSTALL": "YES",
-  "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
-]
-
-let appBaseSettings: SettingsDictionary = [
-  "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-  "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
-  "ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS": "YES",
-  "ENABLE_APP_SANDBOX": "NO",
-  "ENABLE_HARDENED_RUNTIME": "YES",
-  "LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/../Frameworks",
-  "OTHER_LDFLAGS": "$(inherited) -lc++",
-  "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
-  "SWIFT_EMIT_LOC_STRINGS": "YES",
-]
-
-let appDebugSettings: SettingsDictionary = [
-  "CODE_SIGN_ENTITLEMENTS": "supacode/supacodeDebug.entitlements",
-  "COMPILATION_CACHE_ENABLE_CACHING": "YES",
-]
-
-let appReleaseSettings: SettingsDictionary = [
-  "CODE_SIGN_ENTITLEMENTS": "supacode/supacode.entitlements",
-  "COMPILATION_CACHE_ENABLE_CACHING": "NO",
-]
-
-let testBaseSettings: SettingsDictionary = [
-  "BUNDLE_LOADER": "$(TEST_HOST)",
-  "STRING_CATALOG_GENERATE_SYMBOLS": "NO",
-  "SWIFT_EMIT_LOC_STRINGS": "NO",
-  "TEST_HOST": "$(BUILT_PRODUCTS_DIR)/supacode.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/supacode",
-]
-
 let embedGhosttyResourcesInputPaths: [FileListGlob] = [
   "$(SRCROOT)/\(ghosttyResourcesPath.pathString)",
   "$(SRCROOT)/\(ghosttyTerminfoPath.pathString)",
@@ -136,7 +86,15 @@ let embedRuntimeAssetsOutputPaths: [Path] = [
 let project = Project(
   name: "supacode",
   settings: .settings(
-    base: projectBaseSettings,
+    base: [
+      "CLANG_ENABLE_MODULES": "YES",
+      "CODE_SIGN_STYLE": "Automatic",
+      "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
+      "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+      "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
+      "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
+      "SWIFT_VERSION": "6.0",
+    ],
     configurations: [
       .debug(name: .debug, xcconfig: "Configurations/Project.xcconfig"),
       .release(name: .release, xcconfig: "Configurations/Project.xcconfig"),
@@ -158,7 +116,14 @@ let project = Project(
         .external(name: "ArgumentParser"),
       ],
       settings: .settings(
-        base: cliBaseSettings,
+        base: [
+          "CODE_SIGNING_ALLOWED": "NO",
+          "ENABLE_HARDENED_RUNTIME": "YES",
+          "PRODUCT_MODULE_NAME": "supacode_cli",
+          "PRODUCT_NAME": "supacode",
+          "SKIP_INSTALL": "YES",
+          "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
+        ],
         defaultSettings: .essential
       )
     ),
@@ -207,9 +172,18 @@ let project = Project(
       ],
       dependencies: appDependencies,
       settings: .settings(
-        base: appBaseSettings,
-        debug: appDebugSettings,
-        release: appReleaseSettings,
+        base: [
+          "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+          "ENABLE_HARDENED_RUNTIME": "YES",
+          "LD_RUNPATH_SEARCH_PATHS": "$(inherited) @executable_path/../Frameworks",
+          "OTHER_LDFLAGS": "$(inherited) -lc++",
+        ],
+        debug: [
+          "CODE_SIGN_ENTITLEMENTS": "supacode/supacodeDebug.entitlements",
+        ],
+        release: [
+          "CODE_SIGN_ENTITLEMENTS": "supacode/supacode.entitlements",
+        ],
         defaultSettings: .essential
       )
     ),
@@ -225,7 +199,10 @@ let project = Project(
       ],
       dependencies: testDependencies,
       settings: .settings(
-        base: testBaseSettings,
+        base: [
+          "BUNDLE_LOADER": "$(TEST_HOST)",
+          "TEST_HOST": "$(BUILT_PRODUCTS_DIR)/supacode.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/supacode",
+        ],
         defaultSettings: .essential
       )
     ),

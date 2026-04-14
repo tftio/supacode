@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -ge 2 ]; then
+  src="${@: -2:1}"
+  dst="${@: -1}"
+
+  if [ -e "$src" ]; then
+    src_real="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$src")"
+    dst_path="$dst"
+
+    if [ -d "$dst" ]; then
+      dst_path="$dst/$(basename "$src")"
+    fi
+
+    dst_real="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$dst_path")"
+
+    if [ "$src_real" = "$dst_real" ]; then
+      exit 0
+    fi
+  fi
+fi
+
+exec /bin/cp "$@"

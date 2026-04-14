@@ -12,14 +12,12 @@ CURRENT_MAKEFILE_DIR := $(patsubst %/,%,$(dir $(CURRENT_MAKEFILE_PATH)))
 PROJECT_WORKSPACE := $(CURRENT_MAKEFILE_DIR)/supacode.xcworkspace
 APP_SCHEME := supacode
 PROJECT_CONFIG_PATH := Configurations/Project.xcconfig
-TUIST_MACRO_PATCH_SCRIPT := scripts/fix-tuist-macro-copy-phases.sh
 TUIST_GENERATION_STAMP_DIR := $(CURRENT_MAKEFILE_DIR)/.build/.tuist-generated-stamps
 TUIST_INSTALL_STAMP := $(TUIST_GENERATION_STAMP_DIR)/.installed
 TUIST_DEVELOPMENT_GENERATION_STAMP := $(TUIST_GENERATION_STAMP_DIR)/development
 TUIST_SOURCE_GENERATION_STAMP := $(TUIST_GENERATION_STAMP_DIR)/none
 TUIST_SOURCE_RELEASE_GENERATION_STAMP := $(TUIST_GENERATION_STAMP_DIR)/none-release
-TUIST_GENERATION_INPUTS := Project.swift Workspace.swift Tuist.swift Tuist/Package.swift $(wildcard Tuist/Package.resolved) $(PROJECT_CONFIG_PATH) mise.toml scripts/build-ghostty.sh $(TUIST_MACRO_PATCH_SCRIPT)
-TUIST_CACHE_TARGETS := SupacodeSettingsShared SupacodeSettingsFeature
+TUIST_GENERATION_INPUTS := Project.swift Workspace.swift Tuist.swift Tuist/Package.swift $(wildcard Tuist/Package.resolved) $(PROJECT_CONFIG_PATH) mise.toml scripts/build-ghostty.sh
 TUIST_GENERATE_CACHE_PROFILE ?= development
 TUIST_CACHE_CONFIGURATION ?= Debug
 FORMAT ?= xcsift
@@ -69,7 +67,6 @@ $(TUIST_GENERATION_STAMP_DIR)/%: $(TUIST_GENERATION_INPUTS) $(TUIST_INSTALL_STAM
 	find "$(TUIST_GENERATION_STAMP_DIR)" -mindepth 1 -maxdepth 1 ! -name '.installed' -delete
 	rm -rf supacode.xcodeproj supacode.xcworkspace
 	mise exec -- tuist generate --no-open --cache-profile "$*"
-	"./$(TUIST_MACRO_PATCH_SCRIPT)"
 	touch "$@"
 
 $(TUIST_SOURCE_RELEASE_GENERATION_STAMP): $(TUIST_GENERATION_INPUTS) $(TUIST_INSTALL_STAMP)
@@ -77,7 +74,6 @@ $(TUIST_SOURCE_RELEASE_GENERATION_STAMP): $(TUIST_GENERATION_INPUTS) $(TUIST_INS
 	find "$(TUIST_GENERATION_STAMP_DIR)" -mindepth 1 -maxdepth 1 ! -name '.installed' -delete
 	rm -rf supacode.xcodeproj supacode.xcworkspace
 	mise exec -- tuist generate --no-open --cache-profile none --configuration Release
-	"./$(TUIST_MACRO_PATCH_SCRIPT)"
 	touch "$@"
 
 build-ghostty-xcframework: # Build ghostty framework
@@ -86,8 +82,8 @@ build-ghostty-xcframework: # Build ghostty framework
 inspect-dependencies: $(TUIST_INSTALL_STAMP) # Check for implicit Tuist dependencies
 	mise exec -- tuist inspect dependencies --only implicit
 
-warm-cache: $(TUIST_INSTALL_STAMP) # Warm Tuist cache for the internal cacheable modules
-	mise exec -- tuist cache warm --configuration $(TUIST_CACHE_CONFIGURATION) $(TUIST_CACHE_TARGETS)
+warm-cache: $(TUIST_INSTALL_STAMP) # Warm the full Tuist cacheable graph
+	PATH="$(CURRENT_MAKEFILE_DIR)/scripts/shims:$$PATH" mise exec -- tuist cache warm --configuration $(TUIST_CACHE_CONFIGURATION)
 
 build-app: $(TUIST_DEVELOPMENT_GENERATION_STAMP) # Build the macOS app (Debug)
 	bash -o pipefail -c 'xcodebuild -workspace "$(PROJECT_WORKSPACE)" -scheme "$(APP_SCHEME)" -configuration Debug build -skipMacroValidation 2>&1 $(FORMATTER)'

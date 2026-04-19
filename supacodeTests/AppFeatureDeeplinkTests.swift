@@ -105,7 +105,7 @@ struct AppFeatureDeeplinkTests {
 
     await store.send(.deeplink(.worktree(id: worktree.id, action: .delete)))
     #expect(store.state.deeplinkInputConfirmation == nil)
-    await store.receive(\.repositories.deleteWorktreeConfirmed)
+    await store.receive(\.repositories.deleteSidebarItemConfirmed)
   }
 
   @Test(.dependencies) func deleteWorktreeDeeplinkConfirmationAcceptedSendsDeleteConfirmed() async {
@@ -137,7 +137,7 @@ struct AppFeatureDeeplinkTests {
         $0.deeplinkInputConfirmation = nil
       }
     }
-    await store.receive(\.repositories.deleteWorktreeConfirmed)
+    await store.receive(\.repositories.deleteSidebarItemConfirmed)
     await store.finish()
   }
 
@@ -148,6 +148,49 @@ struct AppFeatureDeeplinkTests {
     await store.send(.deeplink(.worktree(id: mainWorktree.id, action: .delete)))
     #expect(store.state.deeplinkInputConfirmation == nil)
     #expect(store.state.alert != nil)
+  }
+
+  @Test(.dependencies) func deleteFolderDeeplinkRoutesToFolderAlertPipeline() async {
+    // Regression: folders have a synthetic main-worktree
+    // (`workingDirectory == rootURL`), so the `isMainWorktree` gate
+    // in the deeplink handler used to reject them with a
+    // "main worktree not allowed" alert — making folders
+    // undeletable via deeplink. Fix routes folder targets to
+    // `.requestDeleteSidebarItems([target])` so the 3-button
+    // folder confirmation fires.
+    let folderRoot = "/tmp/folder-deeplink-\(UUID().uuidString)"
+    let folderURL = URL(fileURLWithPath: folderRoot)
+    let folderWorktree = Worktree(
+      id: Repository.folderWorktreeID(for: folderURL),
+      name: Repository.name(for: folderURL),
+      detail: "",
+      workingDirectory: folderURL,
+      repositoryRootURL: folderURL
+    )
+    let folderRepo = Repository(
+      id: folderRoot,
+      rootURL: folderURL,
+      name: Repository.name(for: folderURL),
+      worktrees: [folderWorktree],
+      isGitRepository: false
+    )
+    var repositoriesState = RepositoriesFeature.State()
+    repositoriesState.repositories = [folderRepo]
+    repositoriesState.repositoryRoots = [folderURL]
+    repositoriesState.isInitialLoadComplete = true
+    let store = TestStore(
+      initialState: AppFeature.State(
+        repositories: repositoriesState,
+        settings: SettingsFeature.State()
+      )
+    ) {
+      AppFeature()
+    }
+    store.exhaustivity = .off
+
+    await store.send(.deeplink(.worktree(id: folderWorktree.id, action: .delete)))
+    await store.receive(\.repositories.requestDeleteSidebarItems)
+    #expect(store.state.repositories.alert != nil, "folder alert should be presented")
   }
 
   @Test(.dependencies) func deleteWorktreeDeeplinkWithUnknownIDShowsAlert() async {

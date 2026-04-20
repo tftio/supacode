@@ -6,6 +6,7 @@ import SwiftUI
 struct DeveloperSettingsView: View {
   let store: StoreOf<SettingsFeature>
   @State private var kiroExpanded = false
+  @State private var piExpanded = false
 
   var body: some View {
     Form {
@@ -117,6 +118,33 @@ struct DeveloperSettingsView: View {
           Text("Kiro")
         } icon: {
           Image("kiro-mark")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 18, height: 18)
+            .accessibilityHidden(true)
+        }
+        .labelStyle(.titleTrailingIcon)
+      }
+      Section(isExpanded: $piExpanded) {
+        AgentInstallRow(
+          installAction: { store.send(.agentHookInstallTapped(.piHooks)) },
+          uninstallAction: { store.send(.agentHookUninstallTapped(.piHooks)) },
+          installState: store.piHooksState,
+          title: "Hooks",
+          subtitle: "Display agent activity in tab, sidebar, and forward notifications."
+        )
+        AgentInstallRow(
+          installAction: { store.send(.cliSkillInstallTapped(.pi)) },
+          uninstallAction: { store.send(.cliSkillUninstallTapped(.pi)) },
+          installState: store.piSkillState,
+          title: "CLI Skill",
+          subtitle: "Teach Pi how to use the Supacode CLI."
+        )
+      } header: {
+        Label {
+          Text("Pi")
+        } icon: {
+          Image("pi-mark")
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(width: 18, height: 18)

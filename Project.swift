@@ -17,6 +17,7 @@ let ghosttyFingerprintInputScript = """
 """
 
 let appResources: ResourceFileElements = [
+  "supacode/AppIcon.icon",
   "supacode/Assets.xcassets",
   "supacode/notification.wav",
 ]

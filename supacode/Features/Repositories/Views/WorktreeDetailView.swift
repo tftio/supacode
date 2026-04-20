@@ -56,17 +56,11 @@ struct WorktreeDetailView: View {
       if showsToolbarPlaceholder {
         ToolbarPlaceholderContent()
       } else if hasActiveWorktree, let selectedWorktree {
-        let pullRequest = repositories.worktreeInfo(for: selectedWorktree.id)?.pullRequest
-        let matchesBranch =
-          if let pullRequest {
-            pullRequest.headRefName == nil || pullRequest.headRefName == selectedWorktree.name
-          } else {
-            false
-          }
         let toolbarState = WorktreeToolbarState(
-          branchName: selectedWorktree.name,
+          title: selectedWorktree.name,
+          rootURL: selectedWorktree.repositoryRootURL,
+          kind: toolbarKind(for: selectedWorktree, repositories: repositories),
           statusToast: repositories.statusToast,
-          pullRequest: matchesBranch ? pullRequest : nil,
           notificationGroups: notificationGroups,
           unseenNotificationWorktreeCount: unseenNotificationWorktreeCount,
           openActionSelection: openActionSelection,
@@ -101,6 +95,7 @@ struct WorktreeDetailView: View {
         )
       }
     }
+    .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
     let hasRunningRunScript = state.hasRunningRunScript
     let actions = makeFocusedActions(
       hasActiveWorktree: hasActiveWorktree,
@@ -290,15 +285,31 @@ struct WorktreeDetailView: View {
   }
 
   fileprivate struct WorktreeToolbarState {
-    let branchName: String
+    // Folders have no git remote, so the PR payload is scoped to
+    // `.git` — this makes "folder with a pull request" unrepresentable.
+    enum Kind {
+      case git(pullRequest: GithubPullRequest?)
+      case folder
+    }
+
+    let title: String
+    let rootURL: URL
+    let kind: Kind
     let statusToast: RepositoriesFeature.StatusToast?
-    let pullRequest: GithubPullRequest?
     let notificationGroups: [ToolbarNotificationRepositoryGroup]
     let unseenNotificationWorktreeCount: Int
     let openActionSelection: OpenWorktreeAction
     let showExtras: Bool
     let scripts: [ScriptDefinition]
     let runningScriptIDs: Set<UUID>
+
+    var isFolder: Bool {
+      if case .folder = kind { true } else { false }
+    }
+
+    var pullRequest: GithubPullRequest? {
+      if case .git(let pullRequest) = kind { pullRequest } else { nil }
+    }
 
     /// The first `.run`-kind script, if any.
     var primaryScript: ScriptDefinition? {
@@ -340,8 +351,10 @@ struct WorktreeDetailView: View {
     var body: some ToolbarContent {
       ToolbarItem {
         WorktreeDetailTitleView(
-          branchName: toolbarState.branchName,
-          onSubmit: onRenameBranch
+          title: toolbarState.title,
+          rootURL: toolbarState.rootURL,
+          isFolder: toolbarState.isFolder,
+          onRenameBranch: onRenameBranch
         )
       }
 
@@ -353,11 +366,7 @@ struct WorktreeDetailView: View {
           pullRequest: toolbarState.pullRequest
         )
         .padding(.horizontal)
-      }
-
-      if !toolbarState.notificationGroups.isEmpty {
-        ToolbarSpacer(.fixed)
-        ToolbarItemGroup {
+        if !toolbarState.notificationGroups.isEmpty {
           ToolbarNotificationsPopoverButton(
             groups: toolbarState.notificationGroups,
             unseenWorktreeCount: toolbarState.unseenNotificationWorktreeCount,
@@ -387,7 +396,6 @@ struct WorktreeDetailView: View {
           onManageScripts: onManageScripts
         )
       }
-
     }
 
     @ViewBuilder
@@ -433,6 +441,22 @@ struct WorktreeDetailView: View {
     }
   }
 
+  private func toolbarKind(
+    for selectedWorktree: Worktree,
+    repositories: RepositoriesFeature.State
+  ) -> WorktreeToolbarState.Kind {
+    let selectedRow = repositories.selectedRow(for: selectedWorktree.id)
+    guard selectedRow?.isFolder != true else { return .folder }
+    guard let pullRequest = repositories.worktreeInfo(for: selectedWorktree.id)?.pullRequest else {
+      return .git(pullRequest: nil)
+    }
+    // Only surface the PR when its head branch matches the current
+    // worktree — otherwise stale info sticks around after a rename
+    // or branch switch.
+    let matches = pullRequest.headRefName == nil || pullRequest.headRefName == selectedWorktree.name
+    return .git(pullRequest: matches ? pullRequest : nil)
+  }
+
   private func loadingInfo(
     for selectedRow: SidebarItemModel?,
     selectedWorktreeID: Worktree.ID?,
@@ -445,11 +469,7 @@ struct WorktreeDetailView: View {
       return WorktreeLoadingInfo(
         name: selectedRow.name,
         repositoryName: repositoryName,
-        state: .removing,
-        statusTitle: nil,
-        statusDetail: nil,
-        statusCommand: nil,
-        statusLines: []
+        kind: .removing(isFolder: selectedRow.isFolder)
       )
     case .archiving, .deleting(inTerminal: true):
       // The script runs in a terminal tab, so let the
@@ -467,11 +487,14 @@ struct WorktreeDetailView: View {
       return WorktreeLoadingInfo(
         name: displayName,
         repositoryName: repositoryName,
-        state: .creating,
-        statusTitle: progress?.titleText ?? selectedRow.name,
-        statusDetail: progress?.detailText ?? selectedRow.detail,
-        statusCommand: progress?.commandText,
-        statusLines: progress?.liveOutputLines ?? []
+        kind: .creating(
+          WorktreeLoadingInfo.Progress(
+            statusTitle: progress?.titleText ?? selectedRow.name,
+            statusDetail: progress?.detailText ?? selectedRow.detail,
+            statusCommand: progress?.commandText,
+            statusLines: progress?.liveOutputLines ?? []
+          )
+        )
       )
     }
     return nil
@@ -522,6 +545,7 @@ private struct DetailPlaceholderView: View {
         .contentTransition(.numericText())
         .shimmer(isActive: true)
     }
+    .multilineTextAlignment(.center)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color(nsColor: .windowBackgroundColor))
     .task {
@@ -828,9 +852,10 @@ private struct WorktreeToolbarPreview: View {
 
   init() {
     toolbarState = WorktreeDetailView.WorktreeToolbarState(
-      branchName: "feature/toolbar-preview",
+      title: "feature/toolbar-preview",
+      rootURL: URL(fileURLWithPath: "/tmp/preview"),
+      kind: .git(pullRequest: nil),
       statusToast: nil,
-      pullRequest: nil,
       notificationGroups: [],
       unseenNotificationWorktreeCount: 0,
       openActionSelection: .finder,

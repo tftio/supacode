@@ -7,6 +7,7 @@ struct TerminalTabView: View {
   let isDragging: Bool
   let tabIndex: Int
   let fixedWidth: CGFloat?
+  let hasNotification: Bool
   let onSelect: () -> Void
   let onClose: () -> Void
   @Binding var closeButtonGestureActive: Bool
@@ -40,14 +41,25 @@ struct TerminalTabView: View {
       .help("Open tab \(tab.title)")
       .accessibilityLabel(tab.title)
 
-      TerminalTabCloseButton(
-        isHoveringTab: isHovering,
-        isDragging: isDragging,
-        isShowingShortcutHint: showsShortcutHint,
-        closeAction: onClose,
-        closeButtonGestureActive: $closeButtonGestureActive,
-        isHoveringClose: $isHoveringClose
-      )
+      // The dot and close X share the same trailing slot: the dot is
+      // visible when the tab is idle and has unread notifications, the
+      // close button replaces it on hover. `TerminalTabCloseButton` already
+      // owns the hover visibility — we mirror it inverted here.
+      ZStack {
+        TabNotificationDot()
+          .opacity(isShowingNotificationDot ? 1 : 0)
+          .allowsHitTesting(false)
+        TerminalTabCloseButton(
+          isHoveringTab: isHovering,
+          isDragging: isDragging,
+          isShowingShortcutHint: showsShortcutHint,
+          closeAction: onClose,
+          closeButtonGestureActive: $closeButtonGestureActive,
+          isHoveringClose: $isHoveringClose
+        )
+      }
+      .animation(.easeInOut(duration: TerminalTabBarMetrics.hoverAnimationDuration), value: isHovering)
+      .animation(.easeInOut(duration: 0.2), value: hasNotification)
       .padding(.trailing, TerminalTabBarMetrics.tabHorizontalPadding)
     }
     .background {
@@ -81,6 +93,20 @@ struct TerminalTabView: View {
 
   private var showsShortcutHint: Bool {
     commandKeyObserver.isPressed && shortcutHint != nil
+  }
+
+  private var isShowingNotificationDot: Bool {
+    hasNotification && !isHovering && !isHoveringClose && !isDragging && !showsShortcutHint
+  }
+}
+
+private struct TabNotificationDot: View {
+  var body: some View {
+    Circle()
+      .fill(.orange)
+      .frame(width: 6, height: 6)
+      .frame(width: TerminalTabBarMetrics.closeButtonSize, height: TerminalTabBarMetrics.closeButtonSize)
+      .accessibilityLabel("Unread notifications")
   }
 }
 

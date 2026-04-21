@@ -48,13 +48,34 @@ final class WorktreeTerminalState {
   var hasUnseenNotification: Bool {
     notifications.contains { !$0.isRead }
   }
+
+  func hasUnseenNotification(forSurfaceID surfaceID: UUID) -> Bool {
+    notifications.contains { !$0.isRead && $0.surfaceId == surfaceID }
+  }
+
+  func hasUnseenNotification(forTabID tabID: TerminalTabID) -> Bool {
+    guard let tree = trees[tabID] else { return false }
+    let surfaceIDs = Set(tree.leaves().map(\.id))
+    return notifications.contains { !$0.isRead && surfaceIDs.contains($0.surfaceId) }
+  }
+
+  /// Returns the most recent unread notification in this worktree, or nil.
+  func latestUnreadNotification() -> WorktreeTerminalNotification? {
+    unreadNotifications().first
+  }
+
+  /// Returns all unread notifications in this worktree sorted newest first.
+  func unreadNotifications() -> [WorktreeTerminalNotification] {
+    notifications.filter { !$0.isRead }.sorted { $0.createdAt > $1.createdAt }
+  }
+
   #if DEBUG
     var debugRecentHookCount: Int {
       recentHookBySurfaceID.count
     }
   #endif
   var isSelected: () -> Bool = { false }
-  var onNotificationReceived: ((String, String) -> Void)?
+  var onNotificationReceived: ((UUID, String, String) -> Void)?
   var onNotificationIndicatorChanged: (() -> Void)?
   var onTabCreated: (() -> Void)?
   var onTabClosed: (() -> Void)?
@@ -320,7 +341,7 @@ final class WorktreeTerminalState {
   func listSurfaces(tabID: TerminalTabID) -> [[String: String]] {
     let focusedID = focusedSurfaceIdByTab[tabID]
     return surfaces.compactMap { surfaceID, _ in
-      guard tabId(containing: surfaceID) == tabID else { return nil }
+      guard self.tabID(containing: surfaceID) == tabID else { return nil }
       var entry = ["id": surfaceID.uuidString]
       if surfaceID == focusedID { entry["focused"] = "1" }
       return entry
@@ -429,7 +450,7 @@ final class WorktreeTerminalState {
 
   @discardableResult
   func focusSurface(id: UUID) -> Bool {
-    guard let tabId = tabId(containing: id),
+    guard let tabId = tabID(containing: id),
       let surface = surfaces[id]
     else {
       terminalStateLogger.warning("focusSurface: surface \(id) not found in worktree \(worktree.id).")
@@ -571,7 +592,7 @@ final class WorktreeTerminalState {
     newSurfaceID: UUID? = nil,
     initialInput: String? = nil
   ) -> Bool {
-    guard let tabId = tabId(containing: surfaceId), var tree = trees[tabId] else {
+    guard let tabId = tabID(containing: surfaceId), var tree = trees[tabId] else {
       return false
     }
     guard let targetNode = tree.find(id: surfaceId) else { return false }
@@ -738,6 +759,15 @@ final class WorktreeTerminalState {
     for index in notifications.indices where notifications[index].surfaceId == surfaceID {
       notifications[index].isRead = true
     }
+    emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
+  }
+
+  /// Marks a single notification as read, leaving others untouched.
+  func markNotificationRead(id: WorktreeTerminalNotification.ID) {
+    let previousHasUnseen = hasUnseenNotification
+    guard let index = notifications.firstIndex(where: { $0.id == id }) else { return }
+    guard !notifications[index].isRead else { return }
+    notifications[index].isRead = true
     emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
   }
 
@@ -1273,6 +1303,7 @@ final class WorktreeTerminalState {
           surfaceId: surfaceId,
           title: trimmedTitle,
           body: trimmedBody,
+          createdAt: now,
           isRead: isRead
         ),
         at: 0
@@ -1283,7 +1314,7 @@ final class WorktreeTerminalState {
     if !fromHook, shouldSuppressDesktopNotification(title: trimmedTitle, body: trimmedBody, surfaceId: surfaceId) {
       return
     }
-    onNotificationReceived?(trimmedTitle, trimmedBody)
+    onNotificationReceived?(surfaceId, trimmedTitle, trimmedBody)
   }
 
   // MARK: - Notification deduplication (matches supaterm's approach).
@@ -1335,7 +1366,7 @@ final class WorktreeTerminalState {
     tabIsRunningById.removeValue(forKey: tabId)
   }
 
-  private func tabId(containing surfaceId: UUID) -> TerminalTabID? {
+  func tabID(containing surfaceId: UUID) -> TerminalTabID? {
     for (tabId, tree) in trees where tree.find(id: surfaceId) != nil {
       return tabId
     }
@@ -1452,7 +1483,7 @@ final class WorktreeTerminalState {
 
   private func handleCloseRequest(for view: GhosttySurfaceView, processAlive _: Bool) {
     guard surfaces[view.id] != nil else { return }
-    guard let tabId = tabId(containing: view.id), let tree = trees[tabId] else {
+    guard let tabId = tabID(containing: view.id), let tree = trees[tabId] else {
       view.closeSurface()
       cleanupSurfaceState(for: view.id)
       return

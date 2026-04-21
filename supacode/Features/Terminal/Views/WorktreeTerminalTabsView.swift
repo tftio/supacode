@@ -40,6 +40,9 @@ struct WorktreeTerminalTabsView: View {
           },
           closeAll: {
             state.closeAllTabs()
+          },
+          hasNotification: { tabId in
+            state.hasUnseenNotification(forTabID: tabId)
           }
         )
         .transition(.move(edge: .top).combined(with: .opacity))
@@ -49,10 +52,14 @@ struct WorktreeTerminalTabsView: View {
           TerminalSplitTreeAXContainer(
             tree: state.splitTree(for: tabId),
             activeSurfaceID: state.activeSurfaceID(for: tabId),
-            unfocusedSplitOverlay: unfocusedSplitOverlay
-          ) { operation in
-            state.performSplitOperation(operation, in: tabId)
-          }
+            unfocusedSplitOverlay: unfocusedSplitOverlay,
+            hasNotification: { surfaceID in
+              state.hasUnseenNotification(forSurfaceID: surfaceID)
+            },
+            action: { operation in
+              state.performSplitOperation(operation, in: tabId)
+            }
+          )
         }
       } else {
         EmptyTerminalPaneView(message: "No terminals open")

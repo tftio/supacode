@@ -290,8 +290,15 @@ final class WorktreeTerminalManager {
     state.isSelected = { [weak self] in
       self?.selectedWorktreeID == worktree.id
     }
-    state.onNotificationReceived = { [weak self] title, body in
-      self?.emit(.notificationReceived(worktreeID: worktree.id, title: title, body: body))
+    state.onNotificationReceived = { [weak self] surfaceID, title, body in
+      self?.emit(
+        .notificationReceived(
+          worktreeID: worktree.id,
+          surfaceID: surfaceID,
+          title: title,
+          body: body
+        )
+      )
     }
     state.onNotificationIndicatorChanged = { [weak self] in
       self?.emitNotificationIndicatorCountIfNeeded()
@@ -403,6 +410,49 @@ final class WorktreeTerminalManager {
 
   func hasUnseenNotifications(for worktreeID: Worktree.ID) -> Bool {
     states[worktreeID]?.hasUnseenNotification == true
+  }
+
+  /// Locates the most recent unread notification across all managed
+  /// worktrees whose surface still exists. Notifications whose surface has
+  /// been closed are skipped in favour of the next-newest focusable unread.
+  func latestUnreadNotificationLocation() -> NotificationLocation? {
+    var best: NotificationLocation?
+    var bestCreatedAt: Date?
+    var skippedClosedSurface = false
+    for (worktreeID, state) in states {
+      for notification in state.unreadNotifications() {
+        if let bestCreatedAt, bestCreatedAt >= notification.createdAt { break }
+        guard let tabID = state.tabID(containing: notification.surfaceId) else {
+          skippedClosedSurface = true
+          terminalLogger.debug(
+            "latestUnreadNotificationLocation: skipping closed surface \(notification.surfaceId) "
+              + "in \(worktreeID); trying older unread."
+          )
+          continue
+        }
+        best = NotificationLocation(
+          worktreeID: worktreeID,
+          tabID: tabID,
+          surfaceID: notification.surfaceId,
+          notificationID: notification.id,
+        )
+        bestCreatedAt = notification.createdAt
+        break
+      }
+    }
+    if best == nil, skippedClosedSurface {
+      terminalLogger.debug("latestUnreadNotificationLocation: all unread notifications point at closed surfaces.")
+    }
+    return best
+  }
+
+  /// Resolves the tab containing the given surface, if any.
+  func tabID(forWorktreeID worktreeID: Worktree.ID, surfaceID: UUID) -> TerminalTabID? {
+    states[worktreeID]?.tabID(containing: surfaceID)
+  }
+
+  func markNotificationRead(worktreeID: Worktree.ID, notificationID: UUID) {
+    states[worktreeID]?.markNotificationRead(id: notificationID)
   }
 
   func saveAllLayoutSnapshots() {

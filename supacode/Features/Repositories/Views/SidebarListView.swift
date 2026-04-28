@@ -9,6 +9,7 @@ struct SidebarListView: View {
   @Bindable var store: StoreOf<RepositoriesFeature>
   let terminalManager: WorktreeTerminalManager
   @FocusState private var isSidebarFocused: Bool
+  private let groupedRepositoryIndentation: CGFloat = 14
 
   var body: some View {
     let state = store.state
@@ -57,9 +58,11 @@ struct SidebarListView: View {
                     failureMessage: failureMessage,
                     store: store,
                   )
+                  .padding(.leading, groupedRepositoryIndentation)
                 } else if let repository = repositoriesByID[row.repositoryID] {
                   SidebarRootView(
                     repository: repository,
+                    groupedRepositoryIndentation: groupedRepositoryIndentation,
                     hotkeyRows: hotkeyRows,
                     selectedWorktreeIDs: selectedWorktreeIDs,
                     store: store,
@@ -159,7 +162,10 @@ struct SidebarListView: View {
         )
       }
     }
-    return groupRows.filter { !$0.rows.isEmpty }
+    if rows.isEmpty, store.state.sidebar.groups.isEmpty {
+      return []
+    }
+    return groupRows
   }
 
   @MainActor
@@ -237,11 +243,22 @@ private struct SidebarGroupHeaderView: View {
       RoundedRectangle(cornerRadius: 8)
         .fill(Color(nsColor: .controlBackgroundColor))
     )
+    .contextMenu {
+      Button("New Group…", systemImage: "plus") {
+        store.send(.requestCreateSidebarGroup)
+      }
+      .help("Create a sidebar group")
+      Button("Customize Group…", systemImage: "paintbrush") {
+        store.send(.requestCustomizeSidebarGroup(groupID))
+      }
+      .help("Customize sidebar group title and color")
+    }
   }
 }
 
 private struct SidebarRootView: View {
   let repository: Repository
+  var groupedRepositoryIndentation: CGFloat = 0
   let hotkeyRows: [SidebarItemModel]
   let selectedWorktreeIDs: Set<Worktree.ID>
   @Bindable var store: StoreOf<RepositoriesFeature>
@@ -251,6 +268,7 @@ private struct SidebarRootView: View {
     if repository.isGitRepository {
       SidebarSectionView(
         repository: repository,
+        groupedRepositoryIndentation: groupedRepositoryIndentation,
         hotkeyRows: hotkeyRows,
         selectedWorktreeIDs: selectedWorktreeIDs,
         store: store,
@@ -268,6 +286,7 @@ private struct SidebarRootView: View {
           store: store,
           terminalManager: terminalManager,
         )
+        .padding(.leading, groupedRepositoryIndentation)
       } header: {
         EmptyView()
       }
@@ -277,6 +296,7 @@ private struct SidebarRootView: View {
 
 private struct SidebarSectionView: View {
   let repository: Repository
+  let groupedRepositoryIndentation: CGFloat
   let hotkeyRows: [SidebarItemModel]
   let selectedWorktreeIDs: Set<Worktree.ID>
   @Bindable var store: StoreOf<RepositoriesFeature>
@@ -292,6 +312,7 @@ private struct SidebarSectionView: View {
         store: store,
         terminalManager: terminalManager,
       )
+      .padding(.leading, groupedRepositoryIndentation)
     } header: {
       RepoSectionHeaderView(
         name: repository.name,
@@ -299,6 +320,7 @@ private struct SidebarSectionView: View {
         color: section?.color,
         isRemoving: isRemovingRepository,
       )
+      .padding(.leading, groupedRepositoryIndentation)
     }
     .sectionActions {
       SidebarSectionActionsView(
@@ -335,6 +357,13 @@ private struct SidebarSectionActionsView: View {
         store.send(.openRepositorySettings(repositoryID))
       }
       .help("Repository Settings")
+      if !store.state.sidebar.groups.isEmpty {
+        Divider()
+        MoveRepositoryToGroupMenu(
+          repositoryID: repositoryID,
+          store: store,
+        )
+      }
       Divider()
       Button("Remove Repository…", systemImage: "folder.badge.minus", role: .destructive) {
         store.send(.requestDeleteRepository(repositoryID))
@@ -365,6 +394,46 @@ private struct SidebarSectionActionsView: View {
     .foregroundStyle(.secondary)
     .help("New Worktree")
     .padding(.trailing, 4)
+  }
+}
+
+private struct MoveRepositoryToGroupMenu: View {
+  let repositoryID: Repository.ID
+  let store: StoreOf<RepositoriesFeature>
+
+  private var groupIDs: [SidebarState.Group.Identifier] {
+    var groupIDs = Array(store.state.sidebar.groups.keys)
+    if !groupIDs.contains(SidebarState.defaultGroupID) {
+      groupIDs.append(SidebarState.defaultGroupID)
+    }
+    return groupIDs
+  }
+
+  var body: some View {
+    Menu("Move to Group", systemImage: "rectangle.3.group") {
+      ForEach(groupIDs, id: \.self) { groupID in
+        let group = store.state.sidebar.groups[groupID]
+        Button(groupTitle(group)) {
+          store.send(.moveRepositoryToSidebarGroup(repositoryID: repositoryID, groupID: groupID))
+        }
+        .disabled(isCurrentGroup(groupID: groupID, group: group))
+      }
+    }
+  }
+
+  private func isCurrentGroup(groupID: SidebarState.Group.Identifier, group: SidebarState.Group?) -> Bool {
+    if group?.repositoryIDs.contains(repositoryID) == true {
+      return true
+    }
+    guard groupID == SidebarState.defaultGroupID, group == nil else {
+      return false
+    }
+    return !store.state.sidebar.groups.values.contains { $0.repositoryIDs.contains(repositoryID) }
+  }
+
+  private func groupTitle(_ group: SidebarState.Group?) -> String {
+    let trimmed = group?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    return trimmed.isEmpty ? SidebarState.defaultGroupTitle : trimmed
   }
 }
 

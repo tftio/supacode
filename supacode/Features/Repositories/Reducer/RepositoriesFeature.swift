@@ -222,6 +222,7 @@ struct RepositoriesFeature {
     @Shared(.sidebar) var sidebar: SidebarState
     @Presents var worktreeCreationPrompt: WorktreeCreationPromptFeature.State?
     @Presents var repositoryCustomization: RepositoryCustomizationFeature.State?
+    @Presents var sidebarGroupCustomization: SidebarGroupCustomizationFeature.State?
     @Presents var alert: AlertState<Alert>?
   }
 
@@ -399,9 +400,13 @@ struct RepositoriesFeature {
     case delayedPullRequestRefresh(Worktree.ID)
     case openRepositorySettings(Repository.ID)
     case requestCustomizeRepository(Repository.ID)
+    case requestCreateSidebarGroup
+    case requestCustomizeSidebarGroup(SidebarState.Group.Identifier)
+    case moveRepositoryToSidebarGroup(repositoryID: Repository.ID, groupID: SidebarState.Group.Identifier)
     case contextMenuOpenWorktree(Worktree.ID, OpenWorktreeAction)
     case worktreeCreationPrompt(PresentationAction<WorktreeCreationPromptFeature.Action>)
     case repositoryCustomization(PresentationAction<RepositoryCustomizationFeature.Action>)
+    case sidebarGroupCustomization(PresentationAction<SidebarGroupCustomizationFeature.Action>)
     case alert(PresentationAction<Alert>)
     case delegate(Delegate)
   }
@@ -3276,6 +3281,60 @@ struct RepositoriesFeature {
       case .repositoryCustomization:
         return .none
 
+      case .requestCreateSidebarGroup:
+        let groupID = "group-\(uuid().uuidString.lowercased())"
+        state.sidebarGroupCustomization = SidebarGroupCustomizationFeature.State(
+          groupID: groupID,
+          isNew: true,
+          title: "New Group",
+          color: nil,
+          customColor: .accentColor,
+        )
+        return .none
+
+      case .requestCustomizeSidebarGroup(let groupID):
+        guard let group = state.sidebar.groups[groupID] ?? syntheticSidebarGroup(id: groupID) else {
+          return .none
+        }
+        state.sidebarGroupCustomization = SidebarGroupCustomizationFeature.State(
+          groupID: groupID,
+          isNew: false,
+          title: group.title,
+          color: group.color,
+          customColor: group.color?.color ?? .accentColor,
+        )
+        return .none
+
+      case .moveRepositoryToSidebarGroup(let repositoryID, let groupID):
+        state.$sidebar.withLock { sidebar in
+          sidebar.moveRepository(repositoryID, toGroup: groupID)
+        }
+        return .none
+
+      case .sidebarGroupCustomization(.presented(.delegate(.cancel))):
+        state.sidebarGroupCustomization = nil
+        return .none
+
+      case .sidebarGroupCustomization(
+        .presented(.delegate(.save(let groupID, _, let title, let color)))
+      ):
+        state.$sidebar.withLock { sidebar in
+          if sidebar.groups[groupID] == nil {
+            sidebar.addGroup(id: groupID, title: title, color: color)
+          } else {
+            sidebar.updateGroup(id: groupID, title: title, color: color)
+          }
+        }
+        state.sidebarGroupCustomization = nil
+        return .none
+
+      case .sidebarGroupCustomization(.dismiss):
+        state.sidebarGroupCustomization = nil
+        return .none
+
+      case .sidebarGroupCustomization:
+        return .none
+
       case .contextMenuOpenWorktree(let worktreeID, let action):
         return .send(.delegate(.openWorktreeInApp(worktreeID, action)))
 
@@ -3302,6 +3361,16 @@ struct RepositoriesFeature {
     .ifLet(\.$repositoryCustomization, action: \.repositoryCustomization) {
       RepositoryCustomizationFeature()
     }
+    .ifLet(\.$sidebarGroupCustomization, action: \.sidebarGroupCustomization) {
+      SidebarGroupCustomizationFeature()
+    }
+  }
+
+  private func syntheticSidebarGroup(id groupID: SidebarState.Group.Identifier) -> SidebarState.Group? {
+    guard groupID == SidebarState.defaultGroupID else {
+      return nil
+    }
+    return SidebarState.Group(title: SidebarState.defaultGroupTitle)
   }
 
   private func refreshRepositoryPullRequests(

@@ -271,6 +271,35 @@ nonisolated extension SidebarState {
     }
   }
 
+  mutating func addGroup(id groupID: Group.Identifier, title: String, color: RepositoryColor?) {
+    groups[groupID] = .init(
+      title: title,
+      color: color,
+    )
+  }
+
+  mutating func updateGroup(id groupID: Group.Identifier, title: String, color: RepositoryColor?) {
+    guard var group = groups[groupID] else {
+      return
+    }
+    group.title = title
+    group.color = color
+    groups[groupID] = group
+  }
+
+  mutating func moveRepository(_ repositoryID: Repository.ID, toGroup groupID: Group.Identifier) {
+    if groups[groupID] == nil {
+      guard groupID == SidebarState.defaultGroupID else {
+        return
+      }
+      groups[groupID] = .init(title: SidebarState.defaultGroupTitle)
+    }
+    for existingGroupID in groups.keys {
+      groups[existingGroupID]?.repositoryIDs.removeAll { $0 == repositoryID }
+    }
+    groups[groupID]?.repositoryIDs.append(repositoryID)
+  }
+
   mutating func reorderRepositories(
     in groupID: Group.Identifier,
     fromOffsets offsets: IndexSet,

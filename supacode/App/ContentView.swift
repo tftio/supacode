@@ -76,6 +76,14 @@ struct ContentView: View {
     ) { customizationStore in
       RepositoryCustomizationView(store: customizationStore)
     }
+    .sheet(
+      store: repositoriesStore.scope(
+        state: \.$sidebarGroupCustomization,
+        action: \.sidebarGroupCustomization
+      )
+    ) { customizationStore in
+      SidebarGroupCustomizationView(store: customizationStore)
+    }
     .focusedSceneValue(\.toggleLeftSidebarAction, toggleLeftSidebar)
     .focusedSceneValue(\.revealInSidebarAction, revealInSidebarAction)
     .overlay {

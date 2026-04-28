@@ -4,6 +4,17 @@ import OrderedCollections
 import Sharing
 import SupacodeSettingsShared
 import SwiftUI
+import UniformTypeIdentifiers
+
+private nonisolated let supacodeSidebarRepositoryType = UTType(exportedAs: "app.supabit.supacode.sidebar-repository")
+
+private struct SidebarRepositoryDragItem: Codable, Transferable {
+  let repositoryID: Repository.ID
+
+  static var transferRepresentation: some TransferRepresentation {
+    CodableRepresentation(contentType: supacodeSidebarRepositoryType)
+  }
+}
 
 struct SidebarListView: View {
   @Bindable var store: StoreOf<RepositoriesFeature>
@@ -162,10 +173,10 @@ struct SidebarListView: View {
         )
       }
     }
-    if rows.isEmpty, store.state.sidebar.groups.isEmpty {
-      return []
+    groupRows = groupRows.filter { row in
+      row.id != SidebarState.defaultGroupID || !row.rows.isEmpty
     }
-    return groupRows
+    return rows.isEmpty && store.state.sidebar.groups.isEmpty ? [] : groupRows
   }
 
   @MainActor
@@ -252,6 +263,22 @@ private struct SidebarGroupHeaderView: View {
         store.send(.requestCustomizeSidebarGroup(groupID))
       }
       .help("Customize sidebar group title and color")
+      if groupID != SidebarState.defaultGroupID {
+        Divider()
+        Button("Delete Group…", systemImage: "trash", role: .destructive) {
+          store.send(.requestDeleteSidebarGroup(groupID))
+        }
+        .help("Delete this sidebar group")
+      }
+    }
+    .dropDestination(for: SidebarRepositoryDragItem.self) { items, _ in
+      guard let repositoryID = items.first?.repositoryID,
+        !group.repositoryIDs.contains(repositoryID)
+      else {
+        return false
+      }
+      store.send(.moveRepositoryToSidebarGroup(repositoryID: repositoryID, groupID: groupID))
+      return true
     }
   }
 }
@@ -287,6 +314,7 @@ private struct SidebarRootView: View {
           terminalManager: terminalManager,
         )
         .padding(.leading, groupedRepositoryIndentation)
+        .draggable(SidebarRepositoryDragItem(repositoryID: repository.id))
       } header: {
         EmptyView()
       }
@@ -321,6 +349,7 @@ private struct SidebarSectionView: View {
         isRemoving: isRemovingRepository,
       )
       .padding(.leading, groupedRepositoryIndentation)
+      .draggable(SidebarRepositoryDragItem(repositoryID: repository.id))
     }
     .sectionActions {
       SidebarSectionActionsView(

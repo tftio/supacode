@@ -272,6 +272,96 @@ struct RepositoriesFeatureCustomizationTests {
     }
   }
 
+  @Test func requestDeleteSidebarGroupShowsConfirmationWithFallbackCopy() async {
+    let initial = makeInitialState()
+    initial.$sidebar.withLock { sidebar in
+      sidebar.groups["work"] = .init(
+        title: "Work",
+        repositoryIDs: [self.repoID],
+      )
+    }
+    let store = TestStore(initialState: initial) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.requestDeleteSidebarGroup("work")) {
+      $0.alert = AlertState {
+        TextState("Delete “Work”?")
+      } actions: {
+        ButtonState(role: .destructive, action: .confirmDeleteSidebarGroup("work")) {
+          TextState("Delete Group")
+        }
+        ButtonState(role: .cancel) {
+          TextState("Cancel")
+        }
+      } message: {
+        TextState(
+          "Its 1 repository will move to Repositories. Repository settings and worktree state will be preserved."
+        )
+      }
+    }
+  }
+
+  @Test func requestDeleteDefaultSidebarGroupNoOps() async {
+    let initial = makeInitialState()
+    let store = TestStore(initialState: initial) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.requestDeleteSidebarGroup(SidebarState.defaultGroupID))
+  }
+
+  @Test func confirmDeleteSidebarGroupMovesContentsToDefaultGroup() async {
+    var initial = makeInitialState()
+    initial.alert = AlertState {
+      TextState("Delete “Work”?")
+    }
+    initial.$sidebar.withLock { sidebar in
+      sidebar.sections[self.repoID] = .init(
+        title: "Pretty",
+        color: .blue,
+      )
+      sidebar.groups["work"] = .init(
+        title: "Work",
+        repositoryIDs: [self.repoID],
+      )
+    }
+    let store = TestStore(initialState: initial) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.alert(.presented(.confirmDeleteSidebarGroup("work")))) {
+      $0.alert = nil
+      $0.$sidebar.withLock { sidebar in
+        sidebar.groups.removeValue(forKey: "work")
+        sidebar.groups[SidebarState.defaultGroupID] = .init(
+          title: SidebarState.defaultGroupTitle,
+          repositoryIDs: [self.repoID],
+        )
+      }
+    }
+
+    #expect(store.state.sidebar.sections[repoID]?.title == "Pretty")
+    #expect(store.state.sidebar.sections[repoID]?.color == .blue)
+  }
+
+  @Test func confirmDeleteEmptySidebarGroupDoesNotMaterializeDefaultGroup() async {
+    let initial = makeInitialState()
+    initial.$sidebar.withLock { sidebar in
+      sidebar.groups["empty"] = .init(title: "Empty")
+    }
+    let store = TestStore(initialState: initial) {
+      RepositoriesFeature()
+    }
+
+    await store.send(.alert(.presented(.confirmDeleteSidebarGroup("empty")))) {
+      $0.alert = nil
+      $0.$sidebar.withLock { sidebar in
+        _ = sidebar.groups.removeValue(forKey: "empty")
+      }
+    }
+  }
+
   @Test func explicitRemovalDropsCustomizationFromSidebar() async {
     // `preserveOrphanSections` keeps customized tombstones across
     // transient drops (filesystem flutter), but an explicit "Remove

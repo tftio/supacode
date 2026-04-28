@@ -287,6 +287,20 @@ nonisolated extension SidebarState {
     groups[groupID] = group
   }
 
+  mutating func deleteGroupMovingRepositoriesToDefault(_ groupID: Group.Identifier) {
+    guard groupID != Self.defaultGroupID, let removedGroup = groups.removeValue(forKey: groupID) else {
+      return
+    }
+    guard !removedGroup.repositoryIDs.isEmpty else {
+      return
+    }
+    var defaultGroup = groups[Self.defaultGroupID] ?? .init(title: Self.defaultGroupTitle)
+    for repositoryID in removedGroup.repositoryIDs where !defaultGroup.repositoryIDs.contains(repositoryID) {
+      defaultGroup.repositoryIDs.append(repositoryID)
+    }
+    groups[Self.defaultGroupID] = defaultGroup
+  }
+
   mutating func moveRepository(_ repositoryID: Repository.ID, toGroup groupID: Group.Identifier) {
     if groups[groupID] == nil {
       guard groupID == SidebarState.defaultGroupID else {

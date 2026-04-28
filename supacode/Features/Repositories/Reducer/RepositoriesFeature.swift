@@ -402,6 +402,7 @@ struct RepositoriesFeature {
     case requestCustomizeRepository(Repository.ID)
     case requestCreateSidebarGroup
     case requestCustomizeSidebarGroup(SidebarState.Group.Identifier)
+    case requestDeleteSidebarGroup(SidebarState.Group.Identifier)
     case moveRepositoryToSidebarGroup(repositoryID: Repository.ID, groupID: SidebarState.Group.Identifier)
     case contextMenuOpenWorktree(Worktree.ID, OpenWorktreeAction)
     case worktreeCreationPrompt(PresentationAction<WorktreeCreationPromptFeature.Action>)
@@ -440,6 +441,7 @@ struct RepositoriesFeature {
     case confirmArchiveWorktrees([ArchiveWorktreeTarget])
     case confirmDeleteSidebarItems([DeleteWorktreeTarget], disposition: DeleteDisposition)
     case confirmDeleteRepository(Repository.ID)
+    case confirmDeleteSidebarGroup(SidebarState.Group.Identifier)
     case viewTerminalTab(Worktree.ID, tabId: TerminalTabID)
   }
 
@@ -2234,6 +2236,13 @@ struct RepositoriesFeature {
           .repositoryRemovalCompleted(
             repository.id, outcome: .success, selectionWasRemoved: selectionWasRemoved, ))
 
+      case .alert(.presented(.confirmDeleteSidebarGroup(let groupID))):
+        state.alert = nil
+        state.$sidebar.withLock { sidebar in
+          sidebar.deleteGroupMovingRepositoriesToDefault(groupID)
+        }
+        return .none
+
       case .repositoryRemovalCompleted(
         let repositoryID, let outcome, let selectionWasRemoved, ):
         // Aggregator entry point. Every repo-level removal
@@ -3305,6 +3314,34 @@ struct RepositoriesFeature {
         )
         return .none
 
+      case .requestDeleteSidebarGroup(let groupID):
+        guard groupID != SidebarState.defaultGroupID, let group = state.sidebar.groups[groupID] else {
+          return .none
+        }
+        let title = sidebarGroupDisplayTitle(group)
+        let repositoryCount = group.repositoryIDs.count
+        let repositoryNoun = repositoryCount == 1 ? "repository" : "repositories"
+        let message =
+          if repositoryCount == 0 {
+            "This empty group will be removed."
+          } else {
+            "Its \(repositoryCount) \(repositoryNoun) will move to \(SidebarState.defaultGroupTitle). "
+              + "Repository settings and worktree state will be preserved."
+          }
+        state.alert = AlertState {
+          TextState("Delete “\(title)”?")
+        } actions: {
+          ButtonState(role: .destructive, action: .confirmDeleteSidebarGroup(groupID)) {
+            TextState("Delete Group")
+          }
+          ButtonState(role: .cancel) {
+            TextState("Cancel")
+          }
+        } message: {
+          TextState(message)
+        }
+        return .none
+
       case .moveRepositoryToSidebarGroup(let repositoryID, let groupID):
         state.$sidebar.withLock { sidebar in
           sidebar.moveRepository(repositoryID, toGroup: groupID)
@@ -3371,6 +3408,11 @@ struct RepositoriesFeature {
       return nil
     }
     return SidebarState.Group(title: SidebarState.defaultGroupTitle)
+  }
+
+  private func sidebarGroupDisplayTitle(_ group: SidebarState.Group) -> String {
+    let trimmed = group.title.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? SidebarState.defaultGroupTitle : trimmed
   }
 
   private func refreshRepositoryPullRequests(

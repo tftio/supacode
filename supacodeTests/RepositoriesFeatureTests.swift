@@ -797,6 +797,50 @@ struct RepositoriesFeatureTests {
     }
   }
 
+  @Test(.dependencies) func startPromptedWorktreeCreationRejectsDirectoryNameCollisionAfterSlashReplacement()
+    async
+  {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let existingWorktree = makeWorktree(
+      id: "/tmp/repo/feature_new-ui",
+      name: "feature_new-ui",
+      repoRoot: repoRoot
+    )
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, existingWorktree])
+    var state = makeState(repositories: [repository])
+    state.worktreeCreationPrompt = WorktreeCreationPromptFeature.State(
+      repositoryID: repository.id,
+      repositoryName: repository.name,
+      automaticBaseRef: "origin/main",
+      baseRefOptions: ["origin/main"],
+      branchName: "feature/new-ui",
+      selectedBaseRef: nil,
+      fetchOrigin: true,
+      validationMessage: nil
+    )
+    @Shared(.settingsFile) var settingsFile
+    $settingsFile.withLock {
+      $0.global = .default
+      $0.global.worktreeDirectoryNaming = .replaceSlashesWithUnderscores
+    }
+    let store = TestStore(initialState: state) {
+      RepositoriesFeature()
+    }
+
+    await store.send(
+      .startPromptedWorktreeCreation(
+        repositoryID: repository.id,
+        branchName: "feature/new-ui",
+        baseRef: nil,
+        fetchOrigin: true
+      )
+    ) {
+      $0.worktreeCreationPrompt?.validationMessage = "Worktree directory name already exists."
+      $0.worktreeCreationPrompt?.isValidating = false
+    }
+  }
+
   @Test func createRandomWorktreeInRepositoryLatestPromptRequestWins() async {
     actor PromptLoadGate {
       var continuation: CheckedContinuation<Void, Never>?
@@ -939,6 +983,117 @@ struct RepositoriesFeatureTests {
       $0.alert = expectedAlert
     }
     #expect(store.state.pendingWorktrees.isEmpty)
+    await store.finish()
+  }
+
+  @Test(.dependencies) func createWorktreeInRepositoryReplacesSlashesWithUnderscoresWhenConfigured() async {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree])
+    let createdWorktree = makeWorktree(
+      id: "/tmp/repo/feature_new-ui",
+      name: "feature_new-ui",
+      repoRoot: repoRoot
+    )
+    let observedName = LockIsolated<String?>(nil)
+    @Shared(.settingsFile) var settingsFile
+    $settingsFile.withLock {
+      $0.global = .default
+      $0.global.worktreeDirectoryNaming = .replaceSlashesWithUnderscores
+    }
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.uuid = .incrementing
+      $0.gitClient.localBranchNames = { _ in [] }
+      $0.gitClient.isValidBranchName = { _, _ in true }
+      $0.gitClient.isBareRepository = { _ in false }
+      $0.gitClient.automaticWorktreeBaseRef = { _ in "origin/main" }
+      $0.gitClient.ignoredFileCount = { _ in 0 }
+      $0.gitClient.untrackedFileCount = { _ in 0 }
+      $0.gitClient.createWorktreeStream = { name, _, _, _, _, _ in
+        observedName.withValue { $0 = name }
+        return AsyncThrowingStream { continuation in
+          continuation.yield(.finished(createdWorktree))
+          continuation.finish()
+        }
+      }
+      $0.gitClient.worktrees = { _ in [createdWorktree, mainWorktree] }
+    }
+    store.exhaustivity = .off
+
+    await store.send(
+      .createWorktreeInRepository(
+        repositoryID: repository.id,
+        nameSource: .explicit("feature/new-ui"),
+        baseRefSource: .repositorySetting,
+        fetchOrigin: false
+      )
+    )
+    await store.receive(\.createRandomWorktreeSucceeded)
+    await store.finish()
+
+    #expect(observedName.value == "feature_new-ui")
+  }
+
+  @Test(.dependencies) func createWorktreeInRepositoryRejectsDirectoryNameCollisionAfterSlashReplacement()
+    async
+  {
+    let repoRoot = "/tmp/repo"
+    let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
+    let existingWorktree = makeWorktree(
+      id: "/tmp/repo/feature_new-ui",
+      name: "feature_new-ui",
+      repoRoot: repoRoot
+    )
+    let repository = makeRepository(id: repoRoot, worktrees: [mainWorktree, existingWorktree])
+    let createWorktreeCalled = LockIsolated(false)
+    @Shared(.settingsFile) var settingsFile
+    $settingsFile.withLock {
+      $0.global = .default
+      $0.global.worktreeDirectoryNaming = .replaceSlashesWithUnderscores
+    }
+    let store = TestStore(initialState: makeState(repositories: [repository])) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.uuid = .incrementing
+      $0.gitClient.localBranchNames = { _ in [] }
+      $0.gitClient.isValidBranchName = { _, _ in true }
+      $0.gitClient.createWorktreeStream = { _, _, _, _, _, _ in
+        createWorktreeCalled.withValue { $0 = true }
+        return AsyncThrowingStream { continuation in
+          continuation.finish()
+        }
+      }
+    }
+    store.exhaustivity = .off
+
+    let expectedAlert = AlertState<RepositoriesFeature.Alert> {
+      TextState("Worktree directory name already exists")
+    } actions: {
+      ButtonState(role: .cancel) {
+        TextState("OK")
+      }
+    } message: {
+      TextState(
+        "The configured worktree directory naming policy maps this branch to an existing worktree directory. "
+          + "Choose a different branch name and try again."
+      )
+    }
+
+    await store.send(
+      .createWorktreeInRepository(
+        repositoryID: repository.id,
+        nameSource: .explicit("feature/new-ui"),
+        baseRefSource: .repositorySetting,
+        fetchOrigin: false
+      )
+    )
+    await store.receive(\.createRandomWorktreeFailed) {
+      $0.alert = expectedAlert
+    }
+    #expect(store.state.pendingWorktrees.isEmpty)
+    #expect(createWorktreeCalled.value == false)
     await store.finish()
   }
 

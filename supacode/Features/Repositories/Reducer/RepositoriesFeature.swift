@@ -42,6 +42,58 @@ private func resolveRemoteInfo(
 private nonisolated let worktreeCreationProgressLineLimit = 200
 private nonisolated let worktreeCreationProgressUpdateStride = 20
 
+private nonisolated enum WorktreeNameCollision {
+  case branchName
+  case worktreeDirectoryName
+
+  var validationMessage: String {
+    switch self {
+    case .branchName:
+      "Branch name already exists."
+    case .worktreeDirectoryName:
+      "Worktree directory name already exists."
+    }
+  }
+
+  var alertTitle: String {
+    switch self {
+    case .branchName:
+      "Branch name already exists"
+    case .worktreeDirectoryName:
+      "Worktree directory name already exists"
+    }
+  }
+
+  var alertMessage: String {
+    switch self {
+    case .branchName:
+      "Choose a different branch name and try again."
+    case .worktreeDirectoryName:
+      "The configured worktree directory naming policy maps this branch to an existing worktree directory. "
+        + "Choose a different branch name and try again."
+    }
+  }
+}
+
+private nonisolated func worktreeNameCollision<S: Sequence>(
+  candidate: String,
+  existingNames: S,
+  directoryNaming: WorktreeDirectoryNaming
+) -> WorktreeNameCollision? where S.Element == String {
+  let existingNames = Array(existingNames)
+  let normalizedCandidate = candidate.lowercased()
+  if existingNames.contains(where: { $0.lowercased() == normalizedCandidate }) {
+    return .branchName
+  }
+
+  let normalizedDirectoryName = directoryNaming.worktreeName(for: candidate).lowercased()
+  if existingNames.contains(where: { directoryNaming.worktreeName(for: $0).lowercased() == normalizedDirectoryName }) {
+    return .worktreeDirectoryName
+  }
+
+  return nil
+}
+
 nonisolated struct WorktreeCreationProgressUpdateThrottle {
   private let stride: Int
   private var hasEmittedFirstLine = false
@@ -870,20 +922,26 @@ struct RepositoriesFeature {
         }
         state.worktreeCreationPrompt?.validationMessage = nil
         state.worktreeCreationPrompt?.isValidating = true
-        let normalizedBranchName = branchName.lowercased()
-        if repository.worktrees.contains(where: { $0.name.lowercased() == normalizedBranchName }) {
+        @Shared(.settingsFile) var validationSettingsFile
+        let directoryNaming = validationSettingsFile.global.worktreeDirectoryNaming
+        if let collision = worktreeNameCollision(
+          candidate: branchName,
+          existingNames: repository.worktrees.map(\.name),
+          directoryNaming: directoryNaming
+        ) {
           state.worktreeCreationPrompt?.isValidating = false
-          state.worktreeCreationPrompt?.validationMessage = "Branch name already exists."
+          state.worktreeCreationPrompt?.validationMessage = collision.validationMessage
           return .none
         }
         let gitClient = gitClient
         let rootURL = repository.rootURL
         return .run { send in
           let localBranchNames = (try? await gitClient.localBranchNames(rootURL)) ?? []
-          let duplicateMessage =
-            localBranchNames.contains(normalizedBranchName)
-            ? "Branch name already exists."
-            : nil
+          let duplicateMessage = worktreeNameCollision(
+            candidate: branchName,
+            existingNames: localBranchNames,
+            directoryNaming: directoryNaming
+          )?.validationMessage
           await send(
             .promptedWorktreeCreationChecked(
               repositoryID: repositoryID,
@@ -958,6 +1016,7 @@ struct RepositoriesFeature {
         )
         let selectedBaseRef = repositorySettings.worktreeBaseRef
         let globalSettings = settingsFile.global
+        let worktreeDirectoryNaming = globalSettings.worktreeDirectoryNaming
         let copyIgnoredOnWorktreeCreate =
           repositorySettings.copyIgnoredOnWorktreeCreate ?? globalSettings.copyIgnoredOnWorktreeCreate
         let copyUntrackedOnWorktreeCreate =
@@ -1067,11 +1126,15 @@ struct RepositoriesFeature {
                 )
                 return
               }
-              guard !existing.contains(trimmed.lowercased()) else {
+              if let collision = worktreeNameCollision(
+                candidate: trimmed,
+                existingNames: existing,
+                directoryNaming: worktreeDirectoryNaming
+              ) {
                 await send(
                   .createRandomWorktreeFailed(
-                    title: "Branch name already exists",
-                    message: "Choose a different branch name and try again.",
+                    title: collision.alertTitle,
+                    message: collision.alertMessage,
                     pendingID: pendingID,
                     previousSelection: previousSelection,
                     repositoryID: repository.id,
@@ -1081,7 +1144,7 @@ struct RepositoriesFeature {
                 )
                 return
               }
-              name = trimmed
+              name = worktreeDirectoryNaming.worktreeName(for: trimmed)
             }
             newWorktreeName = name
             progress.worktreeName = name

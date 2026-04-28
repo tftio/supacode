@@ -311,6 +311,21 @@ struct SettingsFeatureTests {
     #expect(settingsFile.global.defaultWorktreeBaseDirectoryPath == expectedPath)
   }
 
+  @Test(.dependencies) func changingWorktreeDirectoryNamingPersistsSetting() async {
+    @Shared(.settingsFile) var settingsFile
+    $settingsFile.withLock { $0.global = .default }
+
+    let store = TestStore(initialState: SettingsFeature.State()) {
+      SettingsFeature()
+    }
+
+    await store.send(.binding(.set(\.worktreeDirectoryNaming, .replaceSlashesWithUnderscores))) {
+      $0.worktreeDirectoryNaming = .replaceSlashesWithUnderscores
+    }
+    await store.receive(\.delegate.settingsChanged)
+    #expect(settingsFile.global.worktreeDirectoryNaming == .replaceSlashesWithUnderscores)
+  }
+
   @Test(.dependencies) func changingGlobalCopyIgnoredUpdatesRepositorySettingsState() async {
     let rootURL = URL(fileURLWithPath: "/tmp/repo")
     @Shared(.settingsFile) var settingsFile

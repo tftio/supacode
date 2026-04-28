@@ -33,6 +33,13 @@ public struct WorktreeSettingsView: View {
           Text("Default directory").monospaced(false)
           Text("Parent path for new worktrees.").monospaced(false)
         }.monospaced()
+        Picker("Directory names", selection: $store.worktreeDirectoryNaming) {
+          ForEach(WorktreeDirectoryNaming.allCases) { naming in
+            Text(naming.label).tag(naming)
+          }
+        }
+        Text(store.worktreeDirectoryNaming.helpText)
+          .foregroundStyle(.secondary)
       } footer: {
         Text("e.g., `\(examplePath)`")
       }

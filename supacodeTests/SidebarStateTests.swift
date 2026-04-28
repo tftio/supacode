@@ -17,7 +17,7 @@ struct SidebarStateTests {
       worktree: "wt-1",
       in: repoA,
       bucket: .unpinned,
-      item: .init(archivedAt: nil)
+      item: .init(archivedAt: nil),
     )
 
     state.move(worktree: "wt-1", in: repoA, from: .unpinned, to: .pinned, position: 0)
@@ -32,7 +32,7 @@ struct SidebarStateTests {
       worktree: "wt-1",
       in: repoA,
       bucket: .archived,
-      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000))
+      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000)),
     )
 
     state.move(worktree: "wt-1", in: repoA, from: .archived, to: .unpinned, position: 0)
@@ -84,7 +84,7 @@ struct SidebarStateTests {
       worktree: "wt-archived",
       in: repoA,
       bucket: .archived,
-      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000))
+      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000)),
     )
     state.insert(worktree: "wt-live", in: repoA, bucket: .unpinned)
 
@@ -153,10 +153,10 @@ struct SidebarStateTests {
     let earlierDate = Date(timeIntervalSince1970: 1_000_000)
     let laterDate = Date(timeIntervalSince1970: 2_000_000)
     state.insert(
-      worktree: "wt-a", in: repoA, bucket: .archived, item: .init(archivedAt: earlierDate)
+      worktree: "wt-a", in: repoA, bucket: .archived, item: .init(archivedAt: earlierDate),
     )
     state.insert(
-      worktree: "wt-b", in: repoB, bucket: .archived, item: .init(archivedAt: laterDate)
+      worktree: "wt-b", in: repoB, bucket: .archived, item: .init(archivedAt: laterDate),
     )
 
     let archived = state.archivedWorktrees
@@ -178,7 +178,7 @@ struct SidebarStateTests {
       worktree: "a-1",
       in: repoA,
       bucket: .archived,
-      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000))
+      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000)),
     )
     original.insert(worktree: "b-u-1", in: repoB, bucket: .unpinned)
 
@@ -197,6 +197,45 @@ struct SidebarStateTests {
     #expect(decoded == original)
   }
 
+  @Test func decodingLegacySidebarSynthesizesDefaultGroupFromSectionOrder() throws {
+    let legacyJSON = """
+      {
+        "schemaVersion": 1,
+        "sections": [
+          "\(repoA)",
+          { "collapsed": false, "buckets": [] },
+          "\(repoB)",
+          { "collapsed": true, "buckets": [] }
+        ]
+      }
+      """
+    let decoded = try JSONDecoder().decode(SidebarState.self, from: Data(legacyJSON.utf8))
+
+    #expect(Array(decoded.groups.keys) == [SidebarState.defaultGroupID])
+    let group = try #require(decoded.groups[SidebarState.defaultGroupID])
+    #expect(group.title == SidebarState.defaultGroupTitle)
+    #expect(group.color == nil)
+    #expect(group.collapsed == false)
+    #expect(group.repositoryIDs == [repoA, repoB])
+  }
+
+  @Test func groupRoundTripPreservesTitleColorCollapseAndRepositoryOrder() throws {
+    var original = SidebarState()
+    original.sections[repoA] = .init()
+    original.sections[repoB] = .init(collapsed: true)
+    original.groups["work"] = .init(
+      title: "Work",
+      color: .blue,
+      collapsed: true,
+      repositoryIDs: [repoB, repoA],
+    )
+
+    let data = try JSONEncoder().encode(original)
+    let decoded = try JSONDecoder().decode(SidebarState.self, from: data)
+
+    #expect(decoded == original)
+  }
+
   @Test func onDiskBucketKeysAreStableWireFormat() throws {
     // Pins the literal bucket-id / item-field strings that
     // `sidebar.json` uses on disk. Renaming an enum case or a
@@ -212,7 +251,7 @@ struct SidebarStateTests {
       worktree: "wt-3",
       in: repoA,
       bucket: .archived,
-      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000))
+      item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000)),
     )
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -271,7 +310,7 @@ struct SidebarStateTests {
       worktree: "a",
       in: repoA,
       bucket: .archived,
-      item: .init(archivedAt: Date(timeIntervalSince1970: 1))
+      item: .init(archivedAt: Date(timeIntervalSince1970: 1)),
     )
 
     #expect(state.currentBucket(of: "p", in: repoA) == .pinned)
@@ -289,7 +328,7 @@ struct SidebarStateTests {
       worktree: "wt",
       in: repoA,
       bucket: .archived,
-      item: .init(archivedAt: Date(timeIntervalSince1970: 1))
+      item: .init(archivedAt: Date(timeIntervalSince1970: 1)),
     )
 
     state.removeAnywhere(worktree: "wt", in: repoA)

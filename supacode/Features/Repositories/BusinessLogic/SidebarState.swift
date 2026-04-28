@@ -21,8 +21,12 @@ import OrderedCollections
 /// `remove`, `reorder` cover the full mutation surface; callers
 /// always know the source bucket from their reducer context.
 nonisolated struct SidebarState: Equatable, Sendable, Codable {
+  static let defaultGroupID: Group.Identifier = "default"
+  static let defaultGroupTitle = "Repositories"
+
   var schemaVersion: Int
   var sections: OrderedDictionary<Repository.ID, Section>
+  var groups: OrderedDictionary<Group.Identifier, Group>
   var focusedWorktreeID: Worktree.ID?
 
   /// Memberwise initializer. `schemaVersion` defaults to `0`, meaning
@@ -33,16 +37,19 @@ nonisolated struct SidebarState: Equatable, Sendable, Codable {
   init(
     schemaVersion: Int = 0,
     sections: OrderedDictionary<Repository.ID, Section> = [:],
-    focusedWorktreeID: Worktree.ID? = nil
+    groups: OrderedDictionary<Group.Identifier, Group> = [:],
+    focusedWorktreeID: Worktree.ID? = nil,
   ) {
     self.schemaVersion = schemaVersion
     self.sections = sections
+    self.groups = groups
     self.focusedWorktreeID = focusedWorktreeID
   }
 
   private enum CodingKeys: String, CodingKey {
     case schemaVersion
     case sections
+    case groups
     case focusedWorktreeID
   }
 
@@ -55,8 +62,13 @@ nonisolated struct SidebarState: Equatable, Sendable, Codable {
     self.sections =
       try container.decodeIfPresent(
         OrderedDictionary<Repository.ID, Section>.self,
-        forKey: .sections
+        forKey: .sections,
       ) ?? [:]
+    self.groups =
+      try container.decodeIfPresent(
+        OrderedDictionary<Group.Identifier, Group>.self,
+        forKey: .groups,
+      ) ?? Self.defaultGroups(for: sections)
     self.focusedWorktreeID = try container.decodeIfPresent(Worktree.ID.self, forKey: .focusedWorktreeID)
   }
 
@@ -67,6 +79,7 @@ nonisolated struct SidebarState: Equatable, Sendable, Codable {
     // first-mutation after migrator failure".
     try container.encode(schemaVersion, forKey: .schemaVersion)
     try container.encode(sections, forKey: .sections)
+    try container.encode(groups, forKey: .groups)
     try container.encodeIfPresent(focusedWorktreeID, forKey: .focusedWorktreeID)
   }
 
@@ -91,7 +104,7 @@ nonisolated struct SidebarState: Equatable, Sendable, Codable {
       collapsed: Bool = false,
       buckets: OrderedDictionary<BucketID, Bucket> = [:],
       title: String? = nil,
-      color: RepositoryColor? = nil
+      color: RepositoryColor? = nil,
     ) {
       self.collapsed = collapsed
       self.buckets = buckets
@@ -115,7 +128,7 @@ nonisolated struct SidebarState: Equatable, Sendable, Codable {
       self.buckets =
         try container.decodeIfPresent(
           OrderedDictionary<BucketID, Bucket>.self,
-          forKey: .buckets
+          forKey: .buckets,
         ) ?? [:]
       self.title = try container.decodeIfPresent(String.self, forKey: .title)
       self.color = try container.decodeIfPresent(RepositoryColor.self, forKey: .color)
@@ -131,6 +144,50 @@ nonisolated struct SidebarState: Equatable, Sendable, Codable {
       // stays clean for repos the user never touched.
       try container.encodeIfPresent(title, forKey: .title)
       try container.encodeIfPresent(color, forKey: .color)
+    }
+  }
+
+  nonisolated struct Group: Equatable, Sendable, Codable {
+    typealias Identifier = String
+
+    var title: String
+    var color: RepositoryColor?
+    var collapsed: Bool
+    var repositoryIDs: [Repository.ID]
+
+    init(
+      title: String,
+      color: RepositoryColor? = nil,
+      collapsed: Bool = false,
+      repositoryIDs: [Repository.ID] = [],
+    ) {
+      self.title = title
+      self.color = color
+      self.collapsed = collapsed
+      self.repositoryIDs = repositoryIDs
+    }
+
+    private enum GroupCodingKeys: String, CodingKey {
+      case title
+      case color
+      case collapsed
+      case repositoryIDs
+    }
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: GroupCodingKeys.self)
+      self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+      self.color = try container.decodeIfPresent(RepositoryColor.self, forKey: .color)
+      self.collapsed = try container.decodeIfPresent(Bool.self, forKey: .collapsed) ?? false
+      self.repositoryIDs = try container.decodeIfPresent([Repository.ID].self, forKey: .repositoryIDs) ?? []
+    }
+
+    func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: GroupCodingKeys.self)
+      try container.encode(title, forKey: .title)
+      try container.encodeIfPresent(color, forKey: .color)
+      try container.encode(collapsed, forKey: .collapsed)
+      try container.encode(repositoryIDs, forKey: .repositoryIDs)
     }
   }
 
@@ -154,6 +211,127 @@ nonisolated struct SidebarState: Equatable, Sendable, Codable {
     let repositoryID: Repository.ID
     let worktreeID: Worktree.ID
     let archivedAt: Date
+  }
+}
+
+// MARK: - Grouping.
+
+nonisolated extension SidebarState {
+  func orderedRepositoryIDs(availableIDs: [Repository.ID]) -> [Repository.ID] {
+    let availableSet = Set(availableIDs)
+    let sourceGroups = groups.isEmpty ? Self.defaultGroups(for: sections) : groups
+    var ordered: [Repository.ID] = []
+    var seen: Set<Repository.ID> = []
+    for group in sourceGroups.values {
+      for id in group.repositoryIDs where availableSet.contains(id) && seen.insert(id).inserted {
+        ordered.append(id)
+      }
+    }
+    for id in sections.keys where availableSet.contains(id) && seen.insert(id).inserted {
+      ordered.append(id)
+    }
+    for id in availableIDs where seen.insert(id).inserted {
+      ordered.append(id)
+    }
+    return ordered
+  }
+
+  mutating func reconcileGroups() {
+    guard !groups.isEmpty else {
+      return
+    }
+
+    let sectionIDs = Set(sections.keys)
+    var seen: Set<Repository.ID> = []
+    for groupID in groups.keys {
+      guard var group = groups[groupID] else { continue }
+      group.repositoryIDs = group.repositoryIDs.filter { id in
+        sectionIDs.contains(id) && seen.insert(id).inserted
+      }
+      groups[groupID] = group
+    }
+
+    let missingIDs = sections.keys.filter { !seen.contains($0) }
+    if !missingIDs.isEmpty {
+      var defaultGroup = groups[Self.defaultGroupID] ?? .init(title: Self.defaultGroupTitle)
+      defaultGroup.repositoryIDs.append(contentsOf: missingIDs)
+      groups[Self.defaultGroupID] = defaultGroup
+    }
+  }
+
+  mutating func materializeDefaultGroupIfNeeded() {
+    if groups.isEmpty {
+      groups = Self.defaultGroups(for: sections)
+    }
+  }
+
+  mutating func removeRepositoryFromGroups(_ repositoryID: Repository.ID) {
+    for groupID in groups.keys {
+      groups[groupID]?.repositoryIDs.removeAll { $0 == repositoryID }
+    }
+  }
+
+  mutating func reorderRepositories(
+    in groupID: Group.Identifier,
+    fromOffsets offsets: IndexSet,
+    toOffset destination: Int
+  ) {
+    guard var group = groups[groupID] else {
+      return
+    }
+    group.repositoryIDs.moveSafely(fromOffsets: offsets, toOffset: destination)
+    groups[groupID] = group
+  }
+
+  mutating func reorderRepositories(to orderedIDs: [Repository.ID]) {
+    var reorderedSections: OrderedDictionary<Repository.ID, Section> = [:]
+    for id in orderedIDs {
+      reorderedSections[id] = sections[id] ?? .init()
+    }
+    for (id, section) in sections where reorderedSections[id] == nil {
+      reorderedSections[id] = section
+    }
+    sections = reorderedSections
+
+    if groups.isEmpty {
+      return
+    }
+    let indexByID = Dictionary(uniqueKeysWithValues: orderedIDs.enumerated().map { ($0.element, $0.offset) })
+    for groupID in groups.keys {
+      groups[groupID]?.repositoryIDs.sort { lhs, rhs in
+        (indexByID[lhs] ?? Int.max) < (indexByID[rhs] ?? Int.max)
+      }
+    }
+  }
+
+  private static func defaultGroups(
+    for sections: OrderedDictionary<Repository.ID, Section>
+  ) -> OrderedDictionary<Group.Identifier, Group> {
+    guard !sections.isEmpty else {
+      return [:]
+    }
+    return [
+      defaultGroupID: .init(
+        title: defaultGroupTitle,
+        repositoryIDs: Array(sections.keys),
+      )
+    ]
+  }
+}
+
+extension Array {
+  fileprivate nonisolated mutating func moveSafely(fromOffsets offsets: IndexSet, toOffset destination: Int) {
+    let validOffsets = offsets.filter { indices.contains($0) }
+    guard !validOffsets.isEmpty, destination <= count else {
+      return
+    }
+    let moving = validOffsets.map { self[$0] }
+    for offset in validOffsets.sorted(by: >) {
+      remove(at: offset)
+    }
+    let removedBeforeDestination = validOffsets.filter { $0 < destination }.count
+    let insertionIndex = Swift.max(0, Swift.min(count, destination - removedBeforeDestination))
+    insert(contentsOf: moving, at: insertionIndex)
   }
 }
 
@@ -181,7 +359,7 @@ nonisolated extension SidebarState {
             ArchivedWorktreeRef(
               repositoryID: repoID,
               worktreeID: worktreeID,
-              archivedAt: archivedAt
+              archivedAt: archivedAt,
             )
           )
         }
@@ -219,7 +397,7 @@ nonisolated extension SidebarState {
     in repositoryID: Repository.ID,
     from: BucketID,
     to destination: BucketID,
-    position: Int? = 0
+    position: Int? = 0,
   ) {
     guard var section = sections[repositoryID] else {
       return
@@ -245,7 +423,7 @@ nonisolated extension SidebarState {
     in repositoryID: Repository.ID,
     bucket bucketID: BucketID,
     item: Item = .init(),
-    position: Int? = nil
+    position: Int? = nil,
   ) {
     var section = sections[repositoryID] ?? .init()
     var bucket = section.buckets[bucketID] ?? .init()
@@ -263,7 +441,7 @@ nonisolated extension SidebarState {
     worktree worktreeID: Worktree.ID,
     in repositoryID: Repository.ID,
     from: BucketID,
-    at timestamp: Date
+    at timestamp: Date,
   ) {
     var section = sections[repositoryID] ?? .init()
     section.buckets[from]?.items.removeValue(forKey: worktreeID)
@@ -286,7 +464,7 @@ nonisolated extension SidebarState {
   mutating func remove(
     worktree worktreeID: Worktree.ID,
     in repositoryID: Repository.ID,
-    from bucketID: BucketID
+    from bucketID: BucketID,
   ) {
     sections[repositoryID]?.buckets[bucketID]?.items.removeValue(forKey: worktreeID)
   }
@@ -313,7 +491,7 @@ nonisolated extension SidebarState {
   mutating func reorder(
     bucket bucketID: BucketID,
     in repositoryID: Repository.ID,
-    to reorderedIDs: [Worktree.ID]
+    to reorderedIDs: [Worktree.ID],
   ) {
     guard var section = sections[repositoryID], var bucket = section.buckets[bucketID] else {
       return
@@ -354,7 +532,7 @@ nonisolated extension SidebarState {
     item: Item,
     for worktreeID: Worktree.ID,
     into bucket: inout Bucket,
-    position: Int?
+    position: Int?,
   ) {
     if let position, position < bucket.items.count {
       bucket.items.updateValue(item, forKey: worktreeID, insertingAt: position)

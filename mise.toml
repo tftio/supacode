@@ -1,6 +1,7 @@
 [tools]
-tuist = "4.180.0"
+tuist = "4.190.0"
 zig = "0.15.2"
-swiftlint = "latest"
-"github:ldomaradzki/xcsift" = "latest"
-"npm:create-dmg" = "latest"
+swiftlint = "0.63.2"
+"github:ldomaradzki/xcsift" = "1.2.0"
+"aqua:cpisciotta/xcbeautify" = "3.2.1"
+"npm:create-dmg" = "8.1.0"

@@ -15,11 +15,11 @@ public struct AppearanceSettingsView: View {
       Section {
         LabeledContent("Appearance") {
           HStack(spacing: 12) {
-            let appearanceMode = $store.appearanceMode
+            let appearanceMode: Binding<AppearanceMode> = $store.appearanceMode
             ForEach(AppearanceMode.allCases) { mode in
               AppearanceOptionCardView(
                 mode: mode,
-                isSelected: mode == appearanceMode.wrappedValue
+                isSelected: mode == appearanceMode.wrappedValue,
               ) {
                 appearanceMode.wrappedValue = mode
               }
@@ -43,7 +43,7 @@ public struct AppearanceSettingsView: View {
       Section {
         Toggle(
           "Confirm before Quitting",
-          isOn: $store.confirmBeforeQuit
+          isOn: $store.confirmBeforeQuit,
         )
         .help("Ask before quitting Supacode")
         Toggle(isOn: $store.restoreTerminalLayoutEnabled) {

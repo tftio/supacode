@@ -32,6 +32,7 @@ public struct SettingsFeature {
     public var hideSingleTabBar: Bool
     public var automatedActionPolicy: AutomatedActionPolicy
     public var defaultWorktreeBaseDirectoryPath: String
+    public var worktreeDirectoryNaming: WorktreeDirectoryNaming
     public var autoDeleteArchivedWorktreesAfterDays: AutoDeletePeriod?
     public var shortcutOverrides: [AppShortcutID: AppShortcutOverride]
     public var cliInstallState = AgentHooksInstallState.checking
@@ -78,6 +79,7 @@ public struct SettingsFeature {
       restoreTerminalLayoutEnabled = settings.restoreTerminalLayoutEnabled
       hideSingleTabBar = settings.hideSingleTabBar
       automatedActionPolicy = settings.automatedActionPolicy
+      worktreeDirectoryNaming = settings.worktreeDirectoryNaming
       autoDeleteArchivedWorktreesAfterDays = settings.autoDeleteArchivedWorktreesAfterDays
       shortcutOverrides = settings.shortcutOverrides
       defaultWorktreeBaseDirectoryPath =
@@ -113,6 +115,7 @@ public struct SettingsFeature {
         defaultWorktreeBaseDirectoryPath: SupacodePaths.normalizedWorktreeBaseDirectoryPath(
           defaultWorktreeBaseDirectoryPath
         ),
+        worktreeDirectoryNaming: worktreeDirectoryNaming,
         autoDeleteArchivedWorktreesAfterDays: autoDeleteArchivedWorktreesAfterDays,
         shortcutOverrides: shortcutOverrides
       )
@@ -261,6 +264,7 @@ public struct SettingsFeature {
         state.restoreTerminalLayoutEnabled = normalizedSettings.restoreTerminalLayoutEnabled
         state.hideSingleTabBar = normalizedSettings.hideSingleTabBar
         state.automatedActionPolicy = normalizedSettings.automatedActionPolicy
+        state.worktreeDirectoryNaming = normalizedSettings.worktreeDirectoryNaming
         state.autoDeleteArchivedWorktreesAfterDays = normalizedSettings.autoDeleteArchivedWorktreesAfterDays
         state.shortcutOverrides = normalizedSettings.shortcutOverrides
         state.defaultWorktreeBaseDirectoryPath = normalizedSettings.defaultWorktreeBaseDirectoryPath ?? ""

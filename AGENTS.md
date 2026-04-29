@@ -127,7 +127,8 @@ Reducer ← .repositories(.worktreeInfoEvent(Event)) ← AsyncStream<Event>
 - After a task, ensure the app builds: `make build-app`
 - Automatically commit your changes and your changes only. Do not use `git add .`
 - Before you go on your task, check the current git branch name, if it's something generic like an animal name, name it accordingly. Do not do this for main branch
-- After implementing an execplan, always submit a PR if you're not in the main branch
+- Never create PRs, push branches, or otherwise propose changes into `upstream` without explicit operator approval for that specific upstream action.
+- After implementing an execplan, submit a PR only when explicitly instructed, and only to the operator-approved repository/remote.
 
 ## Folder (non-git) repositories
 

@@ -180,9 +180,32 @@ struct SettingsFilePersistenceTests {
     #expect(settings.global.mergedWorktreeAction == nil)
     #expect(settings.global.promptForWorktreeCreation == true)
     #expect(settings.global.defaultWorktreeBaseDirectoryPath == nil)
+    #expect(settings.global.worktreeDirectoryNaming == .preserveBranchPath)
     #expect(settings.global.defaultEditorID == OpenWorktreeAction.automaticSettingsID)
     #expect(settings.repositoryRoots.isEmpty)
     #expect(settings.pinnedWorktreeIDs.isEmpty)
+  }
+
+  @Test(.dependencies) func roundTripsWorktreeDirectoryNaming() throws {
+    let storage = SettingsTestStorage()
+
+    withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var settings: SettingsFile
+      $settings.withLock {
+        $0.global.worktreeDirectoryNaming = .replaceSlashesWithUnderscores
+      }
+    }
+
+    let reloaded: SettingsFile = withDependencies {
+      $0.settingsFileStorage = storage.storage
+    } operation: {
+      @Shared(.settingsFile) var reloaded: SettingsFile
+      return reloaded
+    }
+
+    #expect(reloaded.global.worktreeDirectoryNaming == .replaceSlashesWithUnderscores)
   }
 }
 

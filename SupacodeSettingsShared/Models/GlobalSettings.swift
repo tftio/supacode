@@ -45,6 +45,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   public var promptForWorktreeCreation: Bool
   public var fetchOriginBeforeWorktreeCreation: Bool
   public var defaultWorktreeBaseDirectoryPath: String?
+  public var worktreeDirectoryNaming: WorktreeDirectoryNaming
   public var copyIgnoredOnWorktreeCreate: Bool
   public var copyUntrackedOnWorktreeCreate: Bool
   public var pullRequestMergeStrategy: PullRequestMergeStrategy
@@ -81,6 +82,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     hideSingleTabBar: false,
     automatedActionPolicy: .cliOnly,
     defaultWorktreeBaseDirectoryPath: nil,
+    worktreeDirectoryNaming: .preserveBranchPath,
     autoDeleteArchivedWorktreesAfterDays: nil,
     shortcutOverrides: [:]
   )
@@ -111,6 +113,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     hideSingleTabBar: Bool = false,
     automatedActionPolicy: AutomatedActionPolicy = .cliOnly,
     defaultWorktreeBaseDirectoryPath: String? = nil,
+    worktreeDirectoryNaming: WorktreeDirectoryNaming = .preserveBranchPath,
     autoDeleteArchivedWorktreesAfterDays: AutoDeletePeriod? = nil,
     shortcutOverrides: [AppShortcutID: AppShortcutOverride] = [:]
   ) {
@@ -139,6 +142,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.hideSingleTabBar = hideSingleTabBar
     self.automatedActionPolicy = automatedActionPolicy
     self.defaultWorktreeBaseDirectoryPath = defaultWorktreeBaseDirectoryPath
+    self.worktreeDirectoryNaming = worktreeDirectoryNaming
     self.autoDeleteArchivedWorktreesAfterDays = autoDeleteArchivedWorktreesAfterDays
     self.shortcutOverrides = shortcutOverrides
   }
@@ -244,6 +248,9 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     defaultWorktreeBaseDirectoryPath =
       try container.decodeIfPresent(String.self, forKey: .defaultWorktreeBaseDirectoryPath)
       ?? Self.default.defaultWorktreeBaseDirectoryPath
+    worktreeDirectoryNaming =
+      try container.decodeIfPresent(WorktreeDirectoryNaming.self, forKey: .worktreeDirectoryNaming)
+      ?? Self.default.worktreeDirectoryNaming
     // Reject unrecognized values from corrupted or hand-edited settings files.
     autoDeleteArchivedWorktreesAfterDays =
       (try container.decodeIfPresent(Int.self, forKey: .autoDeleteArchivedWorktreesAfterDays))

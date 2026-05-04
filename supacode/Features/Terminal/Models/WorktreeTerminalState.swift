@@ -89,7 +89,7 @@ final class WorktreeTerminalState {
     runtime: GhosttyRuntime,
     worktree: Worktree,
     runSetupScript: Bool = false,
-    splitPreserveZoomOnNavigation: (() -> Bool)? = nil
+    splitPreserveZoomOnNavigation: (() -> Bool)? = nil,
   ) {
     self.runtime = runtime
     self.splitPreserveZoomOnNavigation = splitPreserveZoomOnNavigation ?? { runtime.splitPreserveZoomOnNavigation() }
@@ -98,7 +98,7 @@ final class WorktreeTerminalState {
     self.tabManager = TerminalTabManager()
     _repositorySettings = SharedReader(
       wrappedValue: RepositorySettings.default,
-      .repositorySettings(worktree.repositoryRootURL)
+      .repositorySettings(worktree.repositoryRootURL),
     )
     // Pre-hide the tab bar before the first tab is created to
     // avoid a visible flash. updateShouldHideTabBar() handles
@@ -168,7 +168,7 @@ final class WorktreeTerminalState {
     setupScript: String? = nil,
     initialInput: String? = nil,
     inheritingFromSurfaceId: UUID? = nil,
-    tabID: UUID? = nil
+    tabID: UUID? = nil,
   ) -> TerminalTabID? {
     let context: ghostty_surface_context_e =
       tabManager.tabs.isEmpty
@@ -327,7 +327,7 @@ final class WorktreeTerminalState {
       command: creation.command,
       initialInput: creation.initialInput,
       context: creation.context,
-      surfaceID: creation.tabID != nil ? tabId.rawValue : nil
+      surfaceID: creation.tabID != nil ? tabId.rawValue : nil,
     )
     tabIsRunningById[tabId] = false
     updateShouldHideTabBar()
@@ -421,7 +421,7 @@ final class WorktreeTerminalState {
           windowIsVisible: lastWindowIsVisible == true,
           windowIsKey: lastWindowIsKey == true,
           focusedSurfaceID: focusedId,
-          surfaceID: surface.id
+          surfaceID: surface.id,
         )
         surface.setOcclusion(activity.isVisible)
         surface.focusDidChange(activity.isFocused)
@@ -441,7 +441,7 @@ final class WorktreeTerminalState {
     windowIsVisible: Bool,
     windowIsKey: Bool,
     focusedSurfaceID: UUID?,
-    surfaceID: UUID
+    surfaceID: UUID,
   ) -> SurfaceActivity {
     let isVisible = isSurfaceVisibleInTree && isSelectedTab && windowIsVisible
     let isFocused = isVisible && windowIsKey && focusedSurfaceID == surfaceID
@@ -567,7 +567,7 @@ final class WorktreeTerminalState {
     command: String? = nil,
     initialInput: String? = nil,
     context: ghostty_surface_context_e = GHOSTTY_SURFACE_CONTEXT_TAB,
-    surfaceID: UUID? = nil
+    surfaceID: UUID? = nil,
   ) -> SplitTree<GhosttySurfaceView> {
     if let existing = trees[tabId] {
       return existing
@@ -578,7 +578,7 @@ final class WorktreeTerminalState {
       initialInput: initialInput,
       inheritingFromSurfaceId: inheritingFromSurfaceId,
       context: context,
-      surfaceID: surfaceID
+      surfaceID: surfaceID,
     )
     let tree = SplitTree(view: surface)
     trees[tabId] = tree
@@ -590,7 +590,7 @@ final class WorktreeTerminalState {
     _ action: GhosttySplitAction,
     for surfaceId: UUID,
     newSurfaceID: UUID? = nil,
-    initialInput: String? = nil
+    initialInput: String? = nil,
   ) -> Bool {
     guard let tabId = tabID(containing: surfaceId), var tree = trees[tabId] else {
       return false
@@ -611,7 +611,7 @@ final class WorktreeTerminalState {
         let newTree = try tree.inserting(
           view: newSurface,
           at: targetSurface,
-          direction: mapSplitDirection(direction)
+          direction: mapSplitDirection(direction),
         )
         updateTree(newTree, for: tabId)
         focusSurface(newSurface, in: tabId)
@@ -649,7 +649,7 @@ final class WorktreeTerminalState {
           node: targetNode,
           by: amount,
           in: spatialDirection,
-          with: CGRect(origin: .zero, size: tree.viewBounds())
+          with: CGRect(origin: .zero, size: tree.viewBounds()),
         )
         updateTree(newTree, for: tabId)
         return true
@@ -694,7 +694,7 @@ final class WorktreeTerminalState {
         let newTree = try treeWithoutSource.inserting(
           view: payload,
           at: destination,
-          direction: mapDropZone(zone)
+          direction: mapDropZone(zone),
         )
         updateTree(newTree, for: tabId)
         focusSurface(payload, in: tabId)
@@ -840,7 +840,7 @@ final class WorktreeTerminalState {
           direction: direction,
           ratio: split.ratio,
           left: captureLayoutNode(split.left),
-          right: captureLayoutNode(split.right)
+          right: captureLayoutNode(split.right),
         )
       )
     }
@@ -915,7 +915,7 @@ final class WorktreeTerminalState {
   private func restoreLayoutNode(
     _ node: TerminalLayoutSnapshot.LayoutNode,
     anchor: GhosttySurfaceView,
-    tabId: TerminalTabID
+    tabId: TerminalTabID,
   ) {
     guard case .split(let split) = node else { return }
 
@@ -950,7 +950,7 @@ final class WorktreeTerminalState {
     ratio: Double,
     workingDirectory: URL?,
     tabId: TerminalTabID,
-    surfaceID: UUID? = nil
+    surfaceID: UUID? = nil,
   ) -> GhosttySurfaceView? {
     guard var tree = trees[tabId] else { return nil }
     let newSurface = createSurface(
@@ -1024,7 +1024,7 @@ final class WorktreeTerminalState {
   private func blockingScriptLaunch(_ script: String) throws -> BlockingScriptLaunch? {
     try makeBlockingScriptLaunch(
       script: script,
-      shellPath: defaultShellPath()
+      shellPath: defaultShellPath(),
     )
   }
 
@@ -1055,7 +1055,7 @@ final class WorktreeTerminalState {
     _ kind: BlockingScriptKind,
     tabId: TerminalTabID,
     exitCode: Int?,
-    reportedTabId: TerminalTabID?
+    reportedTabId: TerminalTabID?,
   ) {
     tabManager.unlockAndUpdateTitle(tabId, title: "\(worktree.name) \(nextTabIndex())")
     tabManager.updateDirty(tabId, isDirty: isTabBusy(tabId))
@@ -1080,7 +1080,7 @@ final class WorktreeTerminalState {
     let repoPath = worktree.repositoryRootURL.path(percentEncoded: false)
     env["SUPACODE_REPO_ID"] = percentEncode(repoPath, allowedCharacters: percentEncodingSet, label: "SUPACODE_REPO_ID")
     env["SUPACODE_WORKTREE_ID"] = percentEncode(
-      worktree.id, allowedCharacters: percentEncodingSet, label: "SUPACODE_WORKTREE_ID")
+      worktree.id, allowedCharacters: percentEncodingSet, label: "SUPACODE_WORKTREE_ID",)
     env["SUPACODE_TAB_ID"] = tabId.rawValue.uuidString
     env["SUPACODE_SURFACE_ID"] = surfaceID.uuidString
     if let socketPath {
@@ -1114,7 +1114,7 @@ final class WorktreeTerminalState {
     workingDirectoryOverride: URL? = nil,
     inheritingFromSurfaceId: UUID?,
     context: ghostty_surface_context_e,
-    surfaceID: UUID? = nil
+    surfaceID: UUID? = nil,
   ) -> GhosttySurfaceView {
     let resolvedID: UUID
     if let requested = surfaceID {
@@ -1138,7 +1138,7 @@ final class WorktreeTerminalState {
       initialInput: initialInput,
       environmentVariables: surfaceEnvironment(tabId: tabId, surfaceID: surfaceID),
       fontSize: inherited.fontSize,
-      context: context
+      context: context,
     )
     view.bridge.onTitleChange = { [weak self, weak view] title in
       guard let self, let view else { return }
@@ -1204,7 +1204,7 @@ final class WorktreeTerminalState {
 
   private func inheritedSurfaceConfig(
     fromSurfaceId surfaceId: UUID?,
-    context: ghostty_surface_context_e
+    context: ghostty_surface_context_e,
   ) -> InheritedSurfaceConfig {
     guard let surfaceId,
       let view = surfaces[surfaceId],
@@ -1290,7 +1290,7 @@ final class WorktreeTerminalState {
     title: String,
     body: String,
     surfaceId: UUID,
-    fromHook: Bool = false
+    fromHook: Bool = false,
   ) {
     let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
     let trimmedBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1304,9 +1304,9 @@ final class WorktreeTerminalState {
           title: trimmedTitle,
           body: trimmedBody,
           createdAt: now,
-          isRead: isRead
+          isRead: isRead,
         ),
-        at: 0
+        at: 0,
       )
       emitNotificationIndicatorIfNeeded(previousHasUnseen: previousHasUnseen)
     }
@@ -1605,7 +1605,7 @@ nonisolated struct BlockingScriptLaunch {
 nonisolated func makeBlockingScriptLaunch(
   script: String,
   shellPath: String,
-  baseDirectoryURL: URL = FileManager.default.temporaryDirectory
+  baseDirectoryURL: URL = FileManager.default.temporaryDirectory,
 ) throws -> BlockingScriptLaunch? {
   let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
   guard !trimmed.isEmpty else { return nil }
@@ -1613,7 +1613,7 @@ nonisolated func makeBlockingScriptLaunch(
   let fileManager = FileManager.default
   let directoryURL = baseDirectoryURL.appending(
     path: "supacode-blocking-script-\(UUID().uuidString.lowercased())",
-    directoryHint: .isDirectory
+    directoryHint: .isDirectory,
   )
   let runnerURL = directoryURL.appending(path: "run", directoryHint: .notDirectory)
   let scriptURL = directoryURL.appending(path: "script", directoryHint: .notDirectory)
@@ -1626,12 +1626,12 @@ nonisolated func makeBlockingScriptLaunch(
     try Data(
       blockingScriptRunnerContents(
         scriptURL: scriptURL,
-        shellPathURL: shellPathURL
+        shellPathURL: shellPathURL,
       ).utf8
     ).write(to: runnerURL, options: [.atomic])
     try fileManager.setAttributes(
       [.posixPermissions: 0o700],
-      ofItemAtPath: runnerURL.path(percentEncoded: false)
+      ofItemAtPath: runnerURL.path(percentEncoded: false),
     )
   } catch {
     try? fileManager.removeItem(at: directoryURL)
@@ -1643,13 +1643,13 @@ nonisolated func makeBlockingScriptLaunch(
     runnerURL: runnerURL,
     scriptURL: scriptURL,
     shellPathURL: shellPathURL,
-    commandInput: shellSingleQuoted(runnerURL.path(percentEncoded: false)) + "\n"
+    commandInput: shellSingleQuoted(runnerURL.path(percentEncoded: false)) + "\n",
   )
 }
 
 nonisolated func blockingScriptRunnerContents(
   scriptURL: URL,
-  shellPathURL: URL
+  shellPathURL: URL,
 ) -> String {
   let quotedShellPath = shellSingleQuoted(shellPathURL.path(percentEncoded: false))
   let quotedScriptPath = shellSingleQuoted(scriptURL.path(percentEncoded: false))

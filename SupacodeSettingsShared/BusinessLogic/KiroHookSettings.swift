@@ -9,14 +9,14 @@ nonisolated enum KiroHookSettings {
   static func progressHookEntriesByEvent() throws -> [String: [JSONValue]] {
     try AgentHookPayloadSupport.extractHookGroups(
       from: KiroProgressPayload(),
-      invalidConfiguration: KiroHookSettingsError.invalidConfiguration
+      invalidConfiguration: KiroHookSettingsError.invalidConfiguration,
     )
   }
 
   static func notificationHookEntriesByEvent() throws -> [String: [JSONValue]] {
     try AgentHookPayloadSupport.extractHookGroups(
       from: KiroNotificationPayload(),
-      invalidConfiguration: KiroHookSettingsError.invalidConfiguration
+      invalidConfiguration: KiroHookSettingsError.invalidConfiguration,
     )
   }
 }

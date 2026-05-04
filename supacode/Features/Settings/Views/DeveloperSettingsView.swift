@@ -25,21 +25,21 @@ struct DeveloperSettingsView: View {
           uninstallAction: { store.send(.agentHookUninstallTapped(.claudeProgress)) },
           installState: store.claudeProgressState,
           title: "Progress Hook",
-          subtitle: "Display agent activity in tab and sidebar."
+          subtitle: "Display agent activity in tab and sidebar.",
         )
         AgentInstallRow(
           installAction: { store.send(.agentHookInstallTapped(.claudeNotifications)) },
           uninstallAction: { store.send(.agentHookUninstallTapped(.claudeNotifications)) },
           installState: store.claudeNotificationsState,
           title: "Notifications Hook",
-          subtitle: "Forward richer notifications to Supacode."
+          subtitle: "Forward richer notifications to Supacode.",
         )
         AgentInstallRow(
           installAction: { store.send(.cliSkillInstallTapped(.claude)) },
           uninstallAction: { store.send(.cliSkillUninstallTapped(.claude)) },
           installState: store.claudeSkillState,
           title: "CLI Skill",
-          subtitle: "Teach Claude Code how to use the Supacode CLI."
+          subtitle: "Teach Claude Code how to use the Supacode CLI.",
         )
       } header: {
         Label {
@@ -61,21 +61,21 @@ struct DeveloperSettingsView: View {
           uninstallAction: { store.send(.agentHookUninstallTapped(.codexProgress)) },
           installState: store.codexProgressState,
           title: "Progress Hook",
-          subtitle: "Display agent activity in tab and sidebar."
+          subtitle: "Display agent activity in tab and sidebar.",
         )
         AgentInstallRow(
           installAction: { store.send(.agentHookInstallTapped(.codexNotifications)) },
           uninstallAction: { store.send(.agentHookUninstallTapped(.codexNotifications)) },
           installState: store.codexNotificationsState,
           title: "Notifications Hook",
-          subtitle: "Forward richer notifications to Supacode."
+          subtitle: "Forward richer notifications to Supacode.",
         )
         AgentInstallRow(
           installAction: { store.send(.cliSkillInstallTapped(.codex)) },
           uninstallAction: { store.send(.cliSkillUninstallTapped(.codex)) },
           installState: store.codexSkillState,
           title: "CLI Skill",
-          subtitle: "Teach Codex how to use the Supacode CLI."
+          subtitle: "Teach Codex how to use the Supacode CLI.",
         )
       } header: {
         Label {
@@ -97,21 +97,21 @@ struct DeveloperSettingsView: View {
           uninstallAction: { store.send(.agentHookUninstallTapped(.kiroProgress)) },
           installState: store.kiroProgressState,
           title: "Progress Hook",
-          subtitle: "Display agent activity in tab and sidebar."
+          subtitle: "Display agent activity in tab and sidebar.",
         )
         AgentInstallRow(
           installAction: { store.send(.agentHookInstallTapped(.kiroNotifications)) },
           uninstallAction: { store.send(.agentHookUninstallTapped(.kiroNotifications)) },
           installState: store.kiroNotificationsState,
           title: "Notifications Hook",
-          subtitle: "Forward richer notifications to Supacode."
+          subtitle: "Forward richer notifications to Supacode.",
         )
         AgentInstallRow(
           installAction: { store.send(.cliSkillInstallTapped(.kiro)) },
           uninstallAction: { store.send(.cliSkillUninstallTapped(.kiro)) },
           installState: store.kiroSkillState,
           title: "CLI Skill",
-          subtitle: "Teach Kiro how to use the Supacode CLI."
+          subtitle: "Teach Kiro how to use the Supacode CLI.",
         )
       } header: {
         Label {
@@ -131,14 +131,14 @@ struct DeveloperSettingsView: View {
           uninstallAction: { store.send(.agentHookUninstallTapped(.piHooks)) },
           installState: store.piHooksState,
           title: "Hooks",
-          subtitle: "Display agent activity in tab, sidebar, and forward notifications."
+          subtitle: "Display agent activity in tab, sidebar, and forward notifications.",
         )
         AgentInstallRow(
           installAction: { store.send(.cliSkillInstallTapped(.pi)) },
           uninstallAction: { store.send(.cliSkillUninstallTapped(.pi)) },
           installState: store.piSkillState,
           title: "CLI Skill",
-          subtitle: "Teach Pi how to use the Supacode CLI."
+          subtitle: "Teach Pi how to use the Supacode CLI.",
         )
       } header: {
         Label {

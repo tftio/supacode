@@ -69,7 +69,7 @@ struct RepositoryCustomizationFeature {
             .save(
               repositoryID: state.repositoryID,
               title: resolvedTitle,
-              color: state.color
+              color: state.color,
             )
           )
         )

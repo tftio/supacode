@@ -22,14 +22,14 @@ struct TerminalTabBarView: View {
         closeOthers: closeOthers,
         closeToRight: closeToRight,
         closeAll: closeAll,
-        hasNotification: hasNotification
+        hasNotification: hasNotification,
       )
       Spacer(minLength: 0)
       TerminalTabBarTrailingAccessories(
         createTab: createTab,
         splitHorizontally: splitHorizontally,
         splitVertically: splitVertically,
-        canSplit: canSplit
+        canSplit: canSplit,
       )
     }
     .frame(height: TerminalTabBarMetrics.barHeight)

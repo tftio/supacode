@@ -23,7 +23,7 @@ nonisolated struct KiroHookSettingsFileInstaller {
   init(
     fileManager: FileManager,
     errors: Errors,
-    logWarning: @escaping @Sendable (String) -> Void = { kiroInstallerLogger.warning($0) }
+    logWarning: @escaping @Sendable (String) -> Void = { kiroInstallerLogger.warning($0) },
   ) {
     self.fileManager = fileManager
     self.errors = errors
@@ -34,7 +34,7 @@ nonisolated struct KiroHookSettingsFileInstaller {
 
   func containsMatchingHooks(
     settingsURL: URL,
-    hookEntriesByEvent: [String: [JSONValue]]
+    hookEntriesByEvent: [String: [JSONValue]],
   ) -> Bool {
     do {
       let settingsObject = try loadSettingsObject(at: settingsURL)
@@ -63,7 +63,7 @@ nonisolated struct KiroHookSettingsFileInstaller {
 
   func install(
     settingsURL: URL,
-    hookEntriesByEvent: @autoclosure () throws -> [String: [JSONValue]]
+    hookEntriesByEvent: @autoclosure () throws -> [String: [JSONValue]],
   ) throws {
     let settingsObject = try loadSettingsObject(at: settingsURL)
     let hookEntries = try hookEntriesByEvent()
@@ -95,7 +95,7 @@ nonisolated struct KiroHookSettingsFileInstaller {
 
   func uninstall(
     settingsURL: URL,
-    hookEntriesByEvent: @autoclosure () throws -> [String: [JSONValue]]
+    hookEntriesByEvent: @autoclosure () throws -> [String: [JSONValue]],
   ) throws {
     let settingsObject = try loadSettingsObject(at: settingsURL)
     let commandsToPrune = Self.commands(from: try hookEntriesByEvent())
@@ -151,7 +151,7 @@ nonisolated struct KiroHookSettingsFileInstaller {
 
   private func existingEntries(
     for event: String,
-    hooksObject: [String: JSONValue]
+    hooksObject: [String: JSONValue],
   ) throws -> [JSONValue] {
     guard let existingValue = hooksObject[event] else { return [] }
     guard let entries = existingValue.arrayValue else {
@@ -179,7 +179,7 @@ nonisolated struct KiroHookSettingsFileInstaller {
   private func writeSettings(_ object: [String: JSONValue], to url: URL) throws {
     try fileManager.createDirectory(
       at: url.deletingLastPathComponent(),
-      withIntermediateDirectories: true
+      withIntermediateDirectories: true,
     )
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

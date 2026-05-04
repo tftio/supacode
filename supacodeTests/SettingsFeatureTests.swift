@@ -90,7 +90,7 @@ struct SettingsFeatureTests {
       githubIntegrationEnabled: true,
       deleteBranchOnDeleteWorktree: true,
       mergedWorktreeAction: nil,
-      promptForWorktreeCreation: false
+      promptForWorktreeCreation: false,
     )
     @Shared(.settingsFile) var settingsFile
     $settingsFile.withLock { $0.global = initialSettings }
@@ -118,7 +118,7 @@ struct SettingsFeatureTests {
       githubIntegrationEnabled: initialSettings.githubIntegrationEnabled,
       deleteBranchOnDeleteWorktree: initialSettings.deleteBranchOnDeleteWorktree,
       mergedWorktreeAction: initialSettings.mergedWorktreeAction,
-      promptForWorktreeCreation: initialSettings.promptForWorktreeCreation
+      promptForWorktreeCreation: initialSettings.promptForWorktreeCreation,
     )
     await store.receive(\.delegate.settingsChanged)
 
@@ -156,7 +156,7 @@ struct SettingsFeatureTests {
       $0.selection = .repository(summary.id)
       $0.repositorySettings = RepositorySettingsFeature.State(
         rootURL: summary.rootURL,
-        settings: .default
+        settings: .default,
       )
     }
   }
@@ -170,7 +170,7 @@ struct SettingsFeatureTests {
     initial.repositorySettings = RepositorySettingsFeature.State(
       rootURL: summary.rootURL,
       isGitRepository: true,
-      settings: .default
+      settings: .default,
     )
     let store = TestStore(initialState: initial) {
       SettingsFeature()
@@ -208,7 +208,7 @@ struct SettingsFeatureTests {
     ]
     state.repositorySettings = RepositorySettingsFeature.State(
       rootURL: rootURL,
-      settings: .default
+      settings: .default,
     )
     let store = TestStore(initialState: state) {
       SettingsFeature()
@@ -230,7 +230,7 @@ struct SettingsFeatureTests {
       githubIntegrationEnabled: true,
       deleteBranchOnDeleteWorktree: true,
       mergedWorktreeAction: .archive,
-      promptForWorktreeCreation: false
+      promptForWorktreeCreation: false,
     )
 
     await store.send(.settingsLoaded(loaded)) {
@@ -256,7 +256,7 @@ struct SettingsFeatureTests {
       ]
       $0.repositorySettings = RepositorySettingsFeature.State(
         rootURL: rootURL,
-        settings: .default
+        settings: .default,
       )
     }
     await store.receive(\.delegate.settingsChanged)
@@ -296,7 +296,7 @@ struct SettingsFeatureTests {
     var state = SettingsFeature.State()
     state.repositorySettings = RepositorySettingsFeature.State(
       rootURL: rootURL,
-      settings: .default
+      settings: .default,
     )
     let store = TestStore(initialState: state) {
       SettingsFeature()
@@ -333,7 +333,7 @@ struct SettingsFeatureTests {
     var state = SettingsFeature.State()
     state.repositorySettings = RepositorySettingsFeature.State(
       rootURL: rootURL,
-      settings: .default
+      settings: .default,
     )
     let store = TestStore(initialState: state) {
       SettingsFeature()
@@ -355,7 +355,7 @@ struct SettingsFeatureTests {
     var state = SettingsFeature.State()
     state.repositorySettings = RepositorySettingsFeature.State(
       rootURL: rootURL,
-      settings: .default
+      settings: .default,
     )
     let store = TestStore(initialState: state) {
       SettingsFeature()
@@ -408,7 +408,7 @@ struct SettingsFeatureTests {
     state.repositorySummaries = [summary]
     state.repositorySettings = RepositorySettingsFeature.State(
       rootURL: summary.rootURL,
-      settings: .default
+      settings: .default,
     )
     let store = TestStore(initialState: state) {
       SettingsFeature()
@@ -428,7 +428,7 @@ struct SettingsFeatureTests {
     state.repositorySummaries = [summary]
     state.repositorySettings = RepositorySettingsFeature.State(
       rootURL: summary.rootURL,
-      settings: .default
+      settings: .default,
     )
     let store = TestStore(initialState: state) {
       SettingsFeature()
@@ -635,7 +635,7 @@ struct SettingsFeatureTests {
     }
     store.dependencies.date = .constant(fixedDate)
     store.dependencies.archivedWorktreeDatesClient = ArchivedWorktreeDatesClient(
-      load: { [tenDaysAgo] },
+      load: { [tenDaysAgo] }
     )
 
     await store.send(.requestAutoDeleteDaysChange(.sevenDays))
@@ -668,7 +668,7 @@ struct SettingsFeatureTests {
     }
     store.dependencies.date = .constant(fixedDate)
     store.dependencies.archivedWorktreeDatesClient = ArchivedWorktreeDatesClient(
-      load: { [oneDayAgo] },
+      load: { [oneDayAgo] }
     )
 
     await store.send(.requestAutoDeleteDaysChange(.sevenDays))
@@ -716,7 +716,7 @@ struct SettingsFeatureTests {
     }
     store.dependencies.date = .constant(fixedDate)
     store.dependencies.archivedWorktreeDatesClient = ArchivedWorktreeDatesClient(
-      load: { [tenDaysAgo, twelveDaysAgo] },
+      load: { [tenDaysAgo, twelveDaysAgo] }
     )
 
     await store.send(.requestAutoDeleteDaysChange(.sevenDays))
@@ -774,7 +774,7 @@ struct SettingsFeatureTests {
     }
     store.dependencies.date = .constant(fixedDate)
     store.dependencies.archivedWorktreeDatesClient = ArchivedWorktreeDatesClient(
-      load: { [] },
+      load: { [] }
     )
 
     await store.send(.requestAutoDeleteDaysChange(.sevenDays))
@@ -809,7 +809,7 @@ struct SettingsFeatureTests {
     }
     store.dependencies.date = .constant(fixedDate)
     store.dependencies.archivedWorktreeDatesClient = ArchivedWorktreeDatesClient(
-      load: { [thirtyDaysAgoA, thirtyDaysAgoB, thirtyDaysAgoC] },
+      load: { [thirtyDaysAgoA, thirtyDaysAgoB, thirtyDaysAgoC] }
     )
 
     await store.send(.requestAutoDeleteDaysChange(.sevenDays))

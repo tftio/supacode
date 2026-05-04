@@ -43,7 +43,7 @@ struct WorktreeTerminalTabsView: View {
           },
           hasNotification: { tabId in
             state.hasUnseenNotification(forTabID: tabId)
-          }
+          },
         )
         .transition(.move(edge: .top).combined(with: .opacity))
       }
@@ -58,7 +58,7 @@ struct WorktreeTerminalTabsView: View {
             },
             action: { operation in
               state.performSplitOperation(operation, in: tabId)
-            }
+            },
           )
         }
       } else {
@@ -104,7 +104,7 @@ struct WorktreeTerminalTabsView: View {
     if let keyWindow = NSApp.keyWindow {
       return WindowActivityState(
         isKeyWindow: keyWindow.isKeyWindow,
-        isVisible: keyWindow.occlusionState.contains(.visible)
+        isVisible: keyWindow.occlusionState.contains(.visible),
       )
     }
     return windowActivity

@@ -14,7 +14,7 @@ struct RepositoriesFeatureCustomizationTests {
   private let repoID = "/tmp/customize-repo"
 
   private func makeInitialState(
-    isGitRepository: Bool = true,
+    isGitRepository: Bool = true
   ) -> RepositoriesFeature.State {
     let worktree = Worktree(
       id: "\(repoID)/main",
@@ -89,8 +89,8 @@ struct RepositoriesFeatureCustomizationTests {
       .repositoryCustomization(
         .presented(
           .delegate(
-            .save(repositoryID: repoID, title: "Renamed", color: .red),
-          ))),
+            .save(repositoryID: repoID, title: "Renamed", color: .red)
+          )))
     ) {
       $0.repositoryCustomization = nil
       $0.$sidebar.withLock { sidebar in
@@ -175,8 +175,8 @@ struct RepositoriesFeatureCustomizationTests {
       .sidebarGroupCustomization(
         .presented(
           .delegate(
-            .save(groupID: "group-1", isNew: true, title: "Clients", color: .green),
-          ))),
+            .save(groupID: "group-1", isNew: true, title: "Clients", color: .green)
+          )))
     ) {
       $0.sidebarGroupCustomization = nil
       $0.$sidebar.withLock { sidebar in
@@ -212,8 +212,8 @@ struct RepositoriesFeatureCustomizationTests {
       .sidebarGroupCustomization(
         .presented(
           .delegate(
-            .save(groupID: "work", isNew: false, title: "Work Repos", color: .purple),
-          ))),
+            .save(groupID: "work", isNew: false, title: "Work Repos", color: .purple)
+          )))
     ) {
       $0.sidebarGroupCustomization = nil
       $0.$sidebar.withLock { sidebar in
@@ -234,7 +234,7 @@ struct RepositoriesFeatureCustomizationTests {
         repositoryIDs: [self.repoID],
       )
       sidebar.groups["personal"] = .init(
-        title: "Personal",
+        title: "Personal"
       )
     }
     let store = TestStore(initialState: initial) {
@@ -404,7 +404,7 @@ struct RepositoriesFeatureCustomizationTests {
     }
 
     await store.send(
-      .repositoryCustomization(.presented(.delegate(.cancel))),
+      .repositoryCustomization(.presented(.delegate(.cancel)))
     ) {
       $0.repositoryCustomization = nil
     }

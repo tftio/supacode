@@ -145,7 +145,7 @@ struct WorktreeTerminalManagerTests {
         encodedID,
         tabId.rawValue,
         surface.id,
-        AgentHookNotification(agent: "codex", event: "Stop", title: "Done", body: "All complete")
+        AgentHookNotification(agent: "codex", event: "Stop", title: "Done", body: "All complete"),
       )
 
       #expect(
@@ -167,7 +167,7 @@ struct WorktreeTerminalManagerTests {
         title: "Unread",
         body: "body",
         createdAt: .distantPast,
-        isRead: false
+        isRead: false,
       )
     ]
     state.onNotificationIndicatorChanged?()
@@ -177,7 +177,7 @@ struct WorktreeTerminalManagerTests {
         title: "Read",
         body: "body",
         createdAt: .distantPast,
-        isRead: true
+        isRead: true,
       )
     ]
 
@@ -503,7 +503,8 @@ struct WorktreeTerminalManagerTests {
       return false
     }
 
-    #expect(event == .blockingScriptCompleted(worktreeID: worktree.id, kind: .archive, exitCode: 0, tabId: secondTabId))
+    #expect(
+      event == .blockingScriptCompleted(worktreeID: worktree.id, kind: .archive, exitCode: 0, tabId: secondTabId))
   }
 
   @Test func blockingScriptTabClosedManuallyReportsCancellation() async {
@@ -953,13 +954,13 @@ struct WorktreeTerminalManagerTests {
       name: name,
       detail: "detail",
       workingDirectory: URL(fileURLWithPath: id),
-      repositoryRootURL: URL(fileURLWithPath: "/tmp/repo")
+      repositoryRootURL: URL(fileURLWithPath: "/tmp/repo"),
     )
   }
 
   private func nextEvent(
     _ stream: AsyncStream<TerminalClient.Event>,
-    matching predicate: (TerminalClient.Event) -> Bool
+    matching predicate: (TerminalClient.Event) -> Bool,
   ) async -> TerminalClient.Event? {
     for await event in stream where predicate(event) {
       return event
@@ -970,14 +971,14 @@ struct WorktreeTerminalManagerTests {
   private func makeNotification(
     surfaceId: UUID = UUID(),
     isRead: Bool,
-    createdAt: Date = .distantPast
+    createdAt: Date = .distantPast,
   ) -> WorktreeTerminalNotification {
     WorktreeTerminalNotification(
       surfaceId: surfaceId,
       title: "Title",
       body: "Body",
       createdAt: createdAt,
-      isRead: isRead
+      isRead: isRead,
     )
   }
 
@@ -992,13 +993,13 @@ struct WorktreeTerminalManagerTests {
           layout: .leaf(
             TerminalLayoutSnapshot.SurfaceSnapshot(
               id: nil,
-              workingDirectory: "/tmp/repo/wt-1"
+              workingDirectory: "/tmp/repo/wt-1",
             )
           ),
-          focusedLeafIndex: 0
+          focusedLeafIndex: 0,
         )
       ],
-      selectedTabIndex: 0
+      selectedTabIndex: 0,
     )
   }
 }

@@ -53,7 +53,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositories,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -165,14 +165,14 @@ struct AppFeatureDeeplinkTests {
       name: Repository.name(for: folderURL),
       detail: "",
       workingDirectory: folderURL,
-      repositoryRootURL: folderURL
+      repositoryRootURL: folderURL,
     )
     let folderRepo = Repository(
       id: folderRoot,
       rootURL: folderURL,
       name: Repository.name(for: folderURL),
       worktrees: [folderWorktree],
-      isGitRepository: false
+      isGitRepository: false,
     )
     var repositoriesState = RepositoriesFeature.State()
     repositoriesState.repositories = [folderRepo]
@@ -181,7 +181,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositoriesState,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -230,7 +230,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -255,7 +255,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: settings
+        settings: settings,
       )
     ) {
       AppFeature()
@@ -342,7 +342,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -375,7 +375,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: settings
+        settings: settings,
       )
     ) {
       AppFeature()
@@ -437,14 +437,14 @@ struct AppFeatureDeeplinkTests {
     let sent = LockIsolated<[TerminalClient.Command]>([])
     var initialState = AppFeature.State(
       repositories: makeRepositoriesState(worktree: worktree),
-      settings: SettingsFeature.State()
+      settings: SettingsFeature.State(),
     )
     initialState.deeplinkInputConfirmation = DeeplinkInputConfirmationFeature.State(
       worktreeID: worktree.id,
       worktreeName: worktree.name,
       repositoryName: "repo",
       message: .command(definition.command),
-      action: .runScript(scriptID: definition.id)
+      action: .runScript(scriptID: definition.id),
     )
     let store = TestStore(initialState: initialState) {
       AppFeature()
@@ -490,7 +490,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -503,7 +503,7 @@ struct AppFeatureDeeplinkTests {
       .deeplink(
         .worktree(id: worktree.id, action: .stopScript(scriptID: definition.id)),
         source: .socket,
-        responseFD: writeFD
+        responseFD: writeFD,
       )
     )
     await store.finish()
@@ -525,7 +525,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: settings
+        settings: settings,
       )
     ) {
       AppFeature()
@@ -536,7 +536,7 @@ struct AppFeatureDeeplinkTests {
       .deeplink(
         .worktree(id: worktree.id, action: .runScript(scriptID: definition.id)),
         source: .socket,
-        responseFD: 42
+        responseFD: 42,
       )
     )
     #expect(store.state.deeplinkInputConfirmation?.responseFD == 42)
@@ -665,7 +665,7 @@ struct AppFeatureDeeplinkTests {
     await store.send(
       .deeplink(
         .worktree(
-          id: worktree.id, action: .surface(tabID: tabUUID, surfaceID: surfaceUUID, input: "echo test"))))
+          id: worktree.id, action: .surface(tabID: tabUUID, surfaceID: surfaceUUID, input: "echo test"),)))
     #expect(store.state.deeplinkInputConfirmation != nil)
     #expect(store.state.deeplinkInputConfirmation?.message == .command("echo test"))
   }
@@ -681,7 +681,7 @@ struct AppFeatureDeeplinkTests {
         .worktree(
           id: worktree.id,
           action: .surfaceSplit(
-            tabID: tabUUID, surfaceID: surfaceUUID, direction: .horizontal, input: "echo test", id: nil))))
+            tabID: tabUUID, surfaceID: surfaceUUID, direction: .horizontal, input: "echo test", id: nil,),)))
     #expect(store.state.deeplinkInputConfirmation != nil)
     #expect(store.state.deeplinkInputConfirmation?.message == .command("echo test"))
   }
@@ -712,7 +712,7 @@ struct AppFeatureDeeplinkTests {
         .worktree(
           id: worktree.id,
           action: .surfaceSplit(
-            tabID: tabUUID, surfaceID: surfaceUUID, direction: .vertical, input: nil, id: nil))))
+            tabID: tabUUID, surfaceID: surfaceUUID, direction: .vertical, input: nil, id: nil,),)))
     #expect(store.state.deeplinkInputConfirmation == nil)
     let hasSplit = sent.value.contains(where: {
       if case .splitSurface = $0 { return true }
@@ -736,7 +736,7 @@ struct AppFeatureDeeplinkTests {
       repositoryName: "repo",
       message: .command("echo test"),
       action: .surfaceSplit(
-        tabID: tabUUID, surfaceID: surfaceUUID, direction: .horizontal, input: "echo test", id: nil),
+        tabID: tabUUID, surfaceID: surfaceUUID, direction: .horizontal, input: "echo test", id: nil,),
     )
     let store = TestStore(initialState: initialState) {
       AppFeature()
@@ -758,8 +758,8 @@ struct AppFeatureDeeplinkTests {
                 worktreeID: worktree.id,
                 action: .surfaceSplit(
                   tabID: tabUUID, surfaceID: surfaceUUID, direction: .horizontal,
-                  input: "echo test", id: nil),
-                alwaysAllow: false)))
+                  input: "echo test", id: nil,),
+                alwaysAllow: false,)))
         )
       ) {
         $0.deeplinkInputConfirmation = nil
@@ -822,7 +822,7 @@ struct AppFeatureDeeplinkTests {
           repositoryID: "/tmp/repo",
           branch: nil,
           baseRef: nil,
-          fetchOrigin: false
+          fetchOrigin: false,
         )
       )
     )
@@ -860,7 +860,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1038,7 +1038,7 @@ struct AppFeatureDeeplinkTests {
           .presented(
             .delegate(
               .confirm(
-                worktreeID: "/nonexistent", action: .tabNew(input: "echo hello", id: nil), alwaysAllow: false)))
+                worktreeID: "/nonexistent", action: .tabNew(input: "echo hello", id: nil), alwaysAllow: false,)))
         )
       ) {
         $0.deeplinkInputConfirmation = nil
@@ -1084,7 +1084,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositories,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1117,7 +1117,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositories,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1165,7 +1165,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1186,7 +1186,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1205,7 +1205,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1230,7 +1230,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositories,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1264,7 +1264,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositories,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1295,7 +1295,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1310,7 +1310,7 @@ struct AppFeatureDeeplinkTests {
           repositoryID: "/tmp/repo",
           branch: "feature-x",
           baseRef: "main",
-          fetchOrigin: true
+          fetchOrigin: true,
         )
       )
     )
@@ -1337,7 +1337,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1369,7 +1369,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1389,7 +1389,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1412,7 +1412,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1470,7 +1470,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositories,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1508,7 +1508,7 @@ struct AppFeatureDeeplinkTests {
       .deeplink(
         .worktree(id: worktree.id, action: .tabNew(input: "echo test", id: nil)),
         source: .socket,
-        responseFD: 42
+        responseFD: 42,
       )
     )
     #expect(store.state.deeplinkInputConfirmation?.responseFD == 42)
@@ -1535,7 +1535,7 @@ struct AppFeatureDeeplinkTests {
       .deeplink(
         .worktree(id: worktree.id, action: .tabNew(input: "echo first", id: nil)),
         source: .socket,
-        responseFD: oldWriteFD
+        responseFD: oldWriteFD,
       )
     )
     #expect(store.state.deeplinkInputConfirmation?.responseFD == oldWriteFD)
@@ -1550,7 +1550,7 @@ struct AppFeatureDeeplinkTests {
       .deeplink(
         .worktree(id: worktree.id, action: .tabNew(input: "echo second", id: nil)),
         source: .socket,
-        responseFD: newWriteFD
+        responseFD: newWriteFD,
       )
     )
     await store.finish()
@@ -1659,7 +1659,7 @@ struct AppFeatureDeeplinkTests {
     await store.send(
       .deeplink(
         .worktree(id: worktree.id, action: .tabNew(input: "echo test", id: nil)),
-        source: .socket
+        source: .socket,
       )
     )
     #expect(store.state.deeplinkInputConfirmation == nil)
@@ -1687,7 +1687,7 @@ struct AppFeatureDeeplinkTests {
     await store.send(
       .deeplink(
         .worktree(id: worktree.id, action: .tabNew(input: "echo test", id: nil)),
-        source: .urlScheme
+        source: .urlScheme,
       )
     )
     #expect(store.state.deeplinkInputConfirmation != nil)
@@ -1697,7 +1697,7 @@ struct AppFeatureDeeplinkTests {
 
   private func makeWorktree(
     id: String = "/tmp/repo/wt-1",
-    name: String = "wt-1"
+    name: String = "wt-1",
   ) -> Worktree {
     Worktree(
       id: id,
@@ -1730,7 +1730,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1744,7 +1744,7 @@ struct AppFeatureDeeplinkTests {
 
   private func makeConfirmationState(
     worktree: Worktree,
-    input: String
+    input: String,
   ) -> DeeplinkInputConfirmationFeature.State {
     makeConfirmationState(
       worktreeID: worktree.id,
@@ -1758,7 +1758,7 @@ struct AppFeatureDeeplinkTests {
     worktreeID: Worktree.ID,
     worktreeName: String,
     repositoryName: String?,
-    input: String
+    input: String,
   ) -> DeeplinkInputConfirmationFeature.State {
     DeeplinkInputConfirmationFeature.State(
       worktreeID: worktreeID,
@@ -1825,7 +1825,7 @@ struct AppFeatureDeeplinkTests {
     await store.send(
       .deeplink(
         .worktree(id: worktree.id, action: .tabNew(input: "echo test", id: nil)),
-        source: .urlScheme
+        source: .urlScheme,
       )
     )
     #expect(store.state.deeplinkInputConfirmation == nil)
@@ -1853,7 +1853,7 @@ struct AppFeatureDeeplinkTests {
     await store.send(
       .deeplink(
         .worktree(id: worktree.id, action: .tabNew(input: "echo test", id: nil)),
-        source: .socket
+        source: .socket,
       )
     )
     #expect(store.state.deeplinkInputConfirmation != nil)
@@ -1868,7 +1868,7 @@ struct AppFeatureDeeplinkTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: makeRepositoriesState(worktree: worktree),
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -1932,7 +1932,7 @@ struct AppFeatureDeeplinkTests {
           id: worktree.id,
           action: .surfaceSplit(
             tabID: tabUUID, surfaceID: surfaceUUID, direction: .horizontal,
-            input: nil, id: existingSurfaceID))))
+            input: nil, id: existingSurfaceID,),)))
     #expect(store.state.alert != nil)
     #expect(store.state.deeplinkInputConfirmation == nil)
   }

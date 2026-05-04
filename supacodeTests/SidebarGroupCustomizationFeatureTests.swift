@@ -10,7 +10,7 @@ struct SidebarGroupCustomizationFeatureTests {
   private func makeState(
     title: String = "Work",
     color: RepositoryColor? = nil,
-    isNew: Bool = false
+    isNew: Bool = false,
   ) -> SidebarGroupCustomizationFeature.State {
     SidebarGroupCustomizationFeature.State(
       groupID: "work",
@@ -29,7 +29,7 @@ struct SidebarGroupCustomizationFeatureTests {
     await store.send(.saveButtonTapped)
     await store.receive(
       .delegate(
-        .save(groupID: "work", isNew: false, title: "Work Repos", color: .blue),
+        .save(groupID: "work", isNew: false, title: "Work Repos", color: .blue)
       ))
   }
 
@@ -41,7 +41,7 @@ struct SidebarGroupCustomizationFeatureTests {
     await store.send(.saveButtonTapped)
     await store.receive(
       .delegate(
-        .save(groupID: "work", isNew: false, title: SidebarState.defaultGroupTitle, color: nil),
+        .save(groupID: "work", isNew: false, title: SidebarState.defaultGroupTitle, color: nil)
       ))
   }
 

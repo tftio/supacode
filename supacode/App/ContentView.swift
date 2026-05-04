@@ -40,7 +40,7 @@ struct ContentView: View {
     .fileImporter(
       isPresented: $repositoriesStore.isOpenPanelPresented.sending(\.setOpenPanelPresented),
       allowedContentTypes: [.folder],
-      allowsMultipleSelection: true
+      allowsMultipleSelection: true,
     ) { result in
       switch result {
       case .success(let urls):
@@ -50,7 +50,7 @@ struct ContentView: View {
           .repositories(
             .presentAlert(
               title: "Unable to open folders",
-              message: "Supacode could not read the selected folders."
+              message: "Supacode could not read the selected folders.",
             )
           )
         )
@@ -71,7 +71,7 @@ struct ContentView: View {
     .sheet(
       store: repositoriesStore.scope(
         state: \.$repositoryCustomization,
-        action: \.repositoryCustomization
+        action: \.repositoryCustomization,
       )
     ) { customizationStore in
       RepositoryCustomizationView(store: customizationStore)
@@ -79,7 +79,7 @@ struct ContentView: View {
     .sheet(
       store: repositoriesStore.scope(
         state: \.$sidebarGroupCustomization,
-        action: \.sidebarGroupCustomization
+        action: \.sidebarGroupCustomization,
       )
     ) { customizationStore in
       SidebarGroupCustomizationView(store: customizationStore)
@@ -93,8 +93,8 @@ struct ContentView: View {
           from: store.repositories,
           ghosttyCommands: ghosttyShortcuts.commandPaletteEntries,
           scripts: store.scripts,
-          runningScriptIDs: store.runningScriptIDs
-        )
+          runningScriptIDs: store.runningScriptIDs,
+        ),
       )
     }
     .background(WindowTabbingDisabler())

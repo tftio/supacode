@@ -181,14 +181,14 @@ extension RepositoriesFeature {
   /// so the prefix literal lives in exactly one place.
   func signalFolderRemovalFailure(
     worktreeID: Worktree.ID,
-    state: inout State
+    state: inout State,
   ) -> Effect<Action> {
     guard let repositoryID = Repository.repositoryID(fromFolderWorktreeID: worktreeID),
       state.removingRepositoryIDs[repositoryID]?.disposition.isFolder == true
     else { return .none }
     return .send(
       .repositoryRemovalCompleted(
-        repositoryID, outcome: .failureSilent, selectionWasRemoved: false))
+        repositoryID, outcome: .failureSilent, selectionWasRemoved: false,))
   }
 
   /// Shared "Action not available" alert shown when a git-only
@@ -217,7 +217,7 @@ extension RepositoriesFeature {
   /// single-target and multi-target copy stay visually consistent.
   func consolidatedTrashFailureAlert(
     failureMessagesByRepositoryID: [Repository.ID: String],
-    namesByRepositoryID: [Repository.ID: String]
+    namesByRepositoryID: [Repository.ID: String],
   ) -> AlertState<Alert> {
     func displayName(for id: Repository.ID) -> String {
       if let resolved = namesByRepositoryID[id], !resolved.isEmpty {
@@ -230,7 +230,7 @@ extension RepositoriesFeature {
     if count == 1, let (id, message) = failureMessagesByRepositoryID.first {
       return messageAlert(
         title: "Delete from disk failed",
-        message: "Couldn't move \(displayName(for: id)) to the Trash: \(message)"
+        message: "Couldn't move \(displayName(for: id)) to the Trash: \(message)",
       )
     }
     let lines =
@@ -240,14 +240,14 @@ extension RepositoriesFeature {
       .joined(separator: "\n")
     return messageAlert(
       title: "Delete from disk failed for \(count) folders",
-      message: "These folders stayed on disk:\n\n\(lines)"
+      message: "These folders stayed on disk:\n\n\(lines)",
     )
   }
 
   func folderRemovalEffect(
     repositoryID: Repository.ID,
     selectionWasRemoved: Bool,
-    diskDeletionURL: URL?
+    diskDeletionURL: URL?,
   ) -> Effect<Action> {
     // Completion always routes through `.repositoryRemovalCompleted`
     // so the batch aggregator can decide whether to fire the bulk
@@ -260,7 +260,7 @@ extension RepositoriesFeature {
     guard let diskDeletionURL else {
       return .send(
         .repositoryRemovalCompleted(
-          repositoryID, outcome: .success, selectionWasRemoved: selectionWasRemoved))
+          repositoryID, outcome: .success, selectionWasRemoved: selectionWasRemoved,))
     }
     return .run { send in
       do {
@@ -269,7 +269,7 @@ extension RepositoriesFeature {
         }.value
         await send(
           .repositoryRemovalCompleted(
-            repositoryID, outcome: .success, selectionWasRemoved: selectionWasRemoved))
+            repositoryID, outcome: .success, selectionWasRemoved: selectionWasRemoved,))
       } catch {
         repositoriesLogger.warning(
           "Failed to trash folder at \(diskDeletionURL.path(percentEncoded: false)): "
@@ -279,7 +279,7 @@ extension RepositoriesFeature {
           .repositoryRemovalCompleted(
             repositoryID,
             outcome: .failureWithMessage(error.localizedDescription),
-            selectionWasRemoved: false
+            selectionWasRemoved: false,
           ))
       }
     }
@@ -287,7 +287,7 @@ extension RepositoriesFeature {
 
   func confirmationAlertForRepositoryRemoval(
     repositoryID: Repository.ID,
-    state: State
+    state: State,
   ) -> AlertState<Alert>? {
     guard let repository = state.repositories[id: repositoryID] else {
       return nil

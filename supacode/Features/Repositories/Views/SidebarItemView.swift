@@ -67,7 +67,7 @@ struct SidebarItemView: View {
     isTaskRunning: Bool,
     showsNotificationIndicator: Bool,
     notifications: [WorktreeTerminalNotification],
-    shortcutHint: String?
+    shortcutHint: String?,
   ) {
     self.kind = row.kind
     self.isArchiving = row.isArchiving
@@ -121,7 +121,7 @@ struct SidebarItemView: View {
     // Pull request display.
     let prDisplay = WorktreePullRequestDisplay(
       worktreeName: row.name,
-      pullRequest: showsPullRequestInfo ? row.info?.pullRequest : nil
+      pullRequest: showsPullRequestInfo ? row.info?.pullRequest : nil,
     )
     self.pullRequestBadgeText = prDisplay.pullRequestBadgeStyle?.text
     if let pullRequest = prDisplay.pullRequest {
@@ -184,7 +184,7 @@ struct SidebarItemView: View {
           name: name,
           subtitle: subtitle,
           worktreeColor: worktreeColor,
-          isBusy: isBusy
+          isBusy: isBusy,
         )
         Spacer(minLength: 0)
         TrailingView(
@@ -194,7 +194,7 @@ struct SidebarItemView: View {
           pullRequestBadgeText: pullRequestBadgeText,
           runningScriptColors: runningScriptColors,
           showsNotificationIndicator: showsNotificationIndicator,
-          notifications: notifications
+          notifications: notifications,
         )
       }
     } icon: {
@@ -205,7 +205,7 @@ struct SidebarItemView: View {
         isPending: isPending,
         gitIconName: gitIconName,
         gitIconColor: gitIconColor,
-        checkBadgeState: checkBadgeState
+        checkBadgeState: checkBadgeState,
       )
     }
     .labelStyle(.verticallyCentered)
@@ -365,7 +365,7 @@ private struct TrailingView: View {
         StatusIndicator(
           runningScriptColors: runningScriptColors,
           showsNotificationIndicator: showsNotificationIndicator,
-          notifications: notifications
+          notifications: notifications,
         )
       }
     }
@@ -413,7 +413,7 @@ private struct StatusIndicator: View {
             colors: runningScriptColors,
             isEmphasized: isEmphasized,
             size: 6,
-            showsSolidCenter: !showsNotificationIndicator
+            showsSolidCenter: !showsNotificationIndicator,
           )
         }
         if showsNotificationIndicator {
@@ -459,7 +459,7 @@ private struct MultiColorPingDot: View {
       PingDot(
         color: resolved.first ?? .green,
         size: size,
-        showsSolidCenter: showsSolidCenter
+        showsSolidCenter: showsSolidCenter,
       )
     } else if reduceMotion {
       // Show a static dot with the first color when motion is reduced.

@@ -317,7 +317,7 @@ nonisolated extension SidebarState {
   mutating func reorderRepositories(
     in groupID: Group.Identifier,
     fromOffsets offsets: IndexSet,
-    toOffset destination: Int
+    toOffset destination: Int,
   ) {
     guard var group = groups[groupID] else {
       return

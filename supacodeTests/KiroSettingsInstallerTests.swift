@@ -16,7 +16,7 @@ struct KiroSettingsInstallerTests {
     homeURL: URL,
     versionOutput: String = "kiro 1.0.0",
     versionStatus: Int32 = 0,
-    versionError: Error? = nil
+    versionError: Error? = nil,
   ) -> KiroSettingsInstaller {
     KiroSettingsInstaller(
       homeDirectoryURL: homeURL,

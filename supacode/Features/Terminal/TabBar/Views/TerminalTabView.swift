@@ -26,7 +26,7 @@ struct TerminalTabView: View {
           isHoveringTab: isHovering,
           isHoveringClose: isHoveringClose,
           shortcutHint: shortcutHint,
-          showsShortcutHint: showsShortcutHint
+          showsShortcutHint: showsShortcutHint,
         )
       }
       .buttonStyle(TerminalTabButtonStyle(isPressing: $isPressing))
@@ -34,7 +34,7 @@ struct TerminalTabView: View {
         minWidth: TerminalTabBarMetrics.tabMinWidth,
         maxWidth: TerminalTabBarMetrics.tabMaxWidth,
         minHeight: TerminalTabBarMetrics.tabHeight,
-        maxHeight: TerminalTabBarMetrics.tabHeight
+        maxHeight: TerminalTabBarMetrics.tabHeight,
       )
       .frame(width: fixedWidth)
       .contentShape(.rect)
@@ -55,7 +55,7 @@ struct TerminalTabView: View {
           isShowingShortcutHint: showsShortcutHint,
           closeAction: onClose,
           closeButtonGestureActive: $closeButtonGestureActive,
-          isHoveringClose: $isHoveringClose
+          isHoveringClose: $isHoveringClose,
         )
       }
       .animation(.easeInOut(duration: TerminalTabBarMetrics.hoverAnimationDuration), value: isHovering)
@@ -68,7 +68,7 @@ struct TerminalTabView: View {
         isPressing: isPressing,
         isDragging: isDragging,
         isHovering: isHovering,
-        tintColor: tab.tintColor
+        tintColor: tab.tintColor,
       )
       .animation(.easeInOut(duration: TerminalTabBarMetrics.hoverAnimationDuration), value: isHovering)
     }

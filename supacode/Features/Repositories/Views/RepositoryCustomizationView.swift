@@ -62,13 +62,13 @@ private struct ColorSwatchRowView: View {
     HStack(spacing: 8) {
       DefaultSwatchButton(
         isSelected: store.color == nil,
-        action: { store.send(.selectColor(nil)) }
+        action: { store.send(.selectColor(nil)) },
       )
       ForEach(RepositoryColor.predefined, id: \.rawValue) { color in
         ColorSwatchButton(
           color: color,
           isSelected: store.color == color,
-          action: { store.send(.selectColor(color)) }
+          action: { store.send(.selectColor(color)) },
         )
       }
       Divider()

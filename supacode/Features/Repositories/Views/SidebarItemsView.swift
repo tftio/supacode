@@ -37,25 +37,25 @@ struct SidebarItemsView: View {
         id: "main",
         rows: sections.main.map { [$0] } ?? [],
         hideSubtitle: isSoleDefaultWorktree,
-        moveBehavior: .disabled
+        moveBehavior: .disabled,
       ),
       GroupConfiguration(
         id: "pinned",
         rows: sections.pinned,
         hideSubtitle: false,
-        moveBehavior: .pinned(repository.id)
+        moveBehavior: .pinned(repository.id),
       ),
       GroupConfiguration(
         id: "pending",
         rows: sections.pending,
         hideSubtitle: false,
-        moveBehavior: .disabled
+        moveBehavior: .disabled,
       ),
       GroupConfiguration(
         id: "unpinned",
         rows: sections.unpinned,
         hideSubtitle: false,
-        moveBehavior: .unpinned(repository.id)
+        moveBehavior: .unpinned(repository.id),
       ),
     ]
 
@@ -69,7 +69,7 @@ struct SidebarItemsView: View {
         isRepositoryRemoving: isRepositoryRemoving,
         hideSubtitle: groupConfiguration.hideSubtitle,
         moveBehavior: groupConfiguration.moveBehavior,
-        shortcutIndexByID: shortcutIndexByID
+        shortcutIndexByID: shortcutIndexByID,
       )
     }
   }
@@ -120,7 +120,7 @@ private struct SidebarItemGroupView: View {
       isRepositoryRemoving: isRepositoryRemoving,
       hideSubtitle: hideSubtitle,
       moveDisabled: moveDisabled(for: row),
-      shortcutHint: shortcutHint(for: shortcutIndexByID[row.id])
+      shortcutHint: shortcutHint(for: shortcutIndexByID[row.id]),
     )
   }
 
@@ -179,7 +179,7 @@ private struct SidebarItemContainer: View {
       isTaskRunning: terminalManager.stateIfExists(for: row.id)?.taskStatus == .running,
       showsNotificationIndicator: terminalManager.hasUnseenNotifications(for: row.id),
       notifications: terminalManager.stateIfExists(for: row.id)?.notifications ?? [],
-      shortcutHint: shortcutHint
+      shortcutHint: shortcutHint,
     )
     .environment(\.focusNotificationAction) { notification in
       guard let terminalState = terminalManager.stateIfExists(for: row.id) else {
@@ -201,7 +201,7 @@ private struct SidebarItemContainer: View {
           worktree: worktree,
           row: row,
           store: store,
-          selectedWorktreeIDs: selectedWorktreeIDs
+          selectedWorktreeIDs: selectedWorktreeIDs,
         )
       }
     }
@@ -259,7 +259,7 @@ struct SidebarFolderRow: View {
         isRepositoryRemoving: isRepositoryRemoving,
         hideSubtitle: true,
         moveDisabled: false,
-        shortcutHint: nil
+        shortcutHint: nil,
       )
     }
   }
@@ -299,7 +299,7 @@ private struct SidebarItemContextMenu: View {
     @Shared(.repositorySettings(worktree.repositoryRootURL)) var repositorySettings
     return OpenWorktreeAction.fromSettingsID(
       repositorySettings.openActionID,
-      defaultEditorID: settingsFile.global.defaultEditorID
+      defaultEditorID: settingsFile.global.defaultEditorID,
     )
   }
 
@@ -313,7 +313,7 @@ private struct SidebarItemContextMenu: View {
       menuContents(
         contextRows: contextRows,
         isBulkSelection: contextRows.count > 1,
-        overrides: settingsFile.global.shortcutOverrides
+        overrides: settingsFile.global.shortcutOverrides,
       )
     }
   }
@@ -322,7 +322,7 @@ private struct SidebarItemContextMenu: View {
   private func menuContents(
     contextRows: [SidebarItemModel],
     isBulkSelection: Bool,
-    overrides: [AppShortcutID: AppShortcutOverride]
+    overrides: [AppShortcutID: AppShortcutOverride],
   ) -> some View {
     let archiveShortcut = AppShortcuts.archiveWorktree.effective(from: overrides)
     let deleteShortcut = AppShortcuts.deleteWorktree.effective(from: overrides)
@@ -383,13 +383,13 @@ private struct SidebarItemContextMenu: View {
       .map {
         RepositoriesFeature.ArchiveWorktreeTarget(
           worktreeID: $0.id,
-          repositoryID: $0.repositoryID
+          repositoryID: $0.repositoryID,
         )
       }
     let deleteTargets = contextRows.map {
       RepositoriesFeature.DeleteWorktreeTarget(
         worktreeID: $0.id,
-        repositoryID: $0.repositoryID
+        repositoryID: $0.repositoryID,
       )
     }
 

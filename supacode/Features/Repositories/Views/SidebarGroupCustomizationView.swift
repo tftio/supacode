@@ -57,13 +57,13 @@ private struct GroupColorSwatchRowView: View {
     HStack(spacing: 8) {
       GroupDefaultSwatchButton(
         isSelected: store.color == nil,
-        action: { store.send(.selectColor(nil)) }
+        action: { store.send(.selectColor(nil)) },
       )
       ForEach(RepositoryColor.predefined, id: \.rawValue) { color in
         GroupColorSwatchButton(
           color: color,
           isSelected: store.color == color,
-          action: { store.send(.selectColor(color)) }
+          action: { store.send(.selectColor(color)) },
         )
       }
       Divider()

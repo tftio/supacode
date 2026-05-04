@@ -39,7 +39,7 @@ struct WorktreeDetailTitleView: View {
           isPresented = false
           guard newName != title else { return }
           onRenameBranch(newName)
-        }
+        },
       )
     }
   }
@@ -132,7 +132,7 @@ private struct RenameBranchPopover: View {
       title: "sbertix/small-ui-improvements",
       rootURL: supacodeRepoRoot,
       isFolder: false,
-      onRenameBranch: { _ in }
+      onRenameBranch: { _ in },
     )
   }.frame(width: 600, height: 600)
 }
@@ -143,7 +143,7 @@ private struct RenameBranchPopover: View {
       title: "Documents",
       rootURL: URL(fileURLWithPath: "/Users/stefanobertagno/Documents"),
       isFolder: true,
-      onRenameBranch: { _ in }
+      onRenameBranch: { _ in },
     )
   }.frame(width: 600, height: 600)
 }
@@ -154,7 +154,7 @@ private struct RenameBranchPopover: View {
       title: "ghost-branch",
       rootURL: URL(fileURLWithPath: "/tmp/supacode-preview-no-such-repo"),
       isFolder: false,
-      onRenameBranch: { _ in }
+      onRenameBranch: { _ in },
     )
   }.frame(width: 600, height: 600)
 }

@@ -24,7 +24,7 @@ struct TerminalSplitTreeView: View {
     let data = surfaceView.id.uuidString.data(using: .utf8) ?? Data()
     provider.registerDataRepresentation(
       forTypeIdentifier: dragType.identifier,
-      visibility: .all
+      visibility: .all,
     ) { completion in
       completion(data, nil)
       return nil
@@ -40,7 +40,7 @@ struct TerminalSplitTreeView: View {
         activeSurfaceID: activeSurfaceID,
         unfocusedSplitOverlay: unfocusedSplitOverlay,
         hasNotification: hasNotification,
-        action: action
+        action: action,
       )
       .id(node.structuralIdentity)
     }
@@ -69,7 +69,7 @@ struct TerminalSplitTreeView: View {
           activeSurfaceID: activeSurfaceID,
           unfocusedSplitOverlay: unfocusedSplitOverlay,
           hasNotification: hasNotification(leafView.id),
-          action: action
+          action: action,
         )
       case .split(let split):
         let splitViewDirection: SplitView<SubtreeView, SubtreeView>.Direction =
@@ -85,7 +85,7 @@ struct TerminalSplitTreeView: View {
             },
             set: {
               action(.resize(node: node, ratio: Double($0)))
-            }),
+            },),
           dividerColor: Color(nsColor: .separatorColor),
           resizeIncrements: .init(width: 1, height: 1),
           left: {
@@ -94,7 +94,7 @@ struct TerminalSplitTreeView: View {
               activeSurfaceID: activeSurfaceID,
               unfocusedSplitOverlay: unfocusedSplitOverlay,
               hasNotification: hasNotification,
-              action: action
+              action: action,
             )
           },
           right: {
@@ -103,12 +103,12 @@ struct TerminalSplitTreeView: View {
               activeSurfaceID: activeSurfaceID,
               unfocusedSplitOverlay: unfocusedSplitOverlay,
               hasNotification: hasNotification,
-              action: action
+              action: action,
             )
           },
           onEqualize: {
             action(.equalize)
-          }
+          },
         )
       }
     }
@@ -171,8 +171,8 @@ struct TerminalSplitTreeView: View {
                   dropState: $dropState,
                   viewSize: geometry.size,
                   destinationId: surfaceView.id,
-                  action: action
-                ))
+                  action: action,
+                ),)
           }
           .overlay {
             if case .dropping(let zone) = dropState {
@@ -378,10 +378,10 @@ struct TerminalSplitTreeAXContainer: NSViewRepresentable {
           activeSurfaceID: activeSurfaceID,
           unfocusedSplitOverlay: unfocusedSplitOverlay,
           hasNotification: hasNotification,
-          action: action
+          action: action,
         )
       ),
-      panes: tree.visibleLeaves()
+      panes: tree.visibleLeaves(),
     )
   }
 }

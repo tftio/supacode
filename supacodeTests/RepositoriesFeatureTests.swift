@@ -1877,7 +1877,7 @@ struct RepositoriesFeatureTests {
     }
 
     let target = RepositoriesFeature.DeleteWorktreeTarget(
-      worktreeID: worktree.id, repositoryID: repository.id)
+      worktreeID: worktree.id, repositoryID: repository.id,)
     let expectedAlert = AlertState<RepositoriesFeature.Alert> {
       TextState("🚨 Delete worktree?")
     } actions: {
@@ -1912,7 +1912,7 @@ struct RepositoriesFeatureTests {
     }
 
     let target = RepositoriesFeature.DeleteWorktreeTarget(
-      worktreeID: mainWorktree.id, repositoryID: repository.id)
+      worktreeID: mainWorktree.id, repositoryID: repository.id,)
     let expectedAlert = AlertState<RepositoriesFeature.Alert> {
       TextState("Delete not allowed")
     } actions: {
@@ -1940,9 +1940,9 @@ struct RepositoriesFeatureTests {
 
     let targets = [
       RepositoriesFeature.DeleteWorktreeTarget(
-        worktreeID: mainWorktree.id, repositoryID: repository.id),
+        worktreeID: mainWorktree.id, repositoryID: repository.id,),
       RepositoriesFeature.DeleteWorktreeTarget(
-        worktreeID: feature.id, repositoryID: repository.id),
+        worktreeID: feature.id, repositoryID: repository.id,),
     ]
     await store.send(.requestDeleteSidebarItems(targets)) {
       $0.alert = AlertState {
@@ -6111,7 +6111,7 @@ struct RepositoriesFeatureTests {
     }
 
     let folderTarget = RepositoriesFeature.DeleteWorktreeTarget(
-      worktreeID: folderWorktree.id, repositoryID: folderRepo.id)
+      worktreeID: folderWorktree.id, repositoryID: folderRepo.id,)
     await store.send(.requestDeleteSidebarItems([folderTarget])) {
       $0.alert = AlertState {
         TextState("Remove folder?")
@@ -6534,7 +6534,7 @@ struct RepositoriesFeatureTests {
     state.repositoryRoots = [standardized]
     state.isInitialLoadComplete = true
     let folderTarget = RepositoriesFeature.DeleteWorktreeTarget(
-      worktreeID: folderWorktree.id, repositoryID: folderRepo.id)
+      worktreeID: folderWorktree.id, repositoryID: folderRepo.id,)
     state.alert = AlertState {
       TextState("Remove folder?")
     } actions: {
@@ -6605,7 +6605,7 @@ struct RepositoriesFeatureTests {
     state.repositoryRoots = [missingURL]
     state.isInitialLoadComplete = true
     let folderTarget = RepositoriesFeature.DeleteWorktreeTarget(
-      worktreeID: folderWorktree.id, repositoryID: folderRepo.id)
+      worktreeID: folderWorktree.id, repositoryID: folderRepo.id,)
 
     let store = TestStore(initialState: state) {
       RepositoriesFeature()
@@ -6866,7 +6866,7 @@ struct RepositoriesFeatureTests {
       )
       let repo = Repository(
         id: id, rootURL: url, name: Repository.name(for: url),
-        worktrees: IdentifiedArray(uniqueElements: [worktree]), isGitRepository: false)
+        worktrees: IdentifiedArray(uniqueElements: [worktree]), isGitRepository: false,)
       return (worktree, repo)
     }
     let (worktreeA, folderA) = makeFolderRepo(url: urlA, id: rootA)
@@ -6964,7 +6964,7 @@ struct RepositoriesFeatureTests {
     store.exhaustivity = .off(showSkippedAssertions: false)
 
     let targetA = RepositoriesFeature.DeleteWorktreeTarget(
-      worktreeID: worktreeA.id, repositoryID: folderA.id)
+      worktreeID: worktreeA.id, repositoryID: folderA.id,)
     await store.send(
       .alert(.presented(.confirmDeleteSidebarItems([targetA], disposition: .folderUnlink)))
     )
@@ -7038,9 +7038,9 @@ struct RepositoriesFeatureTests {
 
     let targets = [
       RepositoriesFeature.DeleteWorktreeTarget(
-        worktreeID: worktreeA.id, repositoryID: folderA.id),
+        worktreeID: worktreeA.id, repositoryID: folderA.id,),
       RepositoriesFeature.DeleteWorktreeTarget(
-        worktreeID: worktreeB.id, repositoryID: folderB.id),
+        worktreeID: worktreeB.id, repositoryID: folderB.id,),
     ]
 
     await store.send(.requestDeleteSidebarItems(targets)) {
@@ -7117,9 +7117,9 @@ struct RepositoriesFeatureTests {
     await store.send(
       .requestDeleteSidebarItems([
         RepositoriesFeature.DeleteWorktreeTarget(
-          worktreeID: gitFeature.id, repositoryID: gitRepo.id),
+          worktreeID: gitFeature.id, repositoryID: gitRepo.id,),
         RepositoriesFeature.DeleteWorktreeTarget(
-          worktreeID: folderMain.id, repositoryID: folderRepo.id),
+          worktreeID: folderMain.id, repositoryID: folderRepo.id,),
       ]))
     #expect(store.state.alert == nil)
   }
@@ -7136,7 +7136,7 @@ struct RepositoriesFeatureTests {
     let repoURL = URL(fileURLWithPath: repoRoot)
     let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)
     let featureWorktree = makeWorktree(
-      id: "\(repoRoot)/feature", name: "feature", repoRoot: repoRoot)
+      id: "\(repoRoot)/feature", name: "feature", repoRoot: repoRoot,)
     let gitRepo = Repository(
       id: repoRoot,
       rootURL: repoURL,
@@ -7337,7 +7337,7 @@ struct RepositoriesFeatureTests {
 
       await store.send(
         .repositoryRemovalCompleted(
-          folderRepo.id, outcome: .failureSilent, selectionWasRemoved: false))
+          folderRepo.id, outcome: .failureSilent, selectionWasRemoved: false,))
       await store.skipReceivedActions()
       #expect(store.state.removingRepositoryIDs[folderRepo.id] == nil)
       #expect(!store.state.deletingWorktreeIDs.contains(folderWorktree.id))

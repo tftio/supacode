@@ -45,7 +45,7 @@ actor GithubBatchShellProbe {
       ghCallCount: ghCallCount,
       maxInFlight: maxInFlight,
       whichCallCount: whichCallCount,
-      loginCallCount: loginCallCount
+      loginCallCount: loginCallCount,
     )
   }
 }
@@ -77,7 +77,7 @@ struct GithubCLIClientTests {
           await probe.endGhCall()
           throw error
         }
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
     let branches = (0..<100).map { "feature-\($0)" }
@@ -114,7 +114,7 @@ struct GithubCLIClientTests {
             command: "gh api graphql",
             stdout: "",
             stderr: "boom",
-            exitCode: 1
+            exitCode: 1,
           )
         }
         do {
@@ -126,7 +126,7 @@ struct GithubCLIClientTests {
           await probe.endGhCall()
           throw error
         }
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
     let branches = (0..<30).map { "feature-\($0)" }
@@ -166,7 +166,7 @@ struct GithubCLIClientTests {
         let stdout = graphQLResponse(for: arguments)
         await probe.endGhCall()
         return ShellOutput(stdout: stdout, stderr: "", exitCode: 0)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
     let uniqueBranches = (0..<30).map { "feature-\($0)" }
@@ -199,7 +199,7 @@ struct GithubCLIClientTests {
           "url":"https://github.com/upstream-org/upstream-repo"}
           """
         return ShellOutput(stdout: stdout, stderr: "", exitCode: 0)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
 
@@ -218,7 +218,7 @@ struct GithubCLIClientTests {
       },
       runLoginImpl: { _, _, _, _ in
         throw ShellClientError(command: "gh repo view", stdout: "", stderr: "nope", exitCode: 1)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
 
@@ -242,7 +242,7 @@ struct GithubCLIClientTests {
         }
         recordedArguments.withValue { $0.append(arguments) }
         return ShellOutput(stdout: "", stderr: "", exitCode: 0)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
     let remote = GithubRemoteInfo(host: "github.com", owner: "upstream-org", repo: "upstream-repo")
@@ -271,7 +271,7 @@ struct GithubCLIClientTests {
         }
         recordedArguments.withValue { $0.append(arguments) }
         return ShellOutput(stdout: "", stderr: "", exitCode: 0)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
 
@@ -295,7 +295,7 @@ struct GithubCLIClientTests {
         }
         recordedArguments.withValue { $0.append(arguments) }
         return ShellOutput(stdout: "", stderr: "", exitCode: 0)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
     let remote = GithubRemoteInfo(host: "ghe.acme.com", owner: "team", repo: "repo")
@@ -320,7 +320,7 @@ struct GithubCLIClientTests {
         }
         recordedArguments.withValue { $0.append(arguments) }
         return ShellOutput(stdout: "", stderr: "", exitCode: 0)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
     let remote = GithubRemoteInfo(host: "github.com", owner: "owner", repo: "repo")
@@ -348,7 +348,7 @@ struct GithubCLIClientTests {
         _ = await probe.beginGhCall()
         await probe.endGhCall()
         return ShellOutput(stdout: "gh version 2.79.0", stderr: "", exitCode: 0)
-      }
+      },
     )
     let client = GithubCLIClient.live(shell: shell)
 

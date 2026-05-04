@@ -9,7 +9,7 @@ public nonisolated struct PiSettingsClient: Sendable {
   public init(
     checkInstalled: @escaping @Sendable () async -> Bool,
     install: @escaping @Sendable () async throws -> Void,
-    uninstall: @escaping @Sendable () async throws -> Void
+    uninstall: @escaping @Sendable () async throws -> Void,
   ) {
     self.checkInstalled = checkInstalled
     self.install = install
@@ -27,12 +27,12 @@ extension PiSettingsClient: DependencyKey {
     },
     uninstall: {
       try PiSettingsInstaller().uninstall()
-    }
+    },
   )
   public static let testValue = Self(
     checkInstalled: { false },
     install: {},
-    uninstall: {}
+    uninstall: {},
   )
 }
 

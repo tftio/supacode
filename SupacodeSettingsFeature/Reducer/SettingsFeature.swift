@@ -117,7 +117,7 @@ public struct SettingsFeature {
         ),
         worktreeDirectoryNaming: worktreeDirectoryNaming,
         autoDeleteArchivedWorktreesAfterDays: autoDeleteArchivedWorktreesAfterDays,
-        shortcutOverrides: shortcutOverrides
+        shortcutOverrides: shortcutOverrides,
       )
     }
   }
@@ -219,8 +219,8 @@ public struct SettingsFeature {
               await send(
                 .agentHookChecked(.kiroNotifications, installed: await kiroNotificationsInstalled))
               await send(.agentHookChecked(.piHooks, installed: await piHooksInstalled))
-            }
-          )
+            },
+          ),
         )
 
       case .settingsLoaded(let settings):
@@ -592,7 +592,7 @@ public struct SettingsFeature {
       state.repositorySettings = RepositorySettingsFeature.State(
         rootURL: summary.rootURL,
         isGitRepository: summary.isGitRepository,
-        settings: repositorySettings
+        settings: repositorySettings,
       )
     } else {
       // Summary can flip kind at runtime (git → folder or vice versa)

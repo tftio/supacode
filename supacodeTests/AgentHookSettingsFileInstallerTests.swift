@@ -227,7 +227,7 @@ struct AgentHookSettingsFileInstallerTests {
       errors: makeErrors(),
       logWarning: { message in
         warnings.withValue { $0.append(message) }
-      }
+      },
     )
 
     #expect(!installer.containsMatchingHooks(settingsURL: url, hookGroupsByEvent: sampleHookGroups()))
@@ -243,7 +243,7 @@ struct AgentHookSettingsFileInstallerTests {
       errors: makeErrors(),
       logWarning: { message in
         warnings.withValue { $0.append(message) }
-      }
+      },
     )
 
     #expect(!installer.containsMatchingHooks(settingsURL: url, hookGroupsByEvent: sampleHookGroups()))

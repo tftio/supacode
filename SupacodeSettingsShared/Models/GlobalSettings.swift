@@ -84,7 +84,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     defaultWorktreeBaseDirectoryPath: nil,
     worktreeDirectoryNaming: .preserveBranchPath,
     autoDeleteArchivedWorktreesAfterDays: nil,
-    shortcutOverrides: [:]
+    shortcutOverrides: [:],
   )
 
   public init(
@@ -115,7 +115,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     defaultWorktreeBaseDirectoryPath: String? = nil,
     worktreeDirectoryNaming: WorktreeDirectoryNaming = .preserveBranchPath,
     autoDeleteArchivedWorktreesAfterDays: AutoDeletePeriod? = nil,
-    shortcutOverrides: [AppShortcutID: AppShortcutOverride] = [:]
+    shortcutOverrides: [AppShortcutID: AppShortcutOverride] = [:],
   ) {
     self.appearanceMode = appearanceMode
     self.defaultEditorID = defaultEditorID
@@ -204,7 +204,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     } else {
       if let legacyBool = try legacy.decodeIfPresent(
         Bool.self,
-        forKey: LegacyCodingKey(stringValue: "automaticallyArchiveMergedWorktrees")!
+        forKey: LegacyCodingKey(stringValue: "automaticallyArchiveMergedWorktrees")!,
       ) {
         mergedWorktreeAction = legacyBool ? .archive : Self.default.mergedWorktreeAction
       } else {
@@ -239,7 +239,7 @@ public nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     if let policy = try container.decodeIfPresent(AutomatedActionPolicy.self, forKey: .automatedActionPolicy) {
       automatedActionPolicy = policy
     } else if let legacyBool = try legacy.decodeIfPresent(
-      Bool.self, forKey: LegacyCodingKey(stringValue: "allowArbitraryDeeplinkInput")!)
+      Bool.self, forKey: LegacyCodingKey(stringValue: "allowArbitraryDeeplinkInput")!,)
     {
       automatedActionPolicy = legacyBool ? .always : .never
     } else {

@@ -28,19 +28,19 @@ nonisolated struct KiroSettingsInstaller {
 
   init(
     homeDirectoryURL: URL = FileManager.default.homeDirectoryForCurrentUser,
-    fileManager: FileManager = .default
+    fileManager: FileManager = .default,
   ) {
     self.init(
       homeDirectoryURL: homeDirectoryURL,
       fileManager: fileManager,
-      runKiroVersionCommand: Self.runKiroVersionCommand
+      runKiroVersionCommand: Self.runKiroVersionCommand,
     )
   }
 
   init(
     homeDirectoryURL: URL = FileManager.default.homeDirectoryForCurrentUser,
     fileManager: FileManager = .default,
-    runKiroVersionCommand: @escaping @Sendable () async throws -> CommandResult
+    runKiroVersionCommand: @escaping @Sendable () async throws -> CommandResult,
   ) {
     self.homeDirectoryURL = homeDirectoryURL
     self.fileManager = fileManager
@@ -60,7 +60,7 @@ nonisolated struct KiroSettingsInstaller {
     }
     return fileInstaller.containsMatchingHooks(
       settingsURL: settingsURL,
-      hookEntriesByEvent: entries
+      hookEntriesByEvent: entries,
     )
   }
 
@@ -68,7 +68,7 @@ nonisolated struct KiroSettingsInstaller {
     try await ensureDefaultAgentConfig()
     try fileInstaller.install(
       settingsURL: settingsURL,
-      hookEntriesByEvent: try KiroHookSettings.progressHookEntriesByEvent()
+      hookEntriesByEvent: try KiroHookSettings.progressHookEntriesByEvent(),
     )
   }
 
@@ -76,7 +76,7 @@ nonisolated struct KiroSettingsInstaller {
     try await ensureDefaultAgentConfig()
     try fileInstaller.install(
       settingsURL: settingsURL,
-      hookEntriesByEvent: try KiroHookSettings.notificationHookEntriesByEvent()
+      hookEntriesByEvent: try KiroHookSettings.notificationHookEntriesByEvent(),
     )
   }
 
@@ -84,7 +84,7 @@ nonisolated struct KiroSettingsInstaller {
     guard fileManager.fileExists(atPath: settingsURL.path) else { return }
     try fileInstaller.uninstall(
       settingsURL: settingsURL,
-      hookEntriesByEvent: try KiroHookSettings.progressHookEntriesByEvent()
+      hookEntriesByEvent: try KiroHookSettings.progressHookEntriesByEvent(),
     )
   }
 
@@ -92,7 +92,7 @@ nonisolated struct KiroSettingsInstaller {
     guard fileManager.fileExists(atPath: settingsURL.path) else { return }
     try fileInstaller.uninstall(
       settingsURL: settingsURL,
-      hookEntriesByEvent: try KiroHookSettings.notificationHookEntriesByEvent()
+      hookEntriesByEvent: try KiroHookSettings.notificationHookEntriesByEvent(),
     )
   }
 
@@ -107,7 +107,7 @@ nonisolated struct KiroSettingsInstaller {
     try await validateSupportedKiroVersion()
     try fileManager.createDirectory(
       at: settingsURL.deletingLastPathComponent(),
-      withIntermediateDirectories: true
+      withIntermediateDirectories: true,
     )
     let defaultConfig: [String: JSONValue] = [
       "name": .string("kiro_default"),
@@ -234,7 +234,7 @@ nonisolated struct KiroSettingsInstaller {
     return .init(
       status: process.terminationStatus,
       standardOutput: standardOutput,
-      standardError: standardError.trimmingCharacters(in: .whitespacesAndNewlines)
+      standardError: standardError.trimmingCharacters(in: .whitespacesAndNewlines),
     )
   }
 
@@ -275,8 +275,8 @@ nonisolated struct KiroSettingsInstaller {
         invalidEventHooks: { KiroSettingsInstallerError.invalidEventHooks($0) },
         invalidHooksObject: { KiroSettingsInstallerError.invalidHooksObject },
         invalidJSON: { KiroSettingsInstallerError.invalidJSON($0) },
-        invalidRootObject: { KiroSettingsInstallerError.invalidRootObject }
-      )
+        invalidRootObject: { KiroSettingsInstallerError.invalidRootObject },
+      ),
     )
   }
 }

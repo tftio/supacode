@@ -60,7 +60,7 @@ nonisolated enum RepositoryColor: Hashable, Sendable, Codable {
     guard let parsed = Self.parse(raw) else {
       throw DecodingError.dataCorruptedError(
         in: container,
-        debugDescription: "Unrecognized repository color value: \(raw)"
+        debugDescription: "Unrecognized repository color value: \(raw)",
       )
     }
     self = parsed

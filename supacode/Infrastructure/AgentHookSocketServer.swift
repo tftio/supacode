@@ -37,7 +37,7 @@ final class AgentHookSocketServer {
       try FileManager.default.createDirectory(
         atPath: directory,
         withIntermediateDirectories: true,
-        attributes: [.posixPermissions: 0o700]
+        attributes: [.posixPermissions: 0o700],
       )
     } catch {
       socketLogger.warning("Failed to create socket directory: \(error)")
@@ -143,7 +143,7 @@ final class AgentHookSocketServer {
       var totalWritten = 0
       while totalWritten < data.count {
         let written = write(
-          fileDescriptor, base.advanced(by: totalWritten), data.count - totalWritten)
+          fileDescriptor, base.advanced(by: totalWritten), data.count - totalWritten,)
         if written < 0 {
           guard errno == EINTR else {
             socketLogger.warning("write() failed: \(String(cString: strerror(errno)))")
@@ -209,7 +209,7 @@ final class AgentHookSocketServer {
   nonisolated enum Message: Sendable {
     case busy(worktreeID: String, tabID: UUID, surfaceID: UUID, active: Bool)
     case notification(
-      worktreeID: String, tabID: UUID, surfaceID: UUID, notification: AgentHookNotification)
+      worktreeID: String, tabID: UUID, surfaceID: UUID, notification: AgentHookNotification,)
     /// CLI command with the client FD kept open for writing a response.
     case command(deeplinkURL: URL, clientFD: Int32)
     /// CLI query with the client FD kept open for writing data back.
@@ -222,7 +222,7 @@ final class AgentHookSocketServer {
     guard let encoded = try? JSONSerialization.data(withJSONObject: json) else {
       socketLogger.warning("Failed to encode query response")
       writeAll(
-        to: clientFD, data: Data("{\"ok\":false,\"error\":\"Internal encoding error.\"}".utf8))
+        to: clientFD, data: Data("{\"ok\":false,\"error\":\"Internal encoding error.\"}".utf8),)
       close(clientFD)
       return
     }
@@ -232,14 +232,14 @@ final class AgentHookSocketServer {
 
   /// Writes a JSON response to a command client and closes the FD.
   nonisolated static func sendCommandResponse(
-    clientFD: Int32, ok succeeded: Bool, error: String? = nil
+    clientFD: Int32, ok succeeded: Bool, error: String? = nil,
   ) {
     var json: [String: Any] = ["ok": succeeded]
     if let error { json["error"] = error }
     guard let data = try? JSONSerialization.data(withJSONObject: json) else {
       socketLogger.warning("Failed to encode command response")
       writeAll(
-        to: clientFD, data: Data("{\"ok\":false,\"error\":\"Internal encoding error.\"}".utf8))
+        to: clientFD, data: Data("{\"ok\":false,\"error\":\"Internal encoding error.\"}".utf8),)
       close(clientFD)
       return
     }
@@ -303,7 +303,7 @@ final class AgentHookSocketServer {
     readChunk: (Int32, UnsafeMutableBufferPointer<UInt8>) -> Int = { fileDescriptor, buffer in
       guard let baseAddress = buffer.baseAddress else { return 0 }
       return Darwin.read(fileDescriptor, baseAddress, buffer.count)
-    }
+    },
   ) -> Data? {
     var data = Data()
     var buffer = [UInt8](repeating: 0, count: 4096)
@@ -381,13 +381,13 @@ final class AgentHookSocketServer {
       worktreeID: worktreeID,
       tabID: tabID,
       surfaceID: surfaceID,
-      notification: notification
+      notification: notification,
     )
   }
 
   private nonisolated static func parseNotification(
     agent: String,
-    data: Data
+    data: Data,
   ) -> AgentHookNotification? {
     guard let payload = try? JSONDecoder().decode(AgentHookPayload.self, from: data) else {
       let preview = String(data: data.prefix(200), encoding: .utf8) ?? "<non-UTF8>"
@@ -403,7 +403,7 @@ final class AgentHookSocketServer {
       agent: agent,
       event: payload.hookEventName ?? "unknown",
       title: payload.title,
-      body: payload.body
+      body: payload.body,
     )
   }
 
@@ -469,7 +469,7 @@ private nonisolated struct AgentHookPayload: Decodable {
 
   private static func decodeOptionalString(
     _ container: KeyedDecodingContainer<CodingKeys>,
-    forKey key: CodingKeys
+    forKey key: CodingKeys,
   ) -> String? {
     do {
       return try container.decodeIfPresent(String.self, forKey: key)

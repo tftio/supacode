@@ -30,7 +30,7 @@ struct TerminalClient {
     case focusSurface(Worktree, tabID: TerminalTabID, surfaceID: UUID, input: String? = nil)
     case splitSurface(
       Worktree, tabID: TerminalTabID, surfaceID: UUID, direction: SplitDirection,
-      input: String?, id: UUID? = nil)
+      input: String?, id: UUID? = nil,)
     case destroyTab(Worktree, tabID: TerminalTabID)
     case destroySurface(Worktree, tabID: TerminalTabID, surfaceID: UUID)
     case prune(Set<Worktree.ID>)
@@ -47,7 +47,7 @@ struct TerminalClient {
     case focusChanged(worktreeID: Worktree.ID, surfaceID: UUID)
     case taskStatusChanged(worktreeID: Worktree.ID, status: WorktreeTaskStatus)
     case blockingScriptCompleted(
-      worktreeID: Worktree.ID, kind: BlockingScriptKind, exitCode: Int?, tabId: TerminalTabID?)
+      worktreeID: Worktree.ID, kind: BlockingScriptKind, exitCode: Int?, tabId: TerminalTabID?,)
     case commandPaletteToggleRequested(worktreeID: Worktree.ID)
     case setupScriptConsumed(worktreeID: Worktree.ID)
   }
@@ -62,7 +62,7 @@ extension TerminalClient: DependencyKey {
     surfaceExistsInWorktree: { _, _ in fatalError("TerminalClient.surfaceExistsInWorktree not configured") },
     tabID: { _, _ in fatalError("TerminalClient.tabID not configured") },
     latestUnreadNotification: { fatalError("TerminalClient.latestUnreadNotification not configured") },
-    markNotificationRead: { _, _ in fatalError("TerminalClient.markNotificationRead not configured") }
+    markNotificationRead: { _, _ in fatalError("TerminalClient.markNotificationRead not configured") },
   )
 
   static let testValue = TerminalClient(
@@ -73,7 +73,7 @@ extension TerminalClient: DependencyKey {
     surfaceExistsInWorktree: unimplemented("TerminalClient.surfaceExistsInWorktree", placeholder: true),
     tabID: unimplemented("TerminalClient.tabID", placeholder: nil),
     latestUnreadNotification: unimplemented("TerminalClient.latestUnreadNotification", placeholder: nil),
-    markNotificationRead: unimplemented("TerminalClient.markNotificationRead")
+    markNotificationRead: unimplemented("TerminalClient.markNotificationRead"),
   )
 }
 

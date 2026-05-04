@@ -19,13 +19,13 @@ struct AppFeatureArchivedSelectionTests {
       name: "wt1",
       detail: "",
       workingDirectory: URL(fileURLWithPath: "/tmp/repo/wt1"),
-      repositoryRootURL: rootURL
+      repositoryRootURL: rootURL,
     )
     let repository = Repository(
       id: rootURL.path(percentEncoded: false),
       rootURL: rootURL,
       name: "repo",
-      worktrees: IdentifiedArray(uniqueElements: [worktree])
+      worktrees: IdentifiedArray(uniqueElements: [worktree]),
     )
     var repositoriesState = RepositoriesFeature.State(repositories: [repository])
     repositoriesState.selection = .worktree(worktree.id)
@@ -33,7 +33,7 @@ struct AppFeatureArchivedSelectionTests {
     let store = TestStore(
       initialState: AppFeature.State(
         repositories: repositoriesState,
-        settings: SettingsFeature.State()
+        settings: SettingsFeature.State(),
       )
     ) {
       AppFeature()
@@ -60,20 +60,20 @@ struct AppFeatureArchivedSelectionTests {
       name: "wt-active",
       detail: "",
       workingDirectory: URL(fileURLWithPath: "/tmp/repo/wt-active"),
-      repositoryRootURL: rootURL
+      repositoryRootURL: rootURL,
     )
     let archivedWorktree = Worktree(
       id: "/tmp/repo/wt-archived",
       name: "wt-archived",
       detail: "",
       workingDirectory: URL(fileURLWithPath: "/tmp/repo/wt-archived"),
-      repositoryRootURL: rootURL
+      repositoryRootURL: rootURL,
     )
     let repository = Repository(
       id: rootURL.path(percentEncoded: false),
       rootURL: rootURL,
       name: "repo",
-      worktrees: IdentifiedArray(uniqueElements: [activeWorktree, archivedWorktree])
+      worktrees: IdentifiedArray(uniqueElements: [activeWorktree, archivedWorktree]),
     )
     var repositoriesState = RepositoriesFeature.State(repositories: [repository])
     repositoriesState.selection = .worktree(activeWorktree.id)
@@ -82,12 +82,12 @@ struct AppFeatureArchivedSelectionTests {
         worktree: archivedWorktree.id,
         in: repository.id,
         bucket: .archived,
-        item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000))
+        item: .init(archivedAt: Date(timeIntervalSince1970: 1_000_000)),
       )
     }
     var appState = AppFeature.State(
       repositories: repositoriesState,
-      settings: SettingsFeature.State()
+      settings: SettingsFeature.State(),
     )
     let scriptID = UUID()
     // Distinct tints per worktree so the pruner is asserted to carry
